@@ -9,11 +9,17 @@
     "preview": "vite preview",
     "start": "electron ."
   },
-  "keywords": ["electron", "react", "vite", "kanban"],
+  "keywords": [
+    "electron",
+    "react",
+    "vite",
+    "kanban"
+  ],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
+    "better-sqlite3": "^12.6.2",
     "electron": "^40.0.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3"
