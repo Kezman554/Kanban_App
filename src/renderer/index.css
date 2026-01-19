@@ -1,18 +1,45 @@
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+      sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    @apply bg-dark-bg text-dark-text;
+  }
+
+  #root {
+    width: 100%;
+    height: 100vh;
+  }
 }
 
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+@layer components {
+  /* Custom scrollbar for dark theme */
+  .scrollbar-dark::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
 
-#root {
-  width: 100%;
-  height: 100vh;
+  .scrollbar-dark::-webkit-scrollbar-track {
+    @apply bg-dark-bg;
+  }
+
+  .scrollbar-dark::-webkit-scrollbar-thumb {
+    @apply bg-dark-border rounded;
+  }
+
+  .scrollbar-dark::-webkit-scrollbar-thumb:hover {
+    @apply bg-dark-hover;
+  }
 }
