@@ -3,6 +3,7 @@ import ProjectsPage from './pages/ProjectsPage';
 import CurrentProjectPage from './pages/CurrentProjectPage';
 import RoadmapPage from './pages/RoadmapPage';
 import SettingsPage from './pages/SettingsPage';
+import CardTestPage from './pages/CardTestPage';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('current-project');
@@ -24,6 +25,8 @@ function App() {
         return <RoadmapPage />;
       case 'settings':
         return <SettingsPage />;
+      case 'card-test':
+        return <CardTestPage />;
       default:
         return <CurrentProjectPage />;
     }
@@ -33,6 +36,7 @@ function App() {
     { id: 'projects', label: 'Projects', icon: '📊' },
     { id: 'current-project', label: 'Current Project', icon: '📋' },
     { id: 'roadmap', label: 'Roadmap', icon: '🗺️' },
+    { id: 'card-test', label: 'Card Test', icon: '🧪' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
   ];
 
