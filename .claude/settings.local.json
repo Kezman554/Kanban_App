@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm init:*)",
+      "Bash(npm install:*)",
+      "Bash(git init:*)",
+      "Bash(git remote:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: Set up Electron + React + Vite project\n\n- Configured Vite with Electron and React plugins\n- Set up Electron main process with dev server support\n- Created React renderer with simple App component\n- Added .gitignore for node_modules, dist, .env, and *.db\n- Added .env.example for API key configuration\n- Configured dev server on port 8502\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)"
+    ]
+  }
+}
