@@ -2,6 +2,10 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import electron from 'vite-plugin-electron'
 import renderer from 'vite-plugin-electron-renderer'
+import { resolve, dirname } from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
   plugins: [
@@ -12,9 +16,6 @@ export default defineConfig({
       },
       {
         entry: 'src/main/preload.js',
-        onstart(options) {
-          options.reload()
-        },
       },
     ]),
     renderer(),
@@ -22,9 +23,9 @@ export default defineConfig({
   server: {
     port: 8502,
   },
-  root: 'src/renderer',
   build: {
-    outDir: '../../dist/renderer',
-    emptyOutDir: true,
+    rollupOptions: {
+      input: resolve(__dirname, 'src/renderer/index.html'),
+    },
   },
 })

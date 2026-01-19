@@ -2,11 +2,12 @@
   "name": "kanban-app",
   "version": "1.0.0",
   "description": "Kanban App built with Electron, React, and Vite",
-  "main": "dist/main/main.js",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "electron ."
   },
   "keywords": ["electron", "react", "vite", "kanban"],
   "author": "",
