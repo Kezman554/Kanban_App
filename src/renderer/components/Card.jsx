@@ -1,12 +1,25 @@
 import React, { useState } from 'react';
+import { useDraggable } from '@dnd-kit/core';
 
-const Card = ({ card, onClick }) => {
+const Card = ({ card, onClick, isDragging = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const handleClick = () => {
+  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+    id: card.id,
+  });
+
+  const handleClick = (e) => {
+    // Don't toggle if clicking the drag handle
+    if (e.target.closest('.drag-handle')) {
+      return;
+    }
     setIsExpanded(!isExpanded);
     if (onClick) onClick(card);
   };
+
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
 
   // Resource icons mapping
   const resourceIcons = {
@@ -44,7 +57,7 @@ const Card = ({ card, onClick }) => {
   // Determine if card is blocked
   const isBlocked = card.isBlocked || (card.depends_on_cards && card.depends_on_cards.length > 0 && card.status === 'Not Started');
   const actualStatus = isBlocked ? 'Blocked' : card.status;
-  const style = statusStyles[actualStatus] || statusStyles['Not Started'];
+  const statusStyle = statusStyles[actualStatus] || statusStyles['Not Started'];
 
   // Complexity badge colors
   const complexityColors = {
@@ -63,16 +76,29 @@ const Card = ({ card, onClick }) => {
 
   return (
     <div
+      ref={setNodeRef}
+      style={style}
       className={`
-        ${style.bg} ${style.border} ${style.borderWidth || 'border'} ${getCardBorderStyle()}
-        rounded-lg p-3 cursor-pointer transition-all hover:shadow-lg
+        ${statusStyle.bg} ${statusStyle.border} ${statusStyle.borderWidth || 'border'} ${getCardBorderStyle()}
+        rounded-lg p-3 transition-all hover:shadow-lg
         ${isExpanded ? 'ring-2 ring-blue-500' : ''}
+        ${isDragging ? 'opacity-50' : 'opacity-100'}
       `}
       onClick={handleClick}
     >
       {/* Card Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 flex-1">
+          {/* Drag Handle */}
+          <div
+            className="drag-handle flex-shrink-0 cursor-grab active:cursor-grabbing text-dark-text-secondary hover:text-dark-text p-1"
+            {...listeners}
+            {...attributes}
+            title="Drag to move card"
+          >
+            ⋮⋮
+          </div>
+
           {/* Session Letter Badge */}
           <div className={`
             flex-shrink-0 w-8 h-8 rounded flex items-center justify-center font-bold text-sm
@@ -82,7 +108,7 @@ const Card = ({ card, onClick }) => {
           </div>
 
           {/* Card Title */}
-          <h3 className={`text-sm font-semibold ${style.text} flex-1 line-clamp-2`}>
+          <h3 className={`text-sm font-semibold ${statusStyle.text} flex-1 line-clamp-2`}>
             {card.title}
           </h3>
         </div>
