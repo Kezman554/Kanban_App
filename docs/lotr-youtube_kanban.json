@@ -1,0 +1,1033 @@
+{
+  "project": {
+    "name": "LOTR YouTube Channel",
+    "slug": "lotr-youtube",
+    "description": "Launch a faceless YouTube channel focused on Tolkien/Middle-earth lore",
+    "prd_path": "lotr-youtube_PRD.md",
+    "github_repo": "youtube-system",
+    "required_apis": ["youtube", "anthropic", "google_imagen", "elevenlabs"]
+  },
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Phase 1: Foundation (Tech)",
+      "short_name": "1",
+      "description": "Build the content intelligence system - database, scraper, processing pipeline, and dashboard",
+      "order": 1,
+      "subphases": [
+        {
+          "id": "subphase-1-1",
+          "phase_id": "phase-1",
+          "name": "1.1 Content Intelligence System - Core",
+          "short_name": "1.1",
+          "description": "Database, scraper, and configuration",
+          "order": 1,
+          "cards": [
+            {
+              "id": "card-a",
+              "session_letter": "A",
+              "title": "Session A: Scrape Real Data",
+              "description": "Populate database with actual competitor data. Creates a niche, links channel, downloads video metadata from Nerd of the Rings.",
+              "success_criteria": "Database has real competitor video data",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-01T00:00:00Z",
+              "depends_on_cards": [],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-b",
+              "session_letter": "B",
+              "title": "Session B: Manual Transcript Workflow",
+              "description": "Create empty transcript files for manual population since YouTube blocked auto-scraping. Workaround for API limitations.",
+              "success_criteria": "data/transcripts/ folder has empty .txt files for each video",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-02T00:00:00Z",
+              "depends_on_cards": ["A"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-c",
+              "session_letter": "C",
+              "title": "Session C: Transcript Import to Database",
+              "description": "Script to read manually-pasted transcripts from .txt files and store them in the database linked to videos.",
+              "success_criteria": "Can import transcripts and link to videos with has_transcript flag",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-03T00:00:00Z",
+              "depends_on_cards": ["B"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-d",
+              "session_letter": "D",
+              "title": "Session D: PDF Ingestion for Canon Sources",
+              "description": "Import Tolkien source books (The Hobbit, LOTR, etc.) into the system. Extract text and store for searching.",
+              "success_criteria": "Can ingest a PDF and see it in canon_sources table",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-04T00:00:00Z",
+              "depends_on_cards": ["A"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        },
+        {
+          "id": "subphase-1-2",
+          "phase_id": "phase-1",
+          "name": "1.2 Content Intelligence System - Processing",
+          "short_name": "1.2",
+          "description": "Chunking, embeddings, and semantic search",
+          "order": 2,
+          "cards": [
+            {
+              "id": "card-e",
+              "session_letter": "E",
+              "title": "Session E: Chunking and Embeddings",
+              "description": "The AI brain of the system. Split texts into chunks, convert to vectors for semantic search. Store in LanceDB.",
+              "success_criteria": "LanceDB has embedded chunks from a canon source",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-05T00:00:00Z",
+              "depends_on_cards": ["D"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "high",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-f",
+              "session_letter": "F",
+              "title": "Session F: Semantic Search",
+              "description": "Search by meaning across canon and transcripts. Powers the Research page in the dashboard.",
+              "success_criteria": "Semantic search returns relevant passages with relevance scores",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-06T00:00:00Z",
+              "depends_on_cards": ["E"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-g",
+              "session_letter": "G",
+              "title": "Session G: Glossary Builder",
+              "description": "Extract character names, places, and special terms from canon sources for consistent tagging and transcript cleaning.",
+              "success_criteria": "Glossary populated with terms extracted from canon source",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-07T00:00:00Z",
+              "depends_on_cards": ["D"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        },
+        {
+          "id": "subphase-1-3",
+          "phase_id": "phase-1",
+          "name": "1.3 Content Intelligence System - Interface",
+          "short_name": "1.3",
+          "description": "Streamlit dashboard for day-to-day use",
+          "order": 3,
+          "cards": [
+            {
+              "id": "card-h",
+              "session_letter": "H",
+              "title": "Session H: Basic Streamlit App",
+              "description": "Visual interface shell with navigation sidebar, page routing, and niche selector.",
+              "success_criteria": "Streamlit app runs at localhost:8501 with working navigation",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-08T00:00:00Z",
+              "depends_on_cards": ["F", "G"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-i",
+              "session_letter": "I",
+              "title": "Session I: Settings Page",
+              "description": "Manage API keys and view system status without editing config files.",
+              "success_criteria": "Can view/test API keys and see database stats",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-09T00:00:00Z",
+              "depends_on_cards": ["H"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-j",
+              "session_letter": "J",
+              "title": "Session J: Niche Setup Page",
+              "description": "Configuration hub for niches, source books, competitor channels, and glossary management.",
+              "success_criteria": "Can manage niches, upload sources, add competitors, edit glossary via UI",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-10T00:00:00Z",
+              "depends_on_cards": ["H"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "high",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-k",
+              "session_letter": "K",
+              "title": "Session K: Competitive Intel Page",
+              "description": "Analyze competition - browse videos, see topics covered, find gaps. Includes manual transcript import UI.",
+              "success_criteria": "Can browse competitor videos, filter, sort, and manually import transcripts",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-11T00:00:00Z",
+              "depends_on_cards": ["H"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "high",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-l",
+              "session_letter": "L",
+              "title": "Session L: Research Page",
+              "description": "Research assistant - semantic search across canon and competitor transcripts. The core value of the system.",
+              "success_criteria": "Can search, filter by source type, see results with relevance scores and copy quotes",
+              "resource": "claude_sub",
+              "status": "Done",
+              "completed_at": "2025-01-12T00:00:00Z",
+              "depends_on_cards": ["H"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "high",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-2",
+      "name": "Phase 2: Channel Setup",
+      "short_name": "2",
+      "description": "Brand identity, visual assets, and YouTube channel configuration",
+      "order": 2,
+      "subphases": [
+        {
+          "id": "subphase-2-1",
+          "phase_id": "phase-2",
+          "name": "2.1 Channel Identity",
+          "short_name": "2.1",
+          "description": "Name, description, and brand positioning",
+          "order": 1,
+          "cards": [
+            {
+              "id": "card-m",
+              "session_letter": "M",
+              "title": "Session M: Brainstorm Channel Name",
+              "description": "MANUAL: Creative brainstorming session. Generate 5-10 name options, check availability on YouTube and social platforms.",
+              "success_criteria": "Final channel name chosen and verified available on YouTube, Twitter/X, Instagram",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": [],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-m2",
+              "session_letter": "M2",
+              "title": "Session M2: Write Channel Description",
+              "description": "MANUAL: Write 2-3 sentence channel description and define tagline/hook. Consider target audience and unique value proposition.",
+              "success_criteria": "Channel description and tagline documented",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["M"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        },
+        {
+          "id": "subphase-2-2",
+          "phase_id": "phase-2",
+          "name": "2.2 Branding Assets",
+          "short_name": "2.2",
+          "description": "Logo, banner, colors, fonts, thumbnail style",
+          "order": 2,
+          "cards": [
+            {
+              "id": "card-n",
+              "session_letter": "N",
+              "title": "Session N: Create Channel Logo",
+              "description": "MANUAL: Design or generate channel logo. Use Leonardo.ai, Midjourney, or Canva. Should work at small sizes. Save as square PNG 800x800+.",
+              "success_criteria": "Logo file created, looks professional at small sizes",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["M"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-n2",
+              "session_letter": "N2",
+              "title": "Session N2: Create Channel Banner",
+              "description": "MANUAL: Design channel banner (2560x1440px). Include channel name and tagline. Keep important content centered (edges crop on mobile).",
+              "success_criteria": "Banner file created at correct dimensions",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["N", "M2"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-n3",
+              "session_letter": "N3",
+              "title": "Session N3: Define Brand Style",
+              "description": "MANUAL: Choose 2-3 brand colors and 1-2 fonts. Sketch thumbnail style template. Document in a brand guide.",
+              "success_criteria": "Brand colors, fonts, and thumbnail style documented",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["N"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        },
+        {
+          "id": "subphase-2-3",
+          "phase_id": "phase-2",
+          "name": "2.3 YouTube Account Setup",
+          "short_name": "2.3",
+          "description": "Create and configure the actual YouTube channel",
+          "order": 3,
+          "cards": [
+            {
+              "id": "card-o",
+              "session_letter": "O",
+              "title": "Session O: Create YouTube Channel",
+              "description": "MANUAL: Create YouTube channel, upload logo/banner, write About section, add keywords, configure upload defaults, create initial playlists.",
+              "success_criteria": "Channel exists, looks professional, About section complete, playlists created",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["N2", "N3", "M2"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-o2",
+              "session_letter": "O2",
+              "title": "Session O2: Reserve Social Handles",
+              "description": "MANUAL: Reserve Twitter/X handle, Instagram handle, and create simple Linktree or bio page.",
+              "success_criteria": "Social handles secured matching channel name",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["M"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-3",
+      "name": "Phase 3: Competitive Research",
+      "short_name": "3",
+      "description": "Analyze competitors, identify gaps, and prioritize video topics",
+      "order": 3,
+      "subphases": [
+        {
+          "id": "subphase-3-1",
+          "phase_id": "phase-3",
+          "name": "3.1 Data Gathering",
+          "short_name": "3.1",
+          "description": "Scrape more competitors and gather transcripts",
+          "order": 1,
+          "cards": [
+            {
+              "id": "card-p",
+              "session_letter": "P",
+              "title": "Session P: Scrape Additional Competitors",
+              "description": "Add more LOTR/Tolkien channels to the database using the scraper. Get broader view of content landscape.",
+              "success_criteria": "5+ competitor channels scraped, 100+ videos in database",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "depends_on_cards": [],
+              "depends_on_subphase": "subphase-1-1",
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-q",
+              "session_letter": "Q",
+              "title": "Session Q: Gather Priority Transcripts",
+              "description": "MANUAL: Use dashboard to manually import transcripts for top 20-30 highest-view videos. Time-consuming but valuable data.",
+              "success_criteria": "20-30 transcripts imported for top-performing competitor videos",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["P"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        },
+        {
+          "id": "subphase-3-2",
+          "phase_id": "phase-3",
+          "name": "3.2 Analysis",
+          "short_name": "3.2",
+          "description": "Identify patterns, gaps, and opportunities",
+          "order": 2,
+          "cards": [
+            {
+              "id": "card-r",
+              "session_letter": "R",
+              "title": "Session R: Analyze and Document Findings",
+              "description": "MANUAL: Use Research page to search topics, cross-reference with canon, identify saturated vs underserved topics. Create ranked opportunity list.",
+              "success_criteria": "Ranked list of 10-20 video topic opportunities with gap analysis",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["Q"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-4",
+      "name": "Phase 4: Canon Ingestion",
+      "short_name": "4",
+      "description": "Load Tolkien source books into the system",
+      "order": 4,
+      "subphases": [
+        {
+          "id": "subphase-4-1",
+          "phase_id": "phase-4",
+          "name": "4.1 Source Material",
+          "short_name": "4.1",
+          "description": "Gather and ingest Tolkien books",
+          "order": 1,
+          "cards": [
+            {
+              "id": "card-s",
+              "session_letter": "S",
+              "title": "Session S: Gather Source PDFs",
+              "description": "MANUAL: Obtain PDFs of The Hobbit, LOTR, and The Silmarillion. Ensure good text quality for extraction.",
+              "success_criteria": "PDF files ready for ingestion",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": [],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-s2",
+              "session_letter": "S2",
+              "title": "Session S2: Ingest Canon Sources",
+              "description": "Use dashboard or script to ingest Tolkien PDFs. Extract text, chunk, embed, and populate glossary.",
+              "success_criteria": "Canon sources searchable via Research page, glossary populated",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "depends_on_cards": ["S"],
+              "depends_on_subphase": "subphase-1-2",
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-5",
+      "name": "Phase 5: First Video - Pre-Production",
+      "short_name": "5",
+      "description": "Select topic, research, and write the script",
+      "order": 5,
+      "subphases": [
+        {
+          "id": "subphase-5-1",
+          "phase_id": "phase-5",
+          "name": "5.1 Topic Selection",
+          "short_name": "5.1",
+          "description": "Choose the first video topic",
+          "order": 1,
+          "cards": [
+            {
+              "id": "card-t",
+              "session_letter": "T",
+              "title": "Session T: Select First Video Topic",
+              "description": "MANUAL: Review gap analysis, select topic that balances audience interest, canon material availability, and personal interest. Define unique angle.",
+              "success_criteria": "First video topic selected with documented reasoning and unique angle",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["R", "S2"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        },
+        {
+          "id": "subphase-5-2",
+          "phase_id": "phase-5",
+          "name": "5.2 Research and Script",
+          "short_name": "5.2",
+          "description": "Deep research and script writing",
+          "order": 2,
+          "cards": [
+            {
+              "id": "card-u",
+              "session_letter": "U",
+              "title": "Session U: Research Topic",
+              "description": "Use Research page to gather canon passages, note key facts and quotes, identify story arc and visual moments.",
+              "success_criteria": "Research document with canon quotes, facts, and outline",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "depends_on_cards": ["T"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-u2",
+              "session_letter": "U2",
+              "title": "Session U2: Write Script",
+              "description": "Write full video script: hook (30s), intro, main content sections, conclusion, CTA. Mark [IMAGE] cues. Target 2000-3000 words.",
+              "success_criteria": "Complete script with image markers, 10-15 minute target length",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "depends_on_cards": ["U"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "high",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-u3",
+              "session_letter": "U3",
+              "title": "Session U3: Fact-Check Script Against Canon",
+              "description": "Review script accuracy against canon sources. Verify quotes, dates, names, relationships. Fix any errors.",
+              "success_criteria": "Script verified accurate against canon sources",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "depends_on_cards": ["U2"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-6",
+      "name": "Phase 6: First Video - Production",
+      "short_name": "6",
+      "description": "Voiceover, visuals, and video editing",
+      "order": 6,
+      "subphases": [
+        {
+          "id": "subphase-6-1",
+          "phase_id": "phase-6",
+          "name": "6.1 Voiceover",
+          "short_name": "6.1",
+          "description": "Generate or record narration",
+          "order": 1,
+          "cards": [
+            {
+              "id": "card-v",
+              "session_letter": "V",
+              "title": "Session V: Choose Voice Approach",
+              "description": "MANUAL: Decide between AI voice (ElevenLabs), own voice, or hired voice actor. If AI, test several voices with sample script section.",
+              "success_criteria": "Voice approach decided, test samples reviewed if AI",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": [],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-v2",
+              "session_letter": "V2",
+              "title": "Session V2: Generate/Record Voiceover",
+              "description": "Generate full voiceover using chosen method. Review for issues, re-record problem sections. Export as MP3/WAV.",
+              "success_criteria": "Complete voiceover audio file ready for editing",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["V", "U3"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        },
+        {
+          "id": "subphase-6-2",
+          "phase_id": "phase-6",
+          "name": "6.2 Image Generation Pipeline",
+          "short_name": "6.2",
+          "description": "Set up and use AI image generation for visuals",
+          "order": 2,
+          "cards": [
+            {
+              "id": "card-w",
+              "session_letter": "W",
+              "title": "Session W: Research LOTR Art Styles",
+              "description": "MANUAL: Research Tolkien artists (Alan Lee, John Howe, Ted Nasmith, etc.). Collect 3-5 example images per artist. Note distinctive style characteristics.",
+              "success_criteria": "Reference folder with example images, documented style notes for each artist",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": [],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": true,
+              "expansion_hints": [
+                "May want separate cards per artist if going deep",
+                "Could expand into: research → collect → document → test prompts"
+              ],
+              "review_before_starting": true
+            },
+            {
+              "id": "card-w2",
+              "session_letter": "W2",
+              "title": "Session W2: Set Up Google Cloud Imagen API",
+              "description": "MANUAL: Create Google Cloud project, enable Imagen API, configure authentication, get API credentials. Add to .env file.",
+              "success_criteria": "Google Cloud project configured, Imagen API enabled, credentials in .env",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": [],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-w3",
+              "session_letter": "W3",
+              "title": "Session W3: Create Image Prompt Skill",
+              "description": "Create Claude skill that generates detailed Imagen prompts based on scene descriptions and chosen art style. Reference style examples.",
+              "success_criteria": "Skill file created that outputs high-quality image prompts",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "depends_on_cards": ["W"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "high",
+              "likely_needs_expansion": true,
+              "expansion_hints": [
+                "May want one skill per art style",
+                "Could expand: base skill → Alan Lee variant → John Howe variant → etc.",
+                "Test and iterate based on output quality"
+              ],
+              "review_before_starting": true
+            },
+            {
+              "id": "card-w4",
+              "session_letter": "W4",
+              "title": "Session W4: Create Imagen API Script",
+              "description": "Write Python script that takes prompt from skill output and calls Imagen API. Handle auth, request, save images with sensible naming.",
+              "success_criteria": "Script generates images from prompts and saves to specified folder",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "depends_on_cards": ["W2"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-w5",
+              "session_letter": "W5",
+              "title": "Session W5: Test Image Pipeline End-to-End",
+              "description": "Test full workflow: describe scene → skill generates prompt → script calls Imagen → review output quality. Iterate on prompt skill if needed.",
+              "success_criteria": "Can generate quality images matching intended style from scene descriptions",
+              "resource": "anthropic_api",
+              "status": "Not Started",
+              "depends_on_cards": ["W3", "W4"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        },
+        {
+          "id": "subphase-6-3",
+          "phase_id": "phase-6",
+          "name": "6.3 Visual Asset Creation",
+          "short_name": "6.3",
+          "description": "Generate all images needed for the video",
+          "order": 3,
+          "cards": [
+            {
+              "id": "card-x",
+              "session_letter": "X",
+              "title": "Session X: List All Images Needed",
+              "description": "Go through script and list every image needed. Characters, locations, concepts, maps. Note timestamp/section for each.",
+              "success_criteria": "Complete image list with descriptions mapped to script sections",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "depends_on_cards": ["U3"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-x2",
+              "session_letter": "X2",
+              "title": "Session X2: Generate Video Images",
+              "description": "Use image pipeline to generate all needed images. May need multiple attempts for quality. Organize by script section.",
+              "success_criteria": "All images generated and organized, named by script timestamp",
+              "resource": "anthropic_api",
+              "status": "Not Started",
+              "depends_on_cards": ["X", "W5"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "high",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-x3",
+              "session_letter": "X3",
+              "title": "Session X3: Source Maps and Diagrams",
+              "description": "MANUAL: Find or create any maps, family trees, timelines needed. Check Tolkien wiki and fan resources. Note attributions.",
+              "success_criteria": "All supplementary visuals gathered with attribution notes",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["X"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        },
+        {
+          "id": "subphase-6-4",
+          "phase_id": "phase-6",
+          "name": "6.4 Video Editing",
+          "short_name": "6.4",
+          "description": "Assemble the final video",
+          "order": 4,
+          "cards": [
+            {
+              "id": "card-y",
+              "session_letter": "Y",
+              "title": "Session Y: Choose Editing Software",
+              "description": "MANUAL: Install and familiarize with DaVinci Resolve (free, powerful) or CapCut (easier). Watch a tutorial if needed.",
+              "success_criteria": "Editing software installed and basic workflow understood",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": [],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-y2",
+              "session_letter": "Y2",
+              "title": "Session Y2: Edit Video",
+              "description": "MANUAL: Import voiceover, place images aligned to narration, add Ken Burns motion, text overlays, background music, sound effects. Export 1080p/4K.",
+              "success_criteria": "Complete video exported, synced audio/visuals, professional quality",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["Y", "V2", "X2", "X3"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "high",
+              "likely_needs_expansion": true,
+              "expansion_hints": [
+                "First edit takes longest - may want to break into: rough cut → add motion → add text → add music → final polish"
+              ],
+              "review_before_starting": true
+            }
+          ]
+        },
+        {
+          "id": "subphase-6-5",
+          "phase_id": "phase-6",
+          "name": "6.5 Thumbnail",
+          "short_name": "6.5",
+          "description": "Create click-worthy thumbnail",
+          "order": 5,
+          "cards": [
+            {
+              "id": "card-z",
+              "session_letter": "Z",
+              "title": "Session Z: Create Thumbnail",
+              "description": "MANUAL: Design thumbnail in Canva - eye-catching image, 3-5 words bold text, high contrast, readable at small size. Create 2-3 versions.",
+              "success_criteria": "2-3 thumbnail versions at 1280x720px, readable on mobile",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["N3"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "phase-7",
+      "name": "Phase 7: First Video - Publishing",
+      "short_name": "7",
+      "description": "Upload, optimize metadata, and publish",
+      "order": 7,
+      "subphases": [
+        {
+          "id": "subphase-7-1",
+          "phase_id": "phase-7",
+          "name": "7.1 Upload and Publish",
+          "short_name": "7.1",
+          "description": "Final upload and launch",
+          "order": 1,
+          "cards": [
+            {
+              "id": "card-aa",
+              "session_letter": "AA",
+              "title": "Session AA: Write Video Metadata",
+              "description": "Write compelling title with keywords, description with hook/timestamps/links/hashtags, select 10-15 tags.",
+              "success_criteria": "Title, description, and tags ready for upload",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "depends_on_cards": ["U3"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "medium",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-ab",
+              "session_letter": "AB",
+              "title": "Session AB: Upload and Publish",
+              "description": "MANUAL: Upload video to YouTube (unlisted first), add metadata, select thumbnail, preview, then publish or schedule.",
+              "success_criteria": "Video published to YouTube and publicly visible",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["AA", "Y2", "Z", "O"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-ac",
+              "session_letter": "AC",
+              "title": "Session AC: Share and Monitor",
+              "description": "MANUAL: Share on social media if set up. Monitor first 24-48 hours, respond to comments, note CTR and retention in YouTube Studio.",
+              "success_criteria": "Video shared, initial metrics documented, comments responded to",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["AB"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            },
+            {
+              "id": "card-ad",
+              "session_letter": "AD",
+              "title": "Session AD: Document Lessons Learned",
+              "description": "MANUAL: Write up what worked, what took too long, what to improve. Update workflow for next video.",
+              "success_criteria": "Lessons learned documented for process improvement",
+              "resource": "none",
+              "status": "Not Started",
+              "depends_on_cards": ["AC"],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {"slug": "claude_sub", "name": "Claude Subscription"},
+    {"slug": "anthropic_api", "name": "Anthropic API"},
+    {"slug": "none", "name": "Manual / No AI"},
+    {"slug": "tbc", "name": "To Be Confirmed"}
+  ],
+  "env_template": {
+    "variables": [
+      {
+        "name": "YOUTUBE_API_KEY",
+        "description": "YouTube Data API key for scraping",
+        "required": true
+      },
+      {
+        "name": "ANTHROPIC_API_KEY",
+        "description": "Anthropic API key for Claude",
+        "required": true
+      },
+      {
+        "name": "GOOGLE_CLOUD_PROJECT",
+        "description": "Google Cloud project ID for Imagen API",
+        "required": false
+      },
+      {
+        "name": "GOOGLE_APPLICATION_CREDENTIALS",
+        "description": "Path to Google Cloud service account JSON",
+        "required": false
+      },
+      {
+        "name": "ELEVENLABS_API_KEY",
+        "description": "ElevenLabs API key for voice generation",
+        "required": false
+      }
+    ]
+  },
+  "gitignore_entries": [
+    ".env",
+    "__pycache__/",
+    "*.db",
+    ".venv/",
+    "node_modules/",
+    "data/transcripts/*.txt",
+    ".DS_Store"
+  ]
+}

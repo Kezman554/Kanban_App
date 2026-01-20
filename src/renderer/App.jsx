@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import ProjectsPage from './pages/ProjectsPage';
 import CurrentProjectPage from './pages/CurrentProjectPage';
 import RoadmapPage from './pages/RoadmapPage';
@@ -8,27 +8,44 @@ import CardTestPage from './pages/CardTestPage';
 function App() {
   const [currentPage, setCurrentPage] = useState('current-project');
   const [selectedProject, setSelectedProject] = useState(null);
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  // Mock project data - will be replaced with real data later
-  const projects = [
-    { id: 1, name: 'Kanban App' },
-    { id: 2, name: 'Sample Project' }
-  ];
+  useEffect(() => {
+    loadProjects();
+  }, []);
+
+  const loadProjects = async () => {
+    try {
+      const allProjects = await window.electron.getAllProjects();
+      setProjects(allProjects);
+
+      // Auto-select first project if available
+      if (allProjects.length > 0 && !selectedProject) {
+        setSelectedProject(allProjects[0].id);
+      }
+
+      setLoading(false);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+      setLoading(false);
+    }
+  };
 
   const renderPage = () => {
     switch (currentPage) {
       case 'projects':
-        return <ProjectsPage />;
+        return <ProjectsPage onProjectsChange={loadProjects} />;
       case 'current-project':
-        return <CurrentProjectPage />;
+        return <CurrentProjectPage selectedProjectId={selectedProject} />;
       case 'roadmap':
-        return <RoadmapPage />;
+        return <RoadmapPage selectedProjectId={selectedProject} />;
       case 'settings':
         return <SettingsPage />;
       case 'card-test':
         return <CardTestPage />;
       default:
-        return <CurrentProjectPage />;
+        return <CurrentProjectPage selectedProjectId={selectedProject} />;
     }
   };
 
@@ -53,18 +70,24 @@ function App() {
             <label className="block text-xs text-dark-text-secondary mb-1">
               Current Project
             </label>
-            <select
-              value={selectedProject || ''}
-              onChange={(e) => setSelectedProject(e.target.value ? parseInt(e.target.value) : null)}
-              className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
-            >
-              <option value="">Select a project...</option>
-              {projects.map((project) => (
-                <option key={project.id} value={project.id}>
-                  {project.name}
-                </option>
-              ))}
-            </select>
+            {loading ? (
+              <div className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm text-dark-text-secondary">
+                Loading...
+              </div>
+            ) : (
+              <select
+                value={selectedProject || ''}
+                onChange={(e) => setSelectedProject(e.target.value ? parseInt(e.target.value) : null)}
+                className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+              >
+                <option value="">Select a project...</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+            )}
           </div>
         </div>
 

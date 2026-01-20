@@ -1,14 +1,21 @@
 import React from 'react';
+import Board from '../components/Board';
 
-function CurrentProjectPage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">Current Project</h1>
-      <p className="text-dark-text-secondary">
-        Kanban board view - coming soon
-      </p>
-    </div>
-  );
+function CurrentProjectPage({ selectedProjectId }) {
+  if (!selectedProjectId) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-dark-text mb-2">No Project Selected</h2>
+          <p className="text-dark-text-secondary">
+            Please select a project from the sidebar or create a new one.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <Board projectId={selectedProjectId} />;
 }
 
 export default CurrentProjectPage;
