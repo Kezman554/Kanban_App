@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const fs = require('fs')
+require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
 
 // Resolve the correct path to database operations
 // In dev mode with vite-plugin-electron, __dirname is dist-electron
@@ -35,7 +36,7 @@ function createWindow() {
     mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/src/renderer/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
   }
 }
 
@@ -119,6 +120,15 @@ ipcMain.handle('db:exportProjectToJson', async (event, projectId) => {
     console.error('Error exporting project:', error)
     throw error
   }
+})
+
+// API Key handler
+ipcMain.handle('api:getAnthropicKey', async () => {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    throw new Error('ANTHROPIC_API_KEY not configured. Please add it to your .env file.')
+  }
+  return apiKey
 })
 
 app.whenReady().then(() => {

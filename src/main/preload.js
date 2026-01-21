@@ -15,4 +15,7 @@ contextBridge.exposeInMainWorld('electron', {
   // Import/Export operations
   importProjectFromJson: (jsonData) => ipcRenderer.invoke('db:importProjectFromJson', jsonData),
   exportProjectToJson: (projectId) => ipcRenderer.invoke('db:exportProjectToJson', projectId),
+
+  // API operations
+  getAnthropicApiKey: () => ipcRenderer.invoke('api:getAnthropicKey'),
 })
