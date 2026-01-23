@@ -3,6 +3,9 @@ const path = require('path')
 const fs = require('fs')
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
 
+// Terminal management
+const terminal = require('./terminal')
+
 // Resolve the correct path to database operations
 // In dev mode with vite-plugin-electron, __dirname is dist-electron
 // We need to go up one level to project root and into src/database
@@ -131,6 +134,54 @@ ipcMain.handle('api:getAnthropicKey', async () => {
   return apiKey
 })
 
+// Terminal IPC Handlers
+let mainWindow = null
+
+ipcMain.handle('terminal:create', async (event, options) => {
+  try {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    return terminal.createTerminal(win, options)
+  } catch (error) {
+    console.error('Error creating terminal:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('terminal:write', async (event, terminalId, data) => {
+  try {
+    terminal.writeToTerminal(terminalId, data)
+  } catch (error) {
+    console.error('Error writing to terminal:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('terminal:resize', async (event, terminalId, cols, rows) => {
+  try {
+    terminal.resizeTerminal(terminalId, cols, rows)
+  } catch (error) {
+    console.error('Error resizing terminal:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('terminal:kill', async (event, terminalId) => {
+  try {
+    terminal.killTerminal(terminalId)
+  } catch (error) {
+    console.error('Error killing terminal:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('terminal:getActive', async () => {
+  return terminal.getActiveTerminals()
+})
+
+ipcMain.handle('terminal:isAvailable', async () => {
+  return terminal.isPtyAvailable()
+})
+
 app.whenReady().then(() => {
   initDatabase()
   createWindow()
@@ -141,6 +192,9 @@ app.whenReady().then(() => {
 })
 
 app.on('window-all-closed', () => {
+  // Kill all terminal sessions
+  terminal.killAllTerminals()
+
   if (db) {
     db.close()
   }

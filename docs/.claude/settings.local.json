@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node scripts/import-lotr.js:*)",
+      "Bash(npm run dev:*)",
+      "Bash(timeout /t 3 /nobreak)",
+      "Bash(npm rebuild:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nI: Add Board component\n\n- Create Board.jsx with column headers from project.columns \\(default 3\\)\n- Implement rows from subphases within selected phases\n- Add card stacking per cell filtered by subphase + status\n- Display row headers with subphase short names \\(1.1, 1.2, etc.\\)\n- Implement collapsible phase headers as section dividers\n- Add empty state for cells with no cards\n- Enable horizontal scrolling for wide boards\n- Wire up Electron IPC handlers for database operations\n- Expose database API through preload.js\n- Update App.jsx to load projects from database\n- Connect CurrentProjectPage to Board component\n- Add import script for LOTR project JSON\n- Include LOTR YouTube project sample data \\(7 phases, 17 subphases, 45 cards\\)\n- Add electron-rebuild dependency for native module compatibility\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(npm install:*)",
+      "Bash(timeout /t 7 /nobreak)",
+      "Bash(sqlite3:*)",
+      "Bash(curl:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nK: Fix Tailwind CSS v4 PostCSS configuration\n\n- Install @tailwindcss/postcss package for Tailwind v4 compatibility\n- Update postcss.config.js to use @tailwindcss/postcss instead of tailwindcss directly\n- Remove debug logging from main.js and App.jsx\n- Clean up test files\n\nThis fixes the blank renderer issue caused by PostCSS plugin incompatibility.\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
+    ]
+  }
+}

@@ -7,7 +7,23 @@
       "Bash(git remote:*)",
       "Bash(git add:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\nInitial commit: Set up Electron + React + Vite project\n\n- Configured Vite with Electron and React plugins\n- Set up Electron main process with dev server support\n- Created React renderer with simple App component\n- Added .gitignore for node_modules, dist, .env, and *.db\n- Added .env.example for API key configuration\n- Configured dev server on port 8502\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm start)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "Bash(git commit:*)",
+      "Bash(node:*)",
+      "Bash(taskkill:*)",
+      "Bash(ping:*)",
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(cd:*)",
+      "Bash(git -C \"C:\\\\Users\\\\Nick\\\\Desktop\\\\KanbanBuild\" status)",
+      "Bash(git -C \"C:\\\\Users\\\\Nick\\\\Desktop\\\\KanbanBuild\" diff --staged)",
+      "Bash(git -C \"C:\\\\Users\\\\Nick\\\\Desktop\\\\KanbanBuild\" add src/renderer/components/CardDetail.jsx)",
+      "Bash(git -C \"C:\\\\Users\\\\Nick\\\\Desktop\\\\KanbanBuild\" commit -m \"$\\(cat <<''EOF''\nL: Add CardDetail panel\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(npx electron-rebuild:*)"
     ]
   }
 }

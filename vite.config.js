@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url'
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
 export default defineConfig({
+  root: 'src/renderer',
   plugins: [
     react(),
     electron([
@@ -24,8 +25,7 @@ export default defineConfig({
     port: 8502,
   },
   build: {
-    rollupOptions: {
-      input: resolve(__dirname, 'src/renderer/index.html'),
-    },
+    outDir: resolve(__dirname, 'dist'),
+    emptyOutDir: true,
   },
 })
