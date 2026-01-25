@@ -9,6 +9,7 @@ import {
   useDroppable,
 } from '@dnd-kit/core';
 import Card from './Card';
+import CardDetail from './CardDetail';
 
 // Droppable Cell Component
 const DroppableCell = ({ id, children, isOver, canDrop, isEmpty }) => {
@@ -40,6 +41,8 @@ const Board = ({ projectId }) => {
   const [collapsedPhases, setCollapsedPhases] = useState({});
   const [activeCard, setActiveCard] = useState(null);
   const [dropTarget, setDropTarget] = useState(null);
+  const [selectedCard, setSelectedCard] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -197,6 +200,58 @@ const Board = ({ projectId }) => {
     }
   };
 
+  // Handle card click to open detail panel
+  const handleCardClick = (card) => {
+    setSelectedCard(card);
+    setIsDetailOpen(true);
+  };
+
+  // Handle closing detail panel
+  const handleCloseDetail = () => {
+    setIsDetailOpen(false);
+    // Keep selectedCard for animation, clear after a brief delay
+    setTimeout(() => {
+      if (!isDetailOpen) setSelectedCard(null);
+    }, 300);
+  };
+
+  // Handle marking card as done
+  const handleMarkDone = async (cardId, progressNotes) => {
+    try {
+      await window.electron.updateCardStatus(cardId, 'Done');
+      // TODO: Store progress notes if provided
+      if (progressNotes) {
+        console.log('Progress notes for card', cardId, ':', progressNotes);
+        // Could save to card.notes field or a separate progress log
+      }
+      await loadProject();
+      // Update selected card if it was the one marked done
+      if (selectedCard?.id === cardId) {
+        const updatedCard = findCardById(cardId);
+        if (updatedCard) setSelectedCard({ ...updatedCard, status: 'Done' });
+      }
+    } catch (err) {
+      console.error('Failed to mark card as done:', err);
+      setError('Failed to update card status');
+    }
+  };
+
+  // Handle status change from CardDetail
+  const handleStatusChange = async (cardId, newStatus) => {
+    try {
+      await window.electron.updateCardStatus(cardId, newStatus);
+      await loadProject();
+      // Update selected card if it was the one changed
+      if (selectedCard?.id === cardId) {
+        const updatedCard = findCardById(cardId);
+        if (updatedCard) setSelectedCard({ ...updatedCard, status: newStatus });
+      }
+    } catch (err) {
+      console.error('Failed to update card status:', err);
+      setError('Failed to update card status');
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -340,7 +395,12 @@ const Board = ({ projectId }) => {
                               {cards.length > 0 ? (
                                 <div className="space-y-2">
                                   {cards.map((card) => (
-                                    <Card key={card.id} card={card} isDragging={activeCard?.id === card.id} />
+                                    <Card
+                                      key={card.id}
+                                      card={card}
+                                      isDragging={activeCard?.id === card.id}
+                                      onClick={handleCardClick}
+                                    />
                                   ))}
                                 </div>
                               ) : (
@@ -381,6 +441,16 @@ const Board = ({ projectId }) => {
           </div>
         ) : null}
       </DragOverlay>
+
+      {/* Card Detail Panel */}
+      <CardDetail
+        card={selectedCard}
+        isOpen={isDetailOpen}
+        onClose={handleCloseDetail}
+        onMarkDone={handleMarkDone}
+        onStatusChange={handleStatusChange}
+        project={project}
+      />
     </DndContext>
   );
 };

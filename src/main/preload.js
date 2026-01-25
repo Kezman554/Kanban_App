@@ -19,6 +19,10 @@ contextBridge.exposeInMainWorld('electron', {
   // API operations
   getAnthropicApiKey: () => ipcRenderer.invoke('api:getAnthropicKey'),
 
+  // File operations (for prompt handling)
+  writePromptToTemp: (prompt, cardId) => ipcRenderer.invoke('file:writePromptToTemp', prompt, cardId),
+  deleteTempFile: (filePath) => ipcRenderer.invoke('file:deleteTempFile', filePath),
+
   // Terminal operations
   terminal: {
     create: (options) => ipcRenderer.invoke('terminal:create', options),

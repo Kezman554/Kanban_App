@@ -1,6 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron')
 const path = require('path')
 const fs = require('fs')
+const os = require('os')
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
 
 // Terminal management
@@ -180,6 +181,32 @@ ipcMain.handle('terminal:getActive', async () => {
 
 ipcMain.handle('terminal:isAvailable', async () => {
   return terminal.isPtyAvailable()
+})
+
+// Write prompt to temp file (for long prompts that exceed command line limits)
+ipcMain.handle('file:writePromptToTemp', async (event, prompt, cardId) => {
+  try {
+    const tempDir = os.tmpdir()
+    const fileName = `claude_prompt_${cardId}_${Date.now()}.txt`
+    const filePath = path.join(tempDir, fileName)
+    fs.writeFileSync(filePath, prompt, 'utf8')
+    return filePath
+  } catch (error) {
+    console.error('Error writing prompt to temp file:', error)
+    throw error
+  }
+})
+
+// Clean up temp prompt file
+ipcMain.handle('file:deleteTempFile', async (event, filePath) => {
+  try {
+    if (fs.existsSync(filePath)) {
+      fs.unlinkSync(filePath)
+    }
+  } catch (error) {
+    console.error('Error deleting temp file:', error)
+    // Don't throw - cleanup failure is not critical
+  }
 })
 
 app.whenReady().then(() => {
