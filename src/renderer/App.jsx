@@ -4,6 +4,7 @@ import CurrentProjectPage from './pages/CurrentProjectPage';
 import RoadmapPage from './pages/RoadmapPage';
 import SettingsPage from './pages/SettingsPage';
 import CardTestPage from './pages/CardTestPage';
+import { TerminalSessionProvider } from './contexts/TerminalSessionContext.jsx';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('current-project');
@@ -58,6 +59,7 @@ function App() {
   ];
 
   return (
+    <TerminalSessionProvider>
     <div className="flex h-screen bg-dark-bg text-dark-text">
       {/* Sidebar */}
       <aside className="w-64 bg-dark-surface border-r border-dark-border flex flex-col">
@@ -122,6 +124,7 @@ function App() {
         {renderPage()}
       </main>
     </div>
+    </TerminalSessionProvider>
   );
 }
 

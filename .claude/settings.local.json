@@ -23,7 +23,9 @@
       "Bash(git -C \"C:\\\\Users\\\\Nick\\\\Desktop\\\\KanbanBuild\" diff --staged)",
       "Bash(git -C \"C:\\\\Users\\\\Nick\\\\Desktop\\\\KanbanBuild\" add src/renderer/components/CardDetail.jsx)",
       "Bash(git -C \"C:\\\\Users\\\\Nick\\\\Desktop\\\\KanbanBuild\" commit -m \"$\\(cat <<''EOF''\nL: Add CardDetail panel\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(npx electron-rebuild:*)"
+      "Bash(npx electron-rebuild:*)",
+      "mcp__ide__getDiagnostics",
+      "Bash(npx electron:*)"
     ]
   }
 }

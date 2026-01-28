@@ -117,6 +117,21 @@ ipcMain.handle('db:importProjectFromJson', async (event, jsonData) => {
   }
 })
 
+ipcMain.handle('db:importProjectFromFile', async (event, filePath) => {
+  try {
+    const fs = require('fs')
+    const path = require('path')
+    const fullPath = path.resolve(filePath)
+    console.log('Importing project from file:', fullPath)
+    const jsonContent = fs.readFileSync(fullPath, 'utf-8')
+    const jsonData = JSON.parse(jsonContent)
+    return db.importProjectFromJson(jsonData)
+  } catch (error) {
+    console.error('Error importing project from file:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:exportProjectToJson', async (event, projectId) => {
   try {
     return db.exportProjectToJson(projectId)

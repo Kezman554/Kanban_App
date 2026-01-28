@@ -1,0 +1,76 @@
+{
+  "project": {
+    "name": "Hello World Test",
+    "slug": "hello-world-test",
+    "description": "A simple test project to verify parallel Claude Code execution",
+    "prd_path": null,
+    "github_repo": null,
+    "required_apis": []
+  },
+  "phases": [
+    {
+      "id": "phase-1",
+      "name": "Phase 1: Create Files",
+      "short_name": "1",
+      "description": "Create two simple text files to test parallel execution",
+      "order": 1,
+      "subphases": [
+        {
+          "id": "subphase-1-1",
+          "phase_id": "phase-1",
+          "name": "1.1 File Creation",
+          "short_name": "1.1",
+          "description": "Create hello and goodbye text files",
+          "order": 1,
+          "cards": [
+            {
+              "id": "card-a",
+              "session_letter": "A",
+              "title": "Session A: Create Hello File",
+              "description": "Create a simple hello.txt file in the project root.",
+              "success_criteria": "hello.txt exists and contains 'Hello World'",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "completed_at": null,
+              "depends_on_cards": [],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false,
+              "prompt_guide": "Create a file called hello.txt in the project root directory (C:\\Users\\Nick\\Desktop\\HelloWorldTest).\n\nThe file should contain exactly this text:\nHello World\n\nVerify the file was created by reading it back and confirming the contents.",
+              "checkpoint": "hello.txt exists with correct content",
+              "git_commit_message": "A: Create hello.txt"
+            },
+            {
+              "id": "card-b",
+              "session_letter": "B",
+              "title": "Session B: Create Goodbye File",
+              "description": "Create a simple goodbye.txt file in the project root.",
+              "success_criteria": "goodbye.txt exists and contains 'Goodbye World'",
+              "resource": "claude_sub",
+              "status": "Not Started",
+              "completed_at": null,
+              "depends_on_cards": [],
+              "depends_on_subphase": null,
+              "depends_on_phase": null,
+              "is_placeholder": false,
+              "complexity": "low",
+              "likely_needs_expansion": false,
+              "review_before_starting": false,
+              "prompt_guide": "Create a file called goodbye.txt in the project root directory (C:\\Users\\Nick\\Desktop\\HelloWorldTest).\n\nThe file should contain exactly this text:\nGoodbye World\n\nVerify the file was created by reading it back and confirming the contents.",
+              "checkpoint": "goodbye.txt exists with correct content",
+              "git_commit_message": "B: Create goodbye.txt"
+            }
+          ]
+        }
+      ]
+    }
+  ],
+  "resources": [
+    {"slug": "claude_sub", "name": "Claude Subscription"},
+    {"slug": "anthropic_api", "name": "Anthropic API"},
+    {"slug": "none", "name": "Manual / No AI"}
+  ]
+}

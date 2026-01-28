@@ -1,12 +1,19 @@
 import React, { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { useTerminalSessions } from '../contexts/TerminalSessionContext.jsx';
 
 const Card = ({ card, onClick, isDragging = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { hasActiveSession, getSession } = useTerminalSessions();
 
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: card.id,
   });
+
+  // Check if this card has an active terminal session
+  const hasTerminal = hasActiveSession(card.id);
+  const terminalSession = hasTerminal ? getSession(card.id) : null;
+  const isTerminalRunning = terminalSession?.status === 'running';
 
   const handleClick = (e) => {
     // Don't toggle if clicking the drag handle
@@ -117,6 +124,19 @@ const Card = ({ card, onClick, isDragging = false }) => {
         <div className="flex-shrink-0" title={resourceIcons[card.resource]?.label}>
           <span className="text-lg">{resourceIcons[card.resource]?.icon}</span>
         </div>
+
+        {/* Active Terminal Indicator */}
+        {hasTerminal && (
+          <div
+            className="flex-shrink-0 flex items-center gap-1"
+            title={isTerminalRunning ? 'Terminal session running' : 'Terminal session ended'}
+          >
+            <span className={`
+              w-3 h-3 rounded-full
+              ${isTerminalRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}
+            `} />
+          </div>
+        )}
       </div>
 
       {/* Status and Badges Row */}
@@ -175,6 +195,17 @@ const Card = ({ card, onClick, isDragging = false }) => {
         {card.likely_needs_expansion && (
           <span className="text-xs px-2 py-0.5 rounded bg-indigo-900 text-indigo-300">
             May Expand
+          </span>
+        )}
+
+        {/* Active Terminal Badge */}
+        {hasTerminal && (
+          <span className={`
+            text-xs px-2 py-0.5 rounded flex items-center gap-1
+            ${isTerminalRunning ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-300'}
+          `}>
+            <span className={`w-1.5 h-1.5 rounded-full ${isTerminalRunning ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} />
+            Terminal
           </span>
         )}
       </div>

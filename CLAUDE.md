@@ -156,4 +156,7 @@ The app includes LOTR YouTube Channel project as test data (imported from `docs/
 https://github.com/Kezman554/Kanban_App.git
 ```
 
-Do not push to GitHub unless explicitly asked. Wait for manual testing and approval. Nick will manually push git commits in most cases
+Do not push to GitHub unless explicitly asked. Wait for manual testing and approval. Nick will manually push git commits in most cases5
+
+## Terminal error
+Embedded terminal disabled - node-pty won't compile with VS Build Tools 2026 (folder naming issue). Revisit when node-gyp updates.
