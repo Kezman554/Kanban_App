@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import ProjectsPage from './pages/ProjectsPage';
 import CurrentProjectPage from './pages/CurrentProjectPage';
+import AllProjectsView from './pages/AllProjectsView';
 import RoadmapPage from './pages/RoadmapPage';
 import SettingsPage from './pages/SettingsPage';
 import CardTestPage from './pages/CardTestPage';
@@ -39,6 +40,8 @@ function App() {
         return <ProjectsPage onProjectsChange={loadProjects} />;
       case 'current-project':
         return <CurrentProjectPage selectedProjectId={selectedProject} />;
+      case 'all-projects':
+        return <AllProjectsView />;
       case 'roadmap':
         return <RoadmapPage selectedProjectId={selectedProject} />;
       case 'settings':
@@ -53,6 +56,7 @@ function App() {
   const navItems = [
     { id: 'projects', label: 'Projects', icon: '📊' },
     { id: 'current-project', label: 'Current Project', icon: '📋' },
+    { id: 'all-projects', label: 'All Projects', icon: '📑' },
     { id: 'roadmap', label: 'Roadmap', icon: '🗺️' },
     { id: 'card-test', label: 'Card Test', icon: '🧪' },
     { id: 'settings', label: 'Settings', icon: '⚙️' }
