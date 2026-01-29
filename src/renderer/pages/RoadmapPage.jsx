@@ -1,14 +1,21 @@
 import React from 'react';
+import RoadmapView from '../components/RoadmapView';
 
-function RoadmapPage() {
-  return (
-    <div className="p-6">
-      <h1 className="text-3xl font-bold mb-4">Roadmap</h1>
-      <p className="text-dark-text-secondary">
-        Project roadmap view - coming soon
-      </p>
-    </div>
-  );
+function RoadmapPage({ selectedProjectId }) {
+  if (!selectedProjectId) {
+    return (
+      <div className="h-full flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold text-dark-text mb-2">No Project Selected</h2>
+          <p className="text-dark-text-secondary">
+            Please select a project from the sidebar to view its roadmap.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  return <RoadmapView projectId={selectedProjectId} />;
 }
 
 export default RoadmapPage;
