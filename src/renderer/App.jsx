@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import ProjectsPage from './pages/ProjectsPage';
 import CurrentProjectPage from './pages/CurrentProjectPage';
 import AllProjectsView from './pages/AllProjectsView';
 import RoadmapPage from './pages/RoadmapPage';
@@ -36,8 +35,6 @@ function App() {
 
   const renderPage = () => {
     switch (currentPage) {
-      case 'projects':
-        return <ProjectsPage onProjectsChange={loadProjects} />;
       case 'current-project':
         return <CurrentProjectPage selectedProjectId={selectedProject} />;
       case 'all-projects':
@@ -54,7 +51,6 @@ function App() {
   };
 
   const navItems = [
-    { id: 'projects', label: 'Projects', icon: '📊' },
     { id: 'current-project', label: 'Current Project', icon: '📋' },
     { id: 'all-projects', label: 'All Projects', icon: '📑' },
     { id: 'roadmap', label: 'Roadmap', icon: '🗺️' },
