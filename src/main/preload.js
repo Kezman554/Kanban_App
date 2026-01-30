@@ -19,9 +19,21 @@ contextBridge.exposeInMainWorld('electron', {
 
   // API operations
   getAnthropicApiKey: () => ipcRenderer.invoke('api:getAnthropicKey'),
+  getMaskedApiKey: () => ipcRenderer.invoke('api:getMaskedKey'),
+  saveApiKey: (key) => ipcRenderer.invoke('api:saveKey', key),
+  testApiConnection: () => ipcRenderer.invoke('api:testConnection'),
 
   // Dialog operations
   openJsonFile: () => ipcRenderer.invoke('dialog:openJsonFile'),
+  saveJsonFile: (defaultName) => ipcRenderer.invoke('dialog:saveJsonFile', defaultName),
+
+  // Data operations
+  clearAllData: () => ipcRenderer.invoke('db:clearAllData'),
+  exportAllProjects: () => ipcRenderer.invoke('db:exportAllProjects'),
+  writeJsonFile: (filePath, data) => ipcRenderer.invoke('file:writeJson', filePath, data),
+
+  // App info
+  getAppInfo: () => ipcRenderer.invoke('app:getInfo'),
 
   // File operations (for prompt handling)
   writePromptToTemp: (prompt, cardId) => ipcRenderer.invoke('file:writePromptToTemp', prompt, cardId),

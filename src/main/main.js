@@ -150,6 +150,159 @@ ipcMain.handle('api:getAnthropicKey', async () => {
   return apiKey
 })
 
+// Get masked API key for display
+ipcMain.handle('api:getMaskedKey', async () => {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    return null
+  }
+  // Show first 10 and last 4 characters
+  if (apiKey.length > 14) {
+    return apiKey.substring(0, 10) + '...' + apiKey.substring(apiKey.length - 4)
+  }
+  return '***'
+})
+
+// Save API key to .env file
+ipcMain.handle('api:saveKey', async (event, newKey) => {
+  const envPath = path.join(projectRoot, '.env')
+
+  try {
+    let envContent = ''
+
+    // Read existing .env if it exists
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, 'utf-8')
+    }
+
+    // Update or add ANTHROPIC_API_KEY
+    if (envContent.includes('ANTHROPIC_API_KEY=')) {
+      envContent = envContent.replace(/ANTHROPIC_API_KEY=.*/g, `ANTHROPIC_API_KEY=${newKey}`)
+    } else {
+      envContent = envContent.trim() + `\nANTHROPIC_API_KEY=${newKey}\n`
+    }
+
+    fs.writeFileSync(envPath, envContent)
+
+    // Update process.env
+    process.env.ANTHROPIC_API_KEY = newKey
+
+    return { success: true }
+  } catch (error) {
+    throw new Error(`Failed to save API key: ${error.message}`)
+  }
+})
+
+// Test API connection
+ipcMain.handle('api:testConnection', async () => {
+  const apiKey = process.env.ANTHROPIC_API_KEY
+  if (!apiKey) {
+    return { success: false, error: 'No API key configured' }
+  }
+
+  try {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01'
+      },
+      body: JSON.stringify({
+        model: 'claude-3-haiku-20240307',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'Hi' }]
+      })
+    })
+
+    if (response.ok) {
+      return { success: true, message: 'API connection successful' }
+    } else {
+      const data = await response.json()
+      return { success: false, error: data.error?.message || `HTTP ${response.status}` }
+    }
+  } catch (error) {
+    return { success: false, error: error.message }
+  }
+})
+
+// Clear all data (delete all projects)
+ipcMain.handle('db:clearAllData', async () => {
+  try {
+    const projects = db.getAllProjects()
+    for (const project of projects) {
+      db.deleteProject(project.id)
+    }
+    return { success: true, deletedCount: projects.length }
+  } catch (error) {
+    throw new Error(`Failed to clear data: ${error.message}`)
+  }
+})
+
+// Export all projects
+ipcMain.handle('db:exportAllProjects', async () => {
+  try {
+    const projects = db.getAllProjects()
+    const exportData = []
+
+    for (const project of projects) {
+      const fullProject = db.exportProjectToJson(project.id)
+      exportData.push(fullProject)
+    }
+
+    return exportData
+  } catch (error) {
+    throw new Error(`Failed to export projects: ${error.message}`)
+  }
+})
+
+// Save file dialog
+ipcMain.handle('dialog:saveJsonFile', async (event, defaultName) => {
+  const result = await dialog.showSaveDialog({
+    defaultPath: defaultName,
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] }
+    ]
+  })
+
+  if (result.canceled) {
+    return null
+  }
+
+  return result.filePath
+})
+
+// Write file
+ipcMain.handle('file:writeJson', async (event, filePath, data) => {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8')
+    return { success: true }
+  } catch (error) {
+    throw new Error(`Failed to write file: ${error.message}`)
+  }
+})
+
+// Get app info
+ipcMain.handle('app:getInfo', async () => {
+  const packageJsonPath = path.join(projectRoot, 'package.json')
+  let version = '1.0.0'
+
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))
+    version = packageJson.version || version
+  } catch (e) {
+    // Use default version
+  }
+
+  return {
+    version,
+    electron: process.versions.electron,
+    node: process.versions.node,
+    platform: process.platform,
+    arch: process.arch
+  }
+})
+
 // File dialog handler for importing projects
 ipcMain.handle('dialog:openJsonFile', async () => {
   const result = await dialog.showOpenDialog({
