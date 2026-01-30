@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
@@ -148,6 +148,31 @@ ipcMain.handle('api:getAnthropicKey', async () => {
     throw new Error('ANTHROPIC_API_KEY not configured. Please add it to your .env file.')
   }
   return apiKey
+})
+
+// File dialog handler for importing projects
+ipcMain.handle('dialog:openJsonFile', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  })
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  const filePath = result.filePaths[0]
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8')
+    const jsonData = JSON.parse(content)
+    return { filePath, data: jsonData }
+  } catch (error) {
+    throw new Error(`Failed to read or parse file: ${error.message}`)
+  }
 })
 
 // Terminal IPC Handlers

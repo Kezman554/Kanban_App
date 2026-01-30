@@ -4,6 +4,7 @@ import AllProjectsView from './pages/AllProjectsView';
 import RoadmapPage from './pages/RoadmapPage';
 import SettingsPage from './pages/SettingsPage';
 import CardTestPage from './pages/CardTestPage';
+import ImportDialog from './components/ImportDialog';
 import { TerminalSessionProvider } from './contexts/TerminalSessionContext.jsx';
 
 function App() {
@@ -11,6 +12,7 @@ function App() {
   const [selectedProject, setSelectedProject] = useState(null);
   const [projects, setProjects] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
 
   useEffect(() => {
     loadProjects();
@@ -91,6 +93,15 @@ function App() {
               </select>
             )}
           </div>
+
+          {/* Import Project Button */}
+          <button
+            onClick={() => setIsImportDialogOpen(true)}
+            className="w-full mt-3 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text hover:border-blue-500 hover:text-blue-400 transition-colors flex items-center justify-center gap-2"
+          >
+            <span>+</span>
+            <span>Import Project</span>
+          </button>
         </div>
 
         {/* Navigation */}
@@ -124,6 +135,13 @@ function App() {
         {renderPage()}
       </main>
     </div>
+
+    {/* Import Dialog */}
+    <ImportDialog
+      isOpen={isImportDialogOpen}
+      onClose={() => setIsImportDialogOpen(false)}
+      onImportSuccess={loadProjects}
+    />
     </TerminalSessionProvider>
   );
 }
