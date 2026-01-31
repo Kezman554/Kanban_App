@@ -62,9 +62,11 @@ const Board = ({ projectId }) => {
     loadProject();
   }, [projectId]);
 
-  const loadProject = async () => {
+  const loadProject = async (silent = false) => {
     try {
-      setLoading(true);
+      if (!silent) {
+        setLoading(true);
+      }
       setError(null);
 
       // Use Electron IPC to get project data from main process
@@ -72,15 +74,15 @@ const Board = ({ projectId }) => {
 
       if (!projectData) {
         setError('Project not found');
-        setLoading(false);
+        if (!silent) setLoading(false);
         return;
       }
 
       setProject(projectData);
-      setLoading(false);
+      if (!silent) setLoading(false);
     } catch (err) {
       setError(err.message || 'Failed to load project');
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   };
 
@@ -192,8 +194,8 @@ const Board = ({ projectId }) => {
       // Update status in database
       await window.electron.updateCardStatus(cardId, newStatus);
 
-      // Reload project to get updated data
-      await loadProject();
+      // Reload project to get updated data (silent to preserve scroll position)
+      await loadProject(true);
     } catch (err) {
       console.error('Failed to update card status:', err);
       setError('Failed to update card status');
@@ -224,7 +226,7 @@ const Board = ({ projectId }) => {
         console.log('Progress notes for card', cardId, ':', progressNotes);
         // Could save to card.notes field or a separate progress log
       }
-      await loadProject();
+      await loadProject(true);
       // Update selected card if it was the one marked done
       if (selectedCard?.id === cardId) {
         const updatedCard = findCardById(cardId);
@@ -240,7 +242,7 @@ const Board = ({ projectId }) => {
   const handleStatusChange = async (cardId, newStatus) => {
     try {
       await window.electron.updateCardStatus(cardId, newStatus);
-      await loadProject();
+      await loadProject(true);
       // Update selected card if it was the one changed
       if (selectedCard?.id === cardId) {
         const updatedCard = findCardById(cardId);
