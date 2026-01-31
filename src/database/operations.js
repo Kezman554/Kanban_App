@@ -490,12 +490,23 @@ class KanbanDatabase {
    */
   importProjectFromJson(jsonData) {
     try {
+      // Handle nested 'project' key structure
+      // JSON can be either { name, slug, phases, ... } or { project: { name, slug, ... }, phases, ... }
+      let projectData;
+      if (jsonData.project) {
+        // Merge project metadata with root-level arrays (phases, etc.)
+        const { project, ...rest } = jsonData;
+        projectData = { ...project, ...rest };
+      } else {
+        projectData = jsonData;
+      }
+
       // Validate required fields
-      if (!jsonData.name || !jsonData.slug) {
+      if (!projectData.name || !projectData.slug) {
         throw new Error('Project must have name and slug');
       }
 
-      return this.createProject(jsonData);
+      return this.createProject(projectData);
     } catch (error) {
       throw new Error(`Failed to import project: ${error.message}`);
     }

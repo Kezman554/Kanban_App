@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { testPromptGenerator } from '../services/promptGenerator.js';
 
-function SettingsPage() {
+function SettingsPage({ onProjectsChange }) {
   // API Key state
   const [maskedKey, setMaskedKey] = useState(null);
   const [newApiKey, setNewApiKey] = useState('');
@@ -29,6 +29,12 @@ function SettingsPage() {
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [dataMessage, setDataMessage] = useState(null);
 
+  // Delete project state
+  const [projects, setProjects] = useState([]);
+  const [selectedProjectId, setSelectedProjectId] = useState('');
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
   // App info state
   const [appInfo, setAppInfo] = useState(null);
 
@@ -36,7 +42,17 @@ function SettingsPage() {
   useEffect(() => {
     loadMaskedKey();
     loadAppInfo();
+    loadProjects();
   }, []);
+
+  const loadProjects = async () => {
+    try {
+      const projectList = await window.electron.getAllProjects();
+      setProjects(projectList || []);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+    }
+  };
 
   const loadMaskedKey = async () => {
     try {
@@ -165,10 +181,33 @@ function SettingsPage() {
       const result = await window.electron.clearAllData();
       setDataMessage({ type: 'success', text: `Deleted ${result.deletedCount} project(s)` });
       setShowClearConfirm(false);
+      await loadProjects(); // Refresh local project list
+      if (onProjectsChange) onProjectsChange(); // Refresh App's project list (sidebar dropdown)
     } catch (error) {
       setDataMessage({ type: 'error', text: error.message });
     } finally {
       setClearing(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (!selectedProjectId) return;
+
+    setDeleting(true);
+    setDataMessage(null);
+
+    try {
+      const project = projects.find(p => p.id === parseInt(selectedProjectId));
+      await window.electron.deleteProject(parseInt(selectedProjectId));
+      setDataMessage({ type: 'success', text: `Deleted project "${project?.name || 'Unknown'}"` });
+      setShowDeleteConfirm(false);
+      setSelectedProjectId('');
+      await loadProjects(); // Refresh local project list
+      if (onProjectsChange) onProjectsChange(); // Refresh App's project list (sidebar dropdown)
+    } catch (error) {
+      setDataMessage({ type: 'error', text: error.message });
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -394,6 +433,59 @@ function SettingsPage() {
               {dataMessage.text}
             </div>
           )}
+
+          {/* Delete Project */}
+          <div className="mb-6 p-4 bg-dark-bg rounded-lg border border-dark-border">
+            <h3 className="text-sm font-medium text-dark-text mb-3">Delete Project</h3>
+            <div className="flex flex-wrap items-center gap-3">
+              <select
+                value={selectedProjectId}
+                onChange={(e) => {
+                  setSelectedProjectId(e.target.value);
+                  setShowDeleteConfirm(false);
+                }}
+                className="flex-1 min-w-48 px-4 py-2 bg-dark-surface border border-dark-border rounded-lg text-sm focus:outline-none focus:border-blue-500"
+              >
+                <option value="">Select a project...</option>
+                {projects.map((project) => (
+                  <option key={project.id} value={project.id}>
+                    {project.name}
+                  </option>
+                ))}
+              </select>
+
+              {!showDeleteConfirm ? (
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  disabled={!selectedProjectId}
+                  className="px-4 py-2 bg-dark-surface border border-red-700 rounded-lg text-sm text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                >
+                  <span>🗑️</span>
+                  Delete Project
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 p-2 bg-red-900/30 border border-red-700 rounded-lg">
+                  <span className="text-sm text-red-300">Delete this project?</span>
+                  <button
+                    onClick={handleDeleteProject}
+                    disabled={deleting}
+                    className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-sm font-medium"
+                  >
+                    {deleting ? 'Deleting...' : 'Yes, Delete'}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="px-3 py-1 bg-dark-bg border border-dark-border rounded text-sm hover:border-dark-hover"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+            </div>
+            {projects.length === 0 && (
+              <p className="mt-2 text-xs text-dark-text-secondary">No projects available</p>
+            )}
+          </div>
 
           <div className="flex flex-wrap gap-4">
             {/* Export Button */}

@@ -23,9 +23,15 @@ function App() {
       const allProjects = await window.electron.getAllProjects();
       setProjects(allProjects);
 
-      // Auto-select first project if available
-      if (allProjects.length > 0 && !selectedProject) {
+      // Check if currently selected project still exists
+      const selectedStillExists = allProjects.some(p => p.id === selectedProject);
+
+      if (allProjects.length > 0 && (!selectedProject || !selectedStillExists)) {
+        // Auto-select first project if none selected or selected was deleted
         setSelectedProject(allProjects[0].id);
+      } else if (allProjects.length === 0) {
+        // No projects left, clear selection
+        setSelectedProject(null);
       }
 
       setLoading(false);
@@ -44,7 +50,7 @@ function App() {
       case 'roadmap':
         return <RoadmapPage selectedProjectId={selectedProject} />;
       case 'settings':
-        return <SettingsPage />;
+        return <SettingsPage onProjectsChange={loadProjects} />;
       case 'card-test':
         return <CardTestPage />;
       default:
