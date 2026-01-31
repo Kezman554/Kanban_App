@@ -2,12 +2,16 @@ import React, { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useTerminalSessions } from '../contexts/TerminalSessionContext.jsx';
 
-const Card = ({ card, onClick, isDragging = false }) => {
+const Card = ({ card, onClick, isDragging = false, isStacked = false }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { hasActiveSession, getSession } = useTerminalSessions();
 
+  // Disable drag for stacked cards OR blocked cards (even if at top of stack)
+  const isDragDisabled = isStacked || card.isBlocked;
+
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: card.id,
+    disabled: isDragDisabled,
   });
 
   // Check if this card has an active terminal session
@@ -61,8 +65,8 @@ const Card = ({ card, onClick, isDragging = false }) => {
     }
   };
 
-  // Determine if card is blocked
-  const isBlocked = card.isBlocked || (card.depends_on_cards && card.depends_on_cards.length > 0 && card.status === 'Not Started');
+  // Determine if card is blocked - trust the passed isBlocked value if set
+  const isBlocked = card.isBlocked === true;
   const actualStatus = isBlocked ? 'Blocked' : card.status;
   const statusStyle = statusStyles[actualStatus] || statusStyles['Not Started'];
 
@@ -87,9 +91,11 @@ const Card = ({ card, onClick, isDragging = false }) => {
       style={style}
       className={`
         ${statusStyle.bg} ${statusStyle.border} ${statusStyle.borderWidth || 'border'} ${getCardBorderStyle()}
-        rounded-lg p-3 transition-all hover:shadow-lg
+        rounded-lg p-3 transition-all
+        ${isStacked ? 'opacity-70 cursor-default' : ''}
+        ${!isStacked && !card.isBlocked ? 'hover:shadow-lg' : ''}
         ${isExpanded ? 'ring-2 ring-blue-500' : ''}
-        ${isDragging ? 'opacity-50' : 'opacity-100'}
+        ${isDragging ? 'opacity-50' : ''}
       `}
       onClick={handleClick}
     >
@@ -98,12 +104,15 @@ const Card = ({ card, onClick, isDragging = false }) => {
         <div className="flex items-center gap-2 flex-1">
           {/* Drag Handle */}
           <div
-            className="drag-handle flex-shrink-0 cursor-grab active:cursor-grabbing text-dark-text-secondary hover:text-dark-text p-1"
-            {...listeners}
-            {...attributes}
-            title="Drag to move card"
+            className={`drag-handle flex-shrink-0 p-1 ${
+              isDragDisabled
+                ? 'text-dark-text-secondary/50 cursor-not-allowed'
+                : 'cursor-grab active:cursor-grabbing text-dark-text-secondary hover:text-dark-text'
+            }`}
+            {...(isDragDisabled ? {} : { ...listeners, ...attributes })}
+            title={isDragDisabled ? 'Complete dependencies to unlock' : 'Drag to move card'}
           >
-            ⋮⋮
+            {isDragDisabled ? '🔒' : '⋮⋮'}
           </div>
 
           {/* Session Letter Badge */}

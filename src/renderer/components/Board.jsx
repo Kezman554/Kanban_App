@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -9,6 +9,7 @@ import {
   useDroppable,
 } from '@dnd-kit/core';
 import Card from './Card';
+import CardStack from './CardStack';
 import CardDetail from './CardDetail';
 
 // Droppable Cell Component
@@ -140,6 +141,102 @@ const Board = ({ projectId }) => {
     }
     return false;
   };
+
+  // Build dependency stacks for "Not Started" column
+  // Returns: { stacks: Map<rootCardId, Card[]>, claimedCardIds: Set<cardId> }
+  const dependencyData = useMemo(() => {
+    if (!project) return { stacks: new Map(), claimedCardIds: new Set() };
+
+    // Gather all cards and create lookups
+    const allCards = [];
+    const cardsByLetter = {};
+    const cardsBySubphase = {};
+
+    for (const phase of project.phases) {
+      for (const subphase of phase.subphases) {
+        cardsBySubphase[subphase.id] = [];
+        for (const card of subphase.cards) {
+          allCards.push({ ...card, subphaseId: subphase.id });
+          cardsByLetter[card.session_letter] = { ...card, subphaseId: subphase.id };
+          cardsBySubphase[subphase.id].push(card);
+        }
+      }
+    }
+
+    // Get "Not Started" cards only
+    const notStartedCards = allCards.filter(c => c.status === 'Not Started');
+
+
+    // A card is a "stack root" if all its dependencies are OUTSIDE "Not Started"
+    // (i.e., Done, In Progress, or no dependencies)
+    // This means the card is at the "head" of its dependency chain within Not Started
+    const isStackRoot = (card) => {
+      if (!card.depends_on_cards || card.depends_on_cards.length === 0) {
+        return true;
+      }
+      // Check if ALL dependencies are outside "Not Started"
+      return card.depends_on_cards.every(letter => {
+        const depCard = cardsByLetter[letter];
+        // Dependency doesn't exist, or is not "Not Started" (i.e., Done or In Progress)
+        return !depCard || depCard.status !== 'Not Started';
+      });
+    };
+
+    // A card is actionable if all dependencies are Done
+    const isActionable = (card) => {
+      if (!card.depends_on_cards || card.depends_on_cards.length === 0) {
+        return true;
+      }
+      return card.depends_on_cards.every(letter => {
+        const depCard = cardsByLetter[letter];
+        return depCard && depCard.status === 'Done';
+      });
+    };
+
+    const stackRootCards = notStartedCards.filter(isStackRoot);
+    const dependentCards = notStartedCards.filter(c => !isStackRoot(c));
+
+    // Build stacks: each stack root card becomes a stack root
+    // Find dependent cards that depend on each root card (directly or transitively)
+    const stacks = new Map();
+    const claimedCardIds = new Set();
+
+    for (const rootCard of stackRootCards) {
+      const stack = [rootCard];
+      const stackLetters = new Set([rootCard.session_letter]);
+      claimedCardIds.add(rootCard.id);
+
+      // Iteratively find cards that depend on cards in this stack
+      let foundNew = true;
+      const maxIterations = 100; // Guard against circular dependencies
+      let iterations = 0;
+
+      while (foundNew && iterations < maxIterations) {
+        foundNew = false;
+        iterations++;
+
+        for (const depCard of dependentCards) {
+          if (claimedCardIds.has(depCard.id)) continue;
+
+          // Check if this card depends on any card in our stack
+          const dependsOnStackCard = depCard.depends_on_cards?.some(
+            letter => stackLetters.has(letter)
+          );
+
+          if (dependsOnStackCard) {
+            stack.push(depCard);
+            stackLetters.add(depCard.session_letter);
+            claimedCardIds.add(depCard.id);
+            foundNew = true;
+          }
+        }
+      }
+
+      stacks.set(rootCard.id, stack);
+    }
+
+    return { stacks, claimedCardIds };
+  }, [project]);
 
   const canDropCard = (cardId, newStatus) => {
     const card = findCardById(cardId);
@@ -386,6 +483,75 @@ const Board = ({ projectId }) => {
                           const isOver = dropTarget?.subphaseId === subphase.id && dropTarget?.status === column;
                           const canDrop = activeCard ? canDropCard(activeCard.id, column) : true;
 
+                          // For "Not Started" column, use dependency stacking
+                          if (column === 'Not Started') {
+                            // Find stacks where the root card belongs to this subphase
+                            const stacksForCell = [];
+                            for (const [rootId, stack] of dependencyData.stacks) {
+                              const rootCard = stack[0];
+                              if (rootCard.subphaseId === subphase.id) {
+                                stacksForCell.push(stack);
+                              }
+                            }
+
+                            // Find standalone cards (not claimed by any stack)
+                            const standaloneCards = cards.filter(
+                              card => !dependencyData.claimedCardIds.has(card.id)
+                            );
+
+                            const hasContent = stacksForCell.length > 0 || standaloneCards.length > 0;
+                            const totalCards = cards.length;
+                            const allBlocked = totalCards > 0 && !hasContent;
+
+                            return (
+                              <DroppableCell
+                                key={colIdx}
+                                id={cellId}
+                                isOver={isOver}
+                                canDrop={canDrop}
+                                isEmpty={!hasContent}
+                              >
+                                {hasContent ? (
+                                  <div className="space-y-4">
+                                    {/* Render dependency stacks */}
+                                    {stacksForCell.map((stack) => {
+                                      // Mark each card with its blocked status
+                                      const cardsWithBlockedStatus = stack.map(card => ({
+                                        ...card,
+                                        isBlocked: isCardBlocked(card)
+                                      }));
+                                      return (
+                                        <CardStack
+                                          key={stack[0].id}
+                                          cards={cardsWithBlockedStatus}
+                                          onCardClick={handleCardClick}
+                                        />
+                                      );
+                                    })}
+                                    {/* Render standalone cards */}
+                                    {standaloneCards.map((card) => (
+                                      <Card
+                                        key={card.id}
+                                        card={{ ...card, isBlocked: isCardBlocked(card) }}
+                                        isDragging={activeCard?.id === card.id}
+                                        onClick={handleCardClick}
+                                      />
+                                    ))}
+                                  </div>
+                                ) : allBlocked ? (
+                                  <div className="h-20 flex items-center justify-center border-2 border-dashed border-dark-border rounded-lg opacity-50">
+                                    <span className="text-xs text-dark-text-secondary">All cards blocked</span>
+                                  </div>
+                                ) : (
+                                  <div className="h-20 flex items-center justify-center border-2 border-dashed border-dark-border rounded-lg">
+                                    <span className="text-xs text-dark-text-secondary">No cards</span>
+                                  </div>
+                                )}
+                              </DroppableCell>
+                            );
+                          }
+
+                          // For other columns, render normally
                           return (
                             <DroppableCell
                               key={colIdx}
@@ -399,7 +565,7 @@ const Board = ({ projectId }) => {
                                   {cards.map((card) => (
                                     <Card
                                       key={card.id}
-                                      card={card}
+                                      card={{ ...card, isBlocked: false }}
                                       isDragging={activeCard?.id === card.id}
                                       onClick={handleCardClick}
                                     />
