@@ -168,18 +168,22 @@ const Board = ({ projectId }) => {
     const notStartedCards = allCards.filter(c => c.status === 'Not Started');
 
 
-    // A card is a "stack root" if all its dependencies are OUTSIDE "Not Started"
+    // A card is a "stack root" if all its SAME-SUBPHASE dependencies are OUTSIDE "Not Started"
     // (i.e., Done, In Progress, or no dependencies)
-    // This means the card is at the "head" of its dependency chain within Not Started
+    // Cross-subphase dependencies are ignored for stacking - those cards still show as blocked
+    // but don't stack across subphase boundaries
     const isStackRoot = (card) => {
       if (!card.depends_on_cards || card.depends_on_cards.length === 0) {
         return true;
       }
-      // Check if ALL dependencies are outside "Not Started"
+      // Check if all SAME-SUBPHASE dependencies are outside "Not Started"
       return card.depends_on_cards.every(letter => {
         const depCard = cardsByLetter[letter];
-        // Dependency doesn't exist, or is not "Not Started" (i.e., Done or In Progress)
-        return !depCard || depCard.status !== 'Not Started';
+        if (!depCard) return true; // Dependency doesn't exist
+        // Cross-subphase dependencies don't affect stacking (card stays in its own row)
+        if (depCard.subphaseId !== card.subphaseId) return true;
+        // Same subphase: check if it's outside "Not Started"
+        return depCard.status !== 'Not Started';
       });
     };
 
@@ -218,6 +222,10 @@ const Board = ({ projectId }) => {
 
         for (const depCard of dependentCards) {
           if (claimedCardIds.has(depCard.id)) continue;
+
+          // Only stack cards that are in the SAME subphase as the root card
+          // Cross-subphase dependencies don't cause stacking
+          if (depCard.subphaseId !== rootCard.subphaseId) continue;
 
           // Check if this card depends on any card in our stack
           const dependsOnStackCard = depCard.depends_on_cards?.some(
