@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useTerminalSessions } from '../contexts/TerminalSessionContext.jsx';
 
-const Card = ({ card, onClick, isDragging = false, isStacked = false }) => {
+const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { hasActiveSession, getSession } = useTerminalSessions();
 
@@ -102,18 +102,30 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false }) => {
       {/* Card Header */}
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-center gap-2 flex-1">
-          {/* Drag Handle */}
-          <div
-            className={`drag-handle flex-shrink-0 p-1 ${
-              isDragDisabled
-                ? 'text-dark-text-secondary/50 cursor-not-allowed'
-                : 'cursor-grab active:cursor-grabbing text-dark-text-secondary hover:text-dark-text'
-            }`}
-            {...(isDragDisabled ? {} : { ...listeners, ...attributes })}
-            title={isDragDisabled ? 'Complete dependencies to unlock' : 'Drag to move card'}
-          >
-            {isDragDisabled ? '🔒' : '⋮⋮'}
-          </div>
+          {/* Drag Handle / Lock Icon */}
+          {isDragDisabled ? (
+            <div
+              className={`drag-handle flex-shrink-0 p-1 text-dark-text-secondary/50 ${
+                onUnlock ? 'cursor-pointer hover:text-yellow-400' : ''
+              }`}
+              onClick={onUnlock ? (e) => {
+                e.stopPropagation();
+                onUnlock(card);
+              } : undefined}
+              title={onUnlock ? 'Click to unlock this card' : 'Complete dependencies to unlock'}
+            >
+              🔒
+            </div>
+          ) : (
+            <div
+              className="drag-handle flex-shrink-0 p-1 text-dark-text-secondary hover:text-dark-text"
+              {...listeners}
+              {...attributes}
+              title="Drag to move card"
+            >
+              ⋮⋮
+            </div>
+          )}
 
           {/* Session Letter Badge */}
           <div className={`

@@ -410,6 +410,18 @@ const Board = ({ projectId }) => {
     }
   };
 
+  // Handle unlocking a card (clearing its dependencies)
+  const handleUnlockCard = async (cardId) => {
+    try {
+      await window.electron.clearCardDependencies(cardId);
+      await loadProject(true);
+    } catch (err) {
+      console.error('Failed to unlock card:', err);
+      // Re-throw so the modal can handle the error display
+      throw err;
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -588,6 +600,7 @@ const Board = ({ projectId }) => {
                                               key={stack[0].id}
                                               cards={cardsWithBlockedStatus}
                                               onCardClick={handleCardClick}
+                                              onUnlockCard={handleUnlockCard}
                                             />
                                           );
                                         })}

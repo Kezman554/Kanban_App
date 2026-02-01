@@ -387,6 +387,21 @@ class KanbanDatabase {
   }
 
   /**
+   * Clear all dependencies for a card (unlock it)
+   * @param {number} id - Card ID
+   * @returns {boolean} - Success status
+   */
+  clearCardDependencies(id) {
+    try {
+      const sql = `UPDATE cards SET depends_on_cards = '[]', updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+      const result = this.db.prepare(sql).run(id);
+      return result.changes > 0;
+    } catch (error) {
+      throw new Error(`Failed to clear card dependencies: ${error.message}`);
+    }
+  }
+
+  /**
    * Get workable cards for a project (not blocked by dependencies)
    * @param {number} projectId - Project ID
    * @returns {Array} - Array of workable cards

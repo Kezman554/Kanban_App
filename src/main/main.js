@@ -155,6 +155,15 @@ ipcMain.handle('db:getCard', async (event, cardId) => {
   }
 })
 
+ipcMain.handle('db:clearCardDependencies', async (event, cardId) => {
+  try {
+    return db.clearCardDependencies(cardId)
+  } catch (error) {
+    console.error('Error clearing card dependencies:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:importProjectFromJson', async (event, jsonData) => {
   try {
     return db.importProjectFromJson(jsonData)

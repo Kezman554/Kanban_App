@@ -13,10 +13,28 @@ export default defineConfig({
     react(),
     electron([
       {
-        entry: 'src/main/main.js',
+        entry: resolve(__dirname, 'src/main/main.js'),
+        vite: {
+          build: {
+            outDir: resolve(__dirname, 'dist-electron'),
+          },
+        },
       },
       {
-        entry: 'src/main/preload.js',
+        entry: resolve(__dirname, 'src/main/preload.js'),
+        vite: {
+          build: {
+            outDir: resolve(__dirname, 'dist-electron'),
+          },
+        },
+      },
+      {
+        entry: resolve(__dirname, 'src/main/terminal.js'),
+        vite: {
+          build: {
+            outDir: resolve(__dirname, 'dist-electron'),
+          },
+        },
       },
     ]),
     renderer(),
