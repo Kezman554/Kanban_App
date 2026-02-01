@@ -141,10 +141,12 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
           </h3>
         </div>
 
-        {/* Resource Icon */}
-        <div className="flex-shrink-0" title={resourceIcons[card.resource]?.label}>
-          <span className="text-lg">{resourceIcons[card.resource]?.icon}</span>
-        </div>
+        {/* Resource Icon - hide for manual tasks */}
+        {card.resource !== 'none' && (
+          <div className="flex-shrink-0" title={resourceIcons[card.resource]?.label}>
+            <span className="text-lg">{resourceIcons[card.resource]?.icon}</span>
+          </div>
+        )}
 
         {/* Active Terminal Indicator */}
         {hasTerminal && (
