@@ -10,6 +10,7 @@ import {
 } from '@dnd-kit/core';
 import Card from './Card';
 import CardStack from './CardStack';
+import CompletedStack from './CompletedStack';
 import CardDetail from './CardDetail';
 
 // Droppable Cell Component
@@ -238,6 +239,51 @@ const Board = ({ projectId }) => {
     return { stacks, claimedCardIds };
   }, [project]);
 
+  // Compute active phases (with non-completed cards) and all completed cards
+  const boardDisplayData = useMemo(() => {
+    if (!project) return { completedCards: [], activePhases: [], firstActiveSubphaseId: null };
+
+    const completedCards = [];
+    const activePhases = [];
+    let firstActiveSubphaseId = null;
+
+    for (const phase of project.phases) {
+      const activeSubphases = [];
+
+      for (const subphase of phase.subphases) {
+        // Collect completed cards with phase context
+        const doneCards = subphase.cards.filter(c => c.status === 'Done');
+        completedCards.push(...doneCards.map(c => ({
+          ...c,
+          phaseName: phase.name,
+          phaseShortName: phase.short_name,
+          subphaseName: subphase.name,
+          subphaseShortName: subphase.short_name,
+          subphaseId: subphase.id
+        })));
+
+        // Check if subphase has active (non-Done) cards
+        if (subphase.cards.some(c => c.status !== 'Done')) {
+          activeSubphases.push(subphase);
+          if (!firstActiveSubphaseId) firstActiveSubphaseId = subphase.id;
+        }
+      }
+
+      if (activeSubphases.length > 0) {
+        activePhases.push({ ...phase, subphases: activeSubphases });
+      }
+    }
+
+    // Sort completed cards: most recent first (newest at top of stack)
+    completedCards.sort((a, b) => {
+      const dateA = a.completed_at ? new Date(a.completed_at) : new Date(0);
+      const dateB = b.completed_at ? new Date(b.completed_at) : new Date(0);
+      return dateB - dateA;
+    });
+
+    return { completedCards, activePhases, firstActiveSubphaseId };
+  }, [project]);
+
   const canDropCard = (cardId, newStatus) => {
     const card = findCardById(cardId);
     if (!card) return false;
@@ -260,8 +306,13 @@ const Board = ({ projectId }) => {
     const { over } = event;
 
     if (over) {
-      const [subphaseId, status] = over.id.split('|');
-      setDropTarget({ subphaseId: parseInt(subphaseId), status });
+      // Handle the special done-column drop target
+      if (over.id === 'done-column') {
+        setDropTarget({ subphaseId: null, status: 'Done' });
+      } else {
+        const [subphaseId, status] = over.id.split('|');
+        setDropTarget({ subphaseId: parseInt(subphaseId), status });
+      }
     } else {
       setDropTarget(null);
     }
@@ -276,8 +327,16 @@ const Board = ({ projectId }) => {
     if (!over) return;
 
     const cardId = parseInt(active.id);
-    const [subphaseId, newStatus] = over.id.split('|');
     const card = findCardById(cardId);
+
+    // Determine the new status based on drop target
+    let newStatus;
+    if (over.id === 'done-column') {
+      newStatus = 'Done';
+    } else {
+      const [, status] = over.id.split('|');
+      newStatus = status;
+    }
 
     if (!card || card.status === newStatus) return;
 
@@ -376,6 +435,8 @@ const Board = ({ projectId }) => {
   }
 
   const columns = project.columns || ['Not Started', 'In Progress', 'Done'];
+  // Filter out 'Done' for per-row rendering - it gets its own aggregated column
+  const activeColumns = columns.filter(col => col !== 'Done');
 
   return (
     <DndContext
@@ -396,210 +457,236 @@ const Board = ({ projectId }) => {
 
         {/* Scrollable Board Content */}
         <div className="flex-1 overflow-auto scrollbar-dark">
-          <div className="min-w-max">
-          {/* Column Headers */}
-          <div className="sticky top-0 z-10 bg-dark-surface border-b border-dark-border">
-            <div className="flex">
-              {/* Row header spacer */}
-              <div className="w-48 flex-shrink-0 p-4 border-r border-dark-border">
-                <span className="text-xs font-semibold text-dark-text-secondary uppercase">
-                  Subphase
-                </span>
+          <div className="flex min-w-max">
+            {/* Left side: Row headers + Not Started + In Progress columns */}
+            <div className="flex-1">
+              {/* Column Headers */}
+              <div className="sticky top-0 z-10 bg-dark-surface border-b border-dark-border">
+                <div className="flex">
+                  {/* Row header spacer */}
+                  <div className="w-48 flex-shrink-0 p-4 border-r border-dark-border">
+                    <span className="text-xs font-semibold text-dark-text-secondary uppercase">
+                      Subphase
+                    </span>
+                  </div>
+
+                  {/* Active column headers (Not Started, In Progress) */}
+                  {activeColumns.map((column, idx) => (
+                    <div
+                      key={idx}
+                      className="flex-1 min-w-[300px] p-4 border-r border-dark-border"
+                    >
+                      <h3 className="text-sm font-bold text-dark-text">{column}</h3>
+                    </div>
+                  ))}
+                </div>
               </div>
 
-              {/* Column headers */}
-              {columns.map((column, idx) => (
-                <div
-                  key={idx}
-                  className="flex-1 min-w-[300px] p-4 border-r border-dark-border"
-                >
-                  <h3 className="text-sm font-bold text-dark-text">{column}</h3>
-                </div>
-              ))}
-            </div>
-          </div>
+              {/* Phase Sections - only render active phases (those with non-Done cards) */}
+              {boardDisplayData.activePhases.length > 0 ? (
+                boardDisplayData.activePhases.map((phase) => (
+                  <div key={phase.id} className="border-b border-dark-border">
+                    {/* Phase Header (Collapsible) */}
+                    <div
+                      className="bg-dark-surface sticky top-[57px] z-[9] cursor-pointer hover:bg-dark-hover transition-colors"
+                      onClick={() => togglePhase(phase.id)}
+                    >
+                      <div className="flex items-center gap-3 p-4 border-b border-dark-border">
+                        {/* Collapse/Expand Icon */}
+                        <span className="text-dark-text-secondary text-sm">
+                          {collapsedPhases[phase.id] ? '▶' : '▼'}
+                        </span>
 
-          {/* Phase Sections */}
-          {project.phases && project.phases.length > 0 ? (
-            project.phases.map((phase) => (
-              <div key={phase.id} className="border-b border-dark-border">
-                {/* Phase Header (Collapsible) */}
-                <div
-                  className="bg-dark-surface sticky top-[57px] z-[9] cursor-pointer hover:bg-dark-hover transition-colors"
-                  onClick={() => togglePhase(phase.id)}
-                >
-                  <div className="flex items-center gap-3 p-4 border-b border-dark-border">
-                    {/* Collapse/Expand Icon */}
-                    <span className="text-dark-text-secondary text-sm">
-                      {collapsedPhases[phase.id] ? '▶' : '▼'}
-                    </span>
+                        {/* Phase Name */}
+                        <h2 className="text-lg font-bold text-dark-text">
+                          {phase.short_name ? `${phase.short_name}: ` : ''}
+                          {phase.name}
+                        </h2>
 
-                    {/* Phase Name */}
-                    <h2 className="text-lg font-bold text-dark-text">
-                      {phase.short_name ? `${phase.short_name}: ` : ''}
-                      {phase.name}
-                    </h2>
+                        {/* Phase Description */}
+                        {phase.description && (
+                          <span className="text-sm text-dark-text-secondary ml-2">
+                            — {phase.description}
+                          </span>
+                        )}
+                      </div>
+                    </div>
 
-                    {/* Phase Description */}
-                    {phase.description && (
-                      <span className="text-sm text-dark-text-secondary ml-2">
-                        — {phase.description}
-                      </span>
+                    {/* Subphase Rows */}
+                    {!collapsedPhases[phase.id] && phase.subphases && (
+                      <div>
+                        {phase.subphases.map((subphase) => (
+                          <div key={subphase.id} className="flex border-b border-dark-border hover:bg-dark-surface/30 transition-colors">
+                            {/* Row Header */}
+                            <div className="w-48 flex-shrink-0 p-4 border-r border-dark-border bg-dark-surface">
+                              <div className="flex items-center gap-2">
+                                {/* Subphase short name badge */}
+                                <div className="flex-shrink-0 w-10 h-10 rounded bg-dark-bg flex items-center justify-center font-bold text-sm text-dark-text border border-dark-border">
+                                  {subphase.short_name || '—'}
+                                </div>
+
+                                {/* Subphase name */}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-semibold text-dark-text truncate" title={subphase.name}>
+                                    {subphase.name.replace(/^\d+\.\d+\s+/, '')}
+                                  </div>
+                                  {subphase.description && (
+                                    <div className="text-xs text-dark-text-secondary truncate mt-1" title={subphase.description}>
+                                      {subphase.description}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Cells for active columns only (Not Started, In Progress) */}
+                            {activeColumns.map((column, colIdx) => {
+                              const cards = getCardsForCell(subphase.id, column);
+                              const cellId = `${subphase.id}|${column}`;
+                              const isOver = dropTarget?.subphaseId === subphase.id && dropTarget?.status === column;
+                              const canDrop = activeCard ? canDropCard(activeCard.id, column) : true;
+
+                              // For "Not Started" column, use dependency stacking
+                              if (column === 'Not Started') {
+                                // Find stacks where the root card belongs to this subphase
+                                const stacksForCell = [];
+                                for (const [rootId, stack] of dependencyData.stacks) {
+                                  const rootCard = stack[0];
+                                  if (rootCard.subphaseId === subphase.id) {
+                                    stacksForCell.push(stack);
+                                  }
+                                }
+
+                                // Find standalone cards (not claimed by any stack)
+                                const standaloneCards = cards.filter(
+                                  card => !dependencyData.claimedCardIds.has(card.id)
+                                );
+
+                                const hasContent = stacksForCell.length > 0 || standaloneCards.length > 0;
+                                const totalCards = cards.length;
+                                const allBlocked = totalCards > 0 && !hasContent;
+
+                                return (
+                                  <DroppableCell
+                                    key={colIdx}
+                                    id={cellId}
+                                    isOver={isOver}
+                                    canDrop={canDrop}
+                                    isEmpty={!hasContent}
+                                  >
+                                    {hasContent ? (
+                                      <div className="space-y-4">
+                                        {/* Render dependency stacks */}
+                                        {stacksForCell.map((stack) => {
+                                          // Mark each card with its blocked status
+                                          const cardsWithBlockedStatus = stack.map(card => ({
+                                            ...card,
+                                            isBlocked: isCardBlocked(card)
+                                          }));
+                                          return (
+                                            <CardStack
+                                              key={stack[0].id}
+                                              cards={cardsWithBlockedStatus}
+                                              onCardClick={handleCardClick}
+                                            />
+                                          );
+                                        })}
+                                        {/* Render standalone cards */}
+                                        {standaloneCards.map((card) => (
+                                          <Card
+                                            key={card.id}
+                                            card={{ ...card, isBlocked: isCardBlocked(card) }}
+                                            isDragging={activeCard?.id === card.id}
+                                            onClick={handleCardClick}
+                                          />
+                                        ))}
+                                      </div>
+                                    ) : allBlocked ? (
+                                      <div className="h-20 flex items-center justify-center border-2 border-dashed border-dark-border rounded-lg opacity-50">
+                                        <span className="text-xs text-dark-text-secondary">All cards blocked</span>
+                                      </div>
+                                    ) : (
+                                      <div className="h-20 flex items-center justify-center border-2 border-dashed border-dark-border rounded-lg">
+                                        <span className="text-xs text-dark-text-secondary">No cards</span>
+                                      </div>
+                                    )}
+                                  </DroppableCell>
+                                );
+                              }
+
+                              // For In Progress column, render normally
+                              return (
+                                <DroppableCell
+                                  key={colIdx}
+                                  id={cellId}
+                                  isOver={isOver}
+                                  canDrop={canDrop}
+                                  isEmpty={cards.length === 0}
+                                >
+                                  {cards.length > 0 ? (
+                                    <div className="space-y-2">
+                                      {cards.map((card) => (
+                                        <Card
+                                          key={card.id}
+                                          card={{ ...card, isBlocked: false }}
+                                          isDragging={activeCard?.id === card.id}
+                                          onClick={handleCardClick}
+                                        />
+                                      ))}
+                                    </div>
+                                  ) : (
+                                    <div className="h-20 flex items-center justify-center border-2 border-dashed border-dark-border rounded-lg">
+                                      <span className="text-xs text-dark-text-secondary">No cards</span>
+                                    </div>
+                                  )}
+                                </DroppableCell>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Empty state for phase with no subphases */}
+                    {!collapsedPhases[phase.id] && (!phase.subphases || phase.subphases.length === 0) && (
+                      <div className="p-8 text-center text-dark-text-secondary">
+                        No subphases in this phase
+                      </div>
                     )}
                   </div>
+                ))
+              ) : (
+                <div className="p-8 text-center text-dark-text-secondary">
+                  {boardDisplayData.completedCards.length > 0
+                    ? 'All tasks complete!'
+                    : 'No phases in this project'}
                 </div>
-
-                {/* Subphase Rows */}
-                {!collapsedPhases[phase.id] && phase.subphases && (
-                  <div>
-                    {phase.subphases.map((subphase) => (
-                      <div key={subphase.id} className="flex border-b border-dark-border hover:bg-dark-surface/30 transition-colors">
-                        {/* Row Header */}
-                        <div className="w-48 flex-shrink-0 p-4 border-r border-dark-border bg-dark-surface">
-                          <div className="flex items-center gap-2">
-                            {/* Subphase short name badge */}
-                            <div className="flex-shrink-0 w-10 h-10 rounded bg-dark-bg flex items-center justify-center font-bold text-sm text-dark-text border border-dark-border">
-                              {subphase.short_name || '—'}
-                            </div>
-
-                            {/* Subphase name */}
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-semibold text-dark-text truncate" title={subphase.name}>
-                                {subphase.name.replace(/^\d+\.\d+\s+/, '')}
-                              </div>
-                              {subphase.description && (
-                                <div className="text-xs text-dark-text-secondary truncate mt-1" title={subphase.description}>
-                                  {subphase.description}
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Cells for each column */}
-                        {columns.map((column, colIdx) => {
-                          const cards = getCardsForCell(subphase.id, column);
-                          const cellId = `${subphase.id}|${column}`;
-                          const isOver = dropTarget?.subphaseId === subphase.id && dropTarget?.status === column;
-                          const canDrop = activeCard ? canDropCard(activeCard.id, column) : true;
-
-                          // For "Not Started" column, use dependency stacking
-                          if (column === 'Not Started') {
-                            // Find stacks where the root card belongs to this subphase
-                            const stacksForCell = [];
-                            for (const [rootId, stack] of dependencyData.stacks) {
-                              const rootCard = stack[0];
-                              if (rootCard.subphaseId === subphase.id) {
-                                stacksForCell.push(stack);
-                              }
-                            }
-
-                            // Find standalone cards (not claimed by any stack)
-                            const standaloneCards = cards.filter(
-                              card => !dependencyData.claimedCardIds.has(card.id)
-                            );
-
-                            const hasContent = stacksForCell.length > 0 || standaloneCards.length > 0;
-                            const totalCards = cards.length;
-                            const allBlocked = totalCards > 0 && !hasContent;
-
-                            return (
-                              <DroppableCell
-                                key={colIdx}
-                                id={cellId}
-                                isOver={isOver}
-                                canDrop={canDrop}
-                                isEmpty={!hasContent}
-                              >
-                                {hasContent ? (
-                                  <div className="space-y-4">
-                                    {/* Render dependency stacks */}
-                                    {stacksForCell.map((stack) => {
-                                      // Mark each card with its blocked status
-                                      const cardsWithBlockedStatus = stack.map(card => ({
-                                        ...card,
-                                        isBlocked: isCardBlocked(card)
-                                      }));
-                                      return (
-                                        <CardStack
-                                          key={stack[0].id}
-                                          cards={cardsWithBlockedStatus}
-                                          onCardClick={handleCardClick}
-                                        />
-                                      );
-                                    })}
-                                    {/* Render standalone cards */}
-                                    {standaloneCards.map((card) => (
-                                      <Card
-                                        key={card.id}
-                                        card={{ ...card, isBlocked: isCardBlocked(card) }}
-                                        isDragging={activeCard?.id === card.id}
-                                        onClick={handleCardClick}
-                                      />
-                                    ))}
-                                  </div>
-                                ) : allBlocked ? (
-                                  <div className="h-20 flex items-center justify-center border-2 border-dashed border-dark-border rounded-lg opacity-50">
-                                    <span className="text-xs text-dark-text-secondary">All cards blocked</span>
-                                  </div>
-                                ) : (
-                                  <div className="h-20 flex items-center justify-center border-2 border-dashed border-dark-border rounded-lg">
-                                    <span className="text-xs text-dark-text-secondary">No cards</span>
-                                  </div>
-                                )}
-                              </DroppableCell>
-                            );
-                          }
-
-                          // For other columns, render normally
-                          return (
-                            <DroppableCell
-                              key={colIdx}
-                              id={cellId}
-                              isOver={isOver}
-                              canDrop={canDrop}
-                              isEmpty={cards.length === 0}
-                            >
-                              {cards.length > 0 ? (
-                                <div className="space-y-2">
-                                  {cards.map((card) => (
-                                    <Card
-                                      key={card.id}
-                                      card={{ ...card, isBlocked: false }}
-                                      isDragging={activeCard?.id === card.id}
-                                      onClick={handleCardClick}
-                                    />
-                                  ))}
-                                </div>
-                              ) : (
-                                <div className="h-20 flex items-center justify-center border-2 border-dashed border-dark-border rounded-lg">
-                                  <span className="text-xs text-dark-text-secondary">No cards</span>
-                                </div>
-                              )}
-                            </DroppableCell>
-                          );
-                        })}
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Empty state for phase with no subphases */}
-                {!collapsedPhases[phase.id] && (!phase.subphases || phase.subphases.length === 0) && (
-                  <div className="p-8 text-center text-dark-text-secondary">
-                    No subphases in this phase
-                  </div>
-                )}
-              </div>
-            ))
-          ) : (
-            <div className="p-8 text-center text-dark-text-secondary">
-              No phases in this project
+              )}
             </div>
-          )}
+
+            {/* Right side: Done column - single aggregated cell */}
+            <div className="w-[300px] flex-shrink-0 border-l border-dark-border">
+              {/* Done column header */}
+              <div className="sticky top-0 z-10 bg-dark-surface border-b border-dark-border p-4">
+                <h3 className="text-sm font-bold text-dark-text">Done</h3>
+              </div>
+
+              {/* Done column content - single aggregated stack */}
+              <DroppableCell
+                id="done-column"
+                isOver={dropTarget?.status === 'Done'}
+                canDrop={true}
+                isEmpty={boardDisplayData.completedCards.length === 0}
+              >
+                <CompletedStack
+                  cards={boardDisplayData.completedCards}
+                  onCardClick={handleCardClick}
+                />
+              </DroppableCell>
+            </div>
+          </div>
         </div>
       </div>
-    </div>
 
       {/* Drag Overlay */}
       <DragOverlay>
