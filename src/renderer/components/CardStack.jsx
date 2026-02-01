@@ -5,7 +5,7 @@ import StackExpandModal from './StackExpandModal';
 const EDGE_PEEK = 8; // pixels of edge visible for each stacked card
 const MAX_VISIBLE_EDGES = 5; // max stacked card edges to show
 
-const CardStack = ({ cards, onCardClick, onUnlockCard }) => {
+const CardStack = ({ cards, onCardClick, onUnlockCard, onUnlockTopCard }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   if (!cards || cards.length === 0) return null;
@@ -42,6 +42,7 @@ const CardStack = ({ cards, onCardClick, onUnlockCard }) => {
             card={cards[0]}
             onClick={onCardClick}
             isStacked={false}
+            onUnlock={cards[0].isBlocked && (onUnlockTopCard || onUnlockCard) ? (onUnlockTopCard || onUnlockCard) : undefined}
           />
 
           {/* Expand button - only shown when there's a stack */}

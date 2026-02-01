@@ -45,6 +45,9 @@ const Board = ({ projectId }) => {
   const [dropTarget, setDropTarget] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [confirmUnlockCard, setConfirmUnlockCard] = useState(null);
+  const [unlockError, setUnlockError] = useState(null);
+  const [isUnlocking, setIsUnlocking] = useState(false);
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -418,7 +421,37 @@ const Board = ({ projectId }) => {
     }
   };
 
-  // Handle unlocking a card (clearing its dependencies)
+  // Show confirmation dialog for unlocking a card
+  const handleUnlockClick = (card) => {
+    setConfirmUnlockCard(card);
+    setUnlockError(null);
+  };
+
+  // Actually unlock the card after confirmation
+  const handleConfirmUnlock = async () => {
+    if (!confirmUnlockCard) return;
+
+    setIsUnlocking(true);
+    setUnlockError(null);
+    try {
+      await window.electron.clearCardDependencies(confirmUnlockCard.id);
+      await loadProject(true);
+      setConfirmUnlockCard(null);
+    } catch (err) {
+      console.error('Failed to unlock card:', err);
+      setUnlockError(err.message || 'Failed to unlock card');
+    } finally {
+      setIsUnlocking(false);
+    }
+  };
+
+  // Cancel unlock confirmation
+  const handleCancelUnlock = () => {
+    setConfirmUnlockCard(null);
+    setUnlockError(null);
+  };
+
+  // Handle unlocking a card (clearing its dependencies) - for modal use
   const handleUnlockCard = async (cardId) => {
     try {
       await window.electron.clearCardDependencies(cardId);
@@ -609,18 +642,23 @@ const Board = ({ projectId }) => {
                                               cards={cardsWithBlockedStatus}
                                               onCardClick={handleCardClick}
                                               onUnlockCard={handleUnlockCard}
+                                              onUnlockTopCard={handleUnlockClick}
                                             />
                                           );
                                         })}
                                         {/* Render standalone cards */}
-                                        {standaloneCards.map((card) => (
-                                          <Card
-                                            key={card.id}
-                                            card={{ ...card, isBlocked: isCardBlocked(card) }}
-                                            isDragging={activeCard?.id === card.id}
-                                            onClick={handleCardClick}
-                                          />
-                                        ))}
+                                        {standaloneCards.map((card) => {
+                                          const cardWithBlocked = { ...card, isBlocked: isCardBlocked(card) };
+                                          return (
+                                            <Card
+                                              key={card.id}
+                                              card={cardWithBlocked}
+                                              isDragging={activeCard?.id === card.id}
+                                              onClick={handleCardClick}
+                                              onUnlock={cardWithBlocked.isBlocked ? handleUnlockClick : undefined}
+                                            />
+                                          );
+                                        })}
                                       </div>
                                     ) : allBlocked ? (
                                       <div className="h-20 flex items-center justify-center border-2 border-dashed border-dark-border rounded-lg opacity-50">
@@ -727,6 +765,46 @@ const Board = ({ projectId }) => {
         onStatusChange={handleStatusChange}
         project={project}
       />
+
+      {/* Unlock Confirmation Dialog */}
+      {confirmUnlockCard && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-8">
+          <div
+            className="absolute inset-0 bg-gray-900/70 backdrop-blur-sm"
+            onClick={handleCancelUnlock}
+          />
+          <div className="relative z-10 bg-dark-surface border border-dark-border rounded-lg shadow-2xl p-6 max-w-md">
+            <h3 className="text-lg font-bold text-dark-text mb-4">Unlock Card?</h3>
+            <p className="text-dark-text-secondary mb-2">
+              Are you sure you want to unlock <span className="font-semibold text-dark-text">"{confirmUnlockCard.title}"</span>?
+            </p>
+            <p className="text-dark-text-secondary mb-6 text-sm">
+              This will remove all dependencies for this card. It will become immediately actionable.
+            </p>
+            {unlockError && (
+              <div className="mb-4 p-3 rounded bg-red-900/50 border border-red-700 text-red-300 text-sm">
+                {unlockError}
+              </div>
+            )}
+            <div className="flex gap-3 justify-end">
+              <button
+                onClick={handleCancelUnlock}
+                disabled={isUnlocking}
+                className="px-4 py-2 rounded bg-dark-bg border border-dark-border text-dark-text hover:bg-dark-hover transition-colors disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmUnlock}
+                disabled={isUnlocking}
+                className="px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-500 text-white font-semibold transition-colors disabled:opacity-50"
+              >
+                {isUnlocking ? 'Unlocking...' : 'Unlock'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </DndContext>
   );
 };
