@@ -48,6 +48,7 @@ const Board = ({ projectId }) => {
   const [confirmUnlockCard, setConfirmUnlockCard] = useState(null);
   const [unlockError, setUnlockError] = useState(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
+  const [expandedSubphases, setExpandedSubphases] = useState({}); // Track manually expanded blocked rows
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -249,6 +250,72 @@ const Board = ({ projectId }) => {
 
     return { stacks, claimedCardIds };
   }, [project]);
+
+  // Compute which subphases have actionable (non-blocked) cards
+  // Used for auto-collapsing rows where all cards are blocked
+  const subphaseActionableStatus = useMemo(() => {
+    if (!project) return {};
+
+    const status = {};
+
+    for (const phase of project.phases) {
+      for (const subphase of phase.subphases) {
+        // Get cards by status
+        const notStartedCards = subphase.cards.filter(c => c.status === 'Not Started');
+        const inProgressCards = subphase.cards.filter(c => c.status === 'In Progress');
+
+        // In Progress cards are always actionable
+        if (inProgressCards.length > 0) {
+          status[subphase.id] = { hasActionable: true, blockedCount: 0, totalActiveCards: notStartedCards.length + inProgressCards.length };
+          continue;
+        }
+
+        // For Not Started, check if any visible card is not blocked
+        // Visible cards are: top card of each stack, and standalone cards
+        let hasActionable = false;
+        let blockedCount = 0;
+
+        // Check stacks where root is in this subphase
+        for (const [rootId, stack] of dependencyData.stacks) {
+          const rootCard = stack[0];
+          if (rootCard.subphaseId === subphase.id) {
+            if (!isCardBlocked(rootCard)) {
+              hasActionable = true;
+            } else {
+              blockedCount += stack.length; // All cards in this stack are effectively blocked
+            }
+          }
+        }
+
+        // Check standalone cards (not claimed by any stack)
+        for (const card of notStartedCards) {
+          if (!dependencyData.claimedCardIds.has(card.id)) {
+            if (!isCardBlocked(card)) {
+              hasActionable = true;
+            } else {
+              blockedCount++;
+            }
+          }
+        }
+
+        status[subphase.id] = {
+          hasActionable,
+          blockedCount,
+          totalActiveCards: notStartedCards.length
+        };
+      }
+    }
+
+    return status;
+  }, [project, dependencyData]);
+
+  // Toggle expansion of a subphase row
+  const toggleSubphaseExpanded = (subphaseId) => {
+    setExpandedSubphases(prev => ({
+      ...prev,
+      [subphaseId]: !prev[subphaseId]
+    }));
+  };
 
   // Compute active phases (with non-completed cards) and all completed cards
   const boardDisplayData = useMemo(() => {
@@ -568,11 +635,75 @@ const Board = ({ projectId }) => {
                     {/* Subphase Rows */}
                     {!collapsedPhases[phase.id] && phase.subphases && (
                       <div>
-                        {phase.subphases.map((subphase) => (
+                        {phase.subphases.map((subphase) => {
+                          // Check if this row should be auto-collapsed (all cards blocked)
+                          const subphaseStatus = subphaseActionableStatus[subphase.id] || { hasActionable: true, blockedCount: 0 };
+                          const isAutoCollapsed = !subphaseStatus.hasActionable && subphaseStatus.blockedCount > 0;
+                          const isManuallyExpanded = expandedSubphases[subphase.id];
+                          const isCollapsed = isAutoCollapsed && !isManuallyExpanded;
+
+                          // Render collapsed row
+                          if (isCollapsed) {
+                            return (
+                              <div
+                                key={subphase.id}
+                                className="flex border-b border-dark-border hover:bg-dark-surface/50 transition-colors cursor-pointer"
+                                onClick={() => toggleSubphaseExpanded(subphase.id)}
+                              >
+                                {/* Collapsed Row Header */}
+                                <div className="w-48 flex-shrink-0 p-3 border-r border-dark-border bg-dark-surface/50">
+                                  <div className="flex items-center gap-2">
+                                    {/* Chevron */}
+                                    <span className="text-dark-text-secondary text-sm flex-shrink-0">▶</span>
+
+                                    {/* Subphase short name badge */}
+                                    <div className="flex-shrink-0 w-8 h-8 rounded bg-dark-bg/50 flex items-center justify-center font-bold text-xs text-dark-text-secondary border border-dark-border">
+                                      {subphase.short_name || '—'}
+                                    </div>
+
+                                    {/* Subphase name */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-sm text-dark-text-secondary truncate" title={subphase.name}>
+                                        {subphase.name.replace(/^\d+\.\d+\s+/, '')}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Collapsed content area spans all columns */}
+                                <div className="flex-1 p-3 flex items-center">
+                                  <div className="flex items-center gap-2 text-dark-text-secondary">
+                                    <span className="text-lg">🔒</span>
+                                    <span className="text-sm">
+                                      {subphaseStatus.blockedCount} blocked {subphaseStatus.blockedCount === 1 ? 'card' : 'cards'}
+                                    </span>
+                                    <span className="text-xs opacity-60">— click to expand</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          // Render expanded row (normal or manually expanded)
+                          return (
                           <div key={subphase.id} className="flex border-b border-dark-border hover:bg-dark-surface/30 transition-colors">
                             {/* Row Header */}
                             <div className="w-48 flex-shrink-0 p-4 border-r border-dark-border bg-dark-surface">
                               <div className="flex items-center gap-2">
+                                {/* Collapse chevron for manually expanded rows */}
+                                {isAutoCollapsed && isManuallyExpanded && (
+                                  <span
+                                    className="text-dark-text-secondary text-sm flex-shrink-0 cursor-pointer hover:text-dark-text"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleSubphaseExpanded(subphase.id);
+                                    }}
+                                    title="Collapse row"
+                                  >
+                                    ▼
+                                  </span>
+                                )}
+
                                 {/* Subphase short name badge */}
                                 <div className="flex-shrink-0 w-10 h-10 rounded bg-dark-bg flex items-center justify-center font-bold text-sm text-dark-text border border-dark-border">
                                   {subphase.short_name || '—'}
@@ -702,7 +833,8 @@ const Board = ({ projectId }) => {
                               );
                             })}
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 
