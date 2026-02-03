@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electron', {
   // Card operations
   getCard: (cardId) => ipcRenderer.invoke('db:getCard', cardId),
   updateCardStatus: (cardId, status) => ipcRenderer.invoke('db:updateCardStatus', cardId, status),
+  updateCardPrompt: (cardId, promptData) => ipcRenderer.invoke('db:updateCardPrompt', cardId, promptData),
   clearCardDependencies: (cardId) => ipcRenderer.invoke('db:clearCardDependencies', cardId),
 
   // Import/Export operations

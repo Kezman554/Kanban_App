@@ -9,6 +9,12 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const [isEditing, setIsEditing] = useState(false);
   const [editedPrompt, setEditedPrompt] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
+  const [promptGuideCopySuccess, setPromptGuideCopySuccess] = useState(false);
+  const [commitMessageCopySuccess, setCommitMessageCopySuccess] = useState(false);
+  const [isEditingPromptGuide, setIsEditingPromptGuide] = useState(false);
+  const [editedPromptGuide, setEditedPromptGuide] = useState('');
+  const [promptGuideSaveSuccess, setPromptGuideSaveSuccess] = useState(false);
+  const [promptGuideSaveError, setPromptGuideSaveError] = useState(null);
   const [sessionNotification, setSessionNotification] = useState(null);
   const panelRef = useRef(null);
 
@@ -39,8 +45,14 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setIsEditing(false);
     setEditedPrompt('');
     setCopySuccess(false);
+    setPromptGuideCopySuccess(false);
+    setCommitMessageCopySuccess(false);
     setSessionNotification(null);
     setProgressNotes('');
+    setIsEditingPromptGuide(false);
+    setEditedPromptGuide('');
+    setPromptGuideSaveSuccess(false);
+    setPromptGuideSaveError(null);
     // Clean up any temp file from previous card
     if (tempPromptFile) {
       window.electron.deleteTempFile(tempPromptFile).catch(() => {});
@@ -146,6 +158,58 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
+    }
+  };
+
+  const handleCopyPromptGuide = async () => {
+    const textToCopy = isEditingPromptGuide ? editedPromptGuide : card.prompt_guide;
+    if (!textToCopy) return;
+
+    try {
+      await navigator.clipboard.writeText(textToCopy);
+      setPromptGuideCopySuccess(true);
+      setTimeout(() => setPromptGuideCopySuccess(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy prompt guide:', error);
+    }
+  };
+
+  const handleEditPromptGuide = () => {
+    setEditedPromptGuide(card.prompt_guide || '');
+    setIsEditingPromptGuide(true);
+    setPromptGuideSaveError(null);
+  };
+
+  const handleCancelEditPromptGuide = () => {
+    setIsEditingPromptGuide(false);
+    setEditedPromptGuide('');
+    setPromptGuideSaveError(null);
+  };
+
+  const handleSavePromptGuide = async () => {
+    try {
+      setPromptGuideSaveError(null);
+      await window.electron.updateCardPrompt(card.id, { prompt_guide: editedPromptGuide });
+      // Update the card object locally to reflect the change
+      card.prompt_guide = editedPromptGuide;
+      setIsEditingPromptGuide(false);
+      setPromptGuideSaveSuccess(true);
+      setTimeout(() => setPromptGuideSaveSuccess(false), 2000);
+    } catch (error) {
+      console.error('Failed to save prompt guide:', error);
+      setPromptGuideSaveError(error.message || 'Failed to save');
+    }
+  };
+
+  const handleCopyCommitMessage = async () => {
+    if (!card.git_commit_message) return;
+
+    try {
+      await navigator.clipboard.writeText(card.git_commit_message);
+      setCommitMessageCopySuccess(true);
+      setTimeout(() => setCommitMessageCopySuccess(false), 2000);
+    } catch (error) {
+      console.error('Failed to copy commit message:', error);
     }
   };
 
@@ -325,6 +389,115 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             </div>
           )}
 
+          {/* Claude Code Prompt (prompt_guide) - only for non-manual cards */}
+          {(hasPromptGuide || isEditingPromptGuide) && !isManual && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-dark-text-secondary">Claude Code Prompt</h3>
+                  {promptGuideSaveSuccess && (
+                    <span className="text-xs text-green-400">Saved!</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {isEditingPromptGuide ? (
+                    <>
+                      <button
+                        onClick={handleCancelEditPromptGuide}
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSavePromptGuide}
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                      >
+                        Save
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleEditPromptGuide}
+                        className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                        title="Edit prompt"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={handleCopyPromptGuide}
+                        className={`
+                          text-xs px-3 py-1 rounded font-medium transition-colors
+                          ${promptGuideCopySuccess
+                            ? 'bg-green-700 text-white'
+                            : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text'}
+                        `}
+                      >
+                        {promptGuideCopySuccess ? 'Copied!' : 'Copy'}
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+              {promptGuideSaveError && (
+                <div className="mb-2 text-xs text-red-400">{promptGuideSaveError}</div>
+              )}
+              {isEditingPromptGuide ? (
+                <textarea
+                  value={editedPromptGuide}
+                  onChange={(e) => setEditedPromptGuide(e.target.value)}
+                  className="w-full h-64 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text font-mono resize-none focus:outline-none scrollbar-dark"
+                  placeholder="Enter prompt guide..."
+                  autoFocus
+                />
+              ) : (
+                <div className="bg-dark-bg border border-dark-border rounded-lg p-3 max-h-64 overflow-y-auto scrollbar-dark">
+                  <pre className="text-sm text-dark-text whitespace-pre-wrap font-mono">{card.prompt_guide}</pre>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Add Prompt Button - shown when no prompt exists for non-manual, non-TBC cards */}
+          {!hasPromptGuide && !isEditingPromptGuide && !isManual && !isTBC && (
+            <div>
+              <button
+                onClick={handleEditPromptGuide}
+                className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1.5"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Claude Code Prompt
+              </button>
+            </div>
+          )}
+
+          {/* Commit Message (git_commit_message) - only for non-manual cards */}
+          {!isManual && card.git_commit_message && card.git_commit_message.trim() !== '' && (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-dark-text-secondary">Commit Message</h3>
+                <button
+                  onClick={handleCopyCommitMessage}
+                  className={`
+                    text-xs px-3 py-1 rounded font-medium transition-colors
+                    ${commitMessageCopySuccess
+                      ? 'bg-green-700 text-white'
+                      : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text'}
+                  `}
+                >
+                  {commitMessageCopySuccess ? 'Copied!' : 'Copy'}
+                </button>
+              </div>
+              <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
+                <code className="text-sm text-green-400 whitespace-pre-wrap">{card.git_commit_message}</code>
+              </div>
+            </div>
+          )}
+
           {/* Manual Card Guidance */}
           {isManual && (
             <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-4">
@@ -369,16 +542,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             <div>
               <h3 className="text-sm font-semibold text-dark-text-secondary mb-2">Generated Prompt</h3>
 
-              {/* Generate Button (if no prompt guide or no generated prompt yet) */}
+              {/* Generate Button (if no generated prompt yet) */}
               {!generatedPrompt && (
                 <div className="space-y-3">
-                  {hasPromptGuide && (
-                    <div className="bg-dark-bg p-3 rounded mb-3">
-                      <h4 className="text-xs font-semibold text-dark-text-secondary mb-1">Prompt Guide</h4>
-                      <p className="text-sm text-dark-text whitespace-pre-wrap">{card.prompt_guide}</p>
-                    </div>
-                  )}
-
                   <button
                     onClick={handleGeneratePrompt}
                     disabled={isGenerating}
