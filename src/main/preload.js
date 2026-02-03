@@ -27,6 +27,13 @@ contextBridge.exposeInMainWorld('electron', {
   // Dialog operations
   openJsonFile: () => ipcRenderer.invoke('dialog:openJsonFile'),
   saveJsonFile: (defaultName) => ipcRenderer.invoke('dialog:saveJsonFile', defaultName),
+  selectDirectory: () => ipcRenderer.invoke('dialog:selectDirectory'),
+
+  // Shell operations
+  openInExplorer: (directoryPath) => ipcRenderer.invoke('shell:openInExplorer', directoryPath),
+
+  // Project path operations
+  updateProjectPath: (projectId, directoryPath) => ipcRenderer.invoke('db:updateProjectPath', projectId, directoryPath),
 
   // Data operations
   clearAllData: () => ipcRenderer.invoke('db:clearAllData'),

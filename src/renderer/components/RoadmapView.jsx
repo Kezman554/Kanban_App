@@ -185,6 +185,61 @@ const RoadmapView = ({ projectId }) => {
               </p>
             )}
 
+            {/* Directory Path */}
+            <div className="flex items-center gap-2 text-xs mt-3">
+              {project.directory_path ? (
+                <>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await window.electron.openInExplorer(project.directory_path);
+                      } catch (err) {
+                        console.error('Failed to open folder:', err);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 text-dark-text-secondary hover:text-dark-text transition-colors"
+                    title="Open in file explorer"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                    </svg>
+                    <span className="font-mono">{project.directory_path}</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      const newPath = await window.electron.selectDirectory();
+                      if (newPath) {
+                        await window.electron.updateProjectPath(project.id, newPath);
+                        await loadProject();
+                      }
+                    }}
+                    className="text-dark-text-secondary hover:text-dark-text transition-colors"
+                    title="Change project folder"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={async () => {
+                    const newPath = await window.electron.selectDirectory();
+                    if (newPath) {
+                      await window.electron.updateProjectPath(project.id, newPath);
+                      await loadProject();
+                    }
+                  }}
+                  className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 transition-colors"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                  </svg>
+                  <span>Set project folder</span>
+                </button>
+              )}
+            </div>
+
             {/* Overall Progress */}
             {project.phases && (
               <div className="mt-4">

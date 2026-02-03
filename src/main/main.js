@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron')
 const path = require('path')
 const fs = require('fs')
 const os = require('os')
@@ -381,6 +381,39 @@ ipcMain.handle('dialog:openJsonFile', async () => {
     return { filePath, data: jsonData }
   } catch (error) {
     throw new Error(`Failed to read or parse file: ${error.message}`)
+  }
+})
+
+// Directory picker dialog
+ipcMain.handle('dialog:selectDirectory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  })
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  return result.filePaths[0]
+})
+
+// Open folder in system file explorer
+ipcMain.handle('shell:openInExplorer', async (event, directoryPath) => {
+  try {
+    await shell.openPath(directoryPath)
+    return { success: true }
+  } catch (error) {
+    throw new Error(`Failed to open folder: ${error.message}`)
+  }
+})
+
+// Update project directory path
+ipcMain.handle('db:updateProjectPath', async (event, projectId, directoryPath) => {
+  try {
+    return db.updateProjectPath(projectId, directoryPath)
+  } catch (error) {
+    console.error('Error updating project path:', error)
+    throw error
   }
 })
 

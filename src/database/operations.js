@@ -28,8 +28,8 @@ class KanbanDatabase {
     const transaction = this.db.transaction((projectData) => {
       // Insert project
       const insertProject = this.db.prepare(`
-        INSERT INTO projects (name, slug, description, prd_path, github_repo, columns)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO projects (name, slug, description, prd_path, github_repo, directory_path, columns)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
 
       const columns = projectData.columns || ['Not Started', 'In Progress', 'Done'];
@@ -39,6 +39,7 @@ class KanbanDatabase {
         projectData.description || null,
         projectData.prd_path || null,
         projectData.github_repo || null,
+        projectData.directory_path || null,
         JSON.stringify(columns)
       );
 
@@ -245,7 +246,7 @@ class KanbanDatabase {
    */
   updateProject(id, data) {
     try {
-      const allowedFields = ['name', 'slug', 'description', 'prd_path', 'github_repo', 'columns'];
+      const allowedFields = ['name', 'slug', 'description', 'prd_path', 'github_repo', 'directory_path', 'columns'];
       const updates = [];
       const values = [];
 
@@ -283,6 +284,22 @@ class KanbanDatabase {
       return result.changes > 0;
     } catch (error) {
       throw new Error(`Failed to delete project: ${error.message}`);
+    }
+  }
+
+  /**
+   * Update a project's directory path
+   * @param {number} id - Project ID
+   * @param {string} directoryPath - The filesystem path to the project directory
+   * @returns {boolean} - Success status
+   */
+  updateProjectPath(id, directoryPath) {
+    try {
+      const sql = `UPDATE projects SET directory_path = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+      const result = this.db.prepare(sql).run(directoryPath, id);
+      return result.changes > 0;
+    } catch (error) {
+      throw new Error(`Failed to update project path: ${error.message}`);
     }
   }
 

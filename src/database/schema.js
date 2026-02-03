@@ -32,11 +32,19 @@ function initDb(dbPath = null) {
       description TEXT,
       prd_path TEXT,
       github_repo TEXT,
+      directory_path TEXT,
       columns TEXT DEFAULT '["Not Started", "In Progress", "Done"]',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Add directory_path column if it doesn't exist (for existing databases)
+  const projectColumns = db.prepare("PRAGMA table_info(projects)").all();
+  const hasDirectoryPath = projectColumns.some(col => col.name === 'directory_path');
+  if (!hasDirectoryPath) {
+    db.exec('ALTER TABLE projects ADD COLUMN directory_path TEXT');
+  }
 
   // Create phases table
   db.exec(`
