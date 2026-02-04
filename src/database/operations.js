@@ -404,6 +404,22 @@ class KanbanDatabase {
   }
 
   /**
+   * Update card notes
+   * @param {number} id - Card ID
+   * @param {string} notes - Notes text
+   * @returns {boolean} - Success status
+   */
+  updateCardNotes(id, notes) {
+    try {
+      const sql = `UPDATE cards SET notes = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+      const result = this.db.prepare(sql).run(notes, id);
+      return result.changes > 0;
+    } catch (error) {
+      throw new Error(`Failed to update card notes: ${error.message}`);
+    }
+  }
+
+  /**
    * Clear all dependencies for a card (unlock it)
    * @param {number} id - Card ID
    * @returns {boolean} - Success status

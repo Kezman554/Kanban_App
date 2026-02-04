@@ -173,6 +173,15 @@ ipcMain.handle('db:updateCardPrompt', async (event, cardId, promptData) => {
   }
 })
 
+ipcMain.handle('db:updateCardNotes', async (event, cardId, notes) => {
+  try {
+    return db.updateCardNotes(cardId, notes)
+  } catch (error) {
+    console.error('Error updating card notes:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:importProjectFromJson', async (event, jsonData) => {
   try {
     return db.importProjectFromJson(jsonData)

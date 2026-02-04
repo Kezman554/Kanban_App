@@ -94,6 +94,7 @@ function initDb(dbPath = null) {
       prompt_guide TEXT,
       checkpoint TEXT,
       git_commit_message TEXT,
+      notes TEXT,
       parent_card_id INTEGER,
       is_expanded INTEGER DEFAULT 0,
       completed_at DATETIME,
@@ -103,6 +104,13 @@ function initDb(dbPath = null) {
       FOREIGN KEY (parent_card_id) REFERENCES cards(id) ON DELETE SET NULL
     )
   `);
+
+  // Add notes column if it doesn't exist (for existing databases)
+  const cardColumns = db.prepare("PRAGMA table_info(cards)").all();
+  const hasNotes = cardColumns.some(col => col.name === 'notes');
+  if (!hasNotes) {
+    db.exec('ALTER TABLE cards ADD COLUMN notes TEXT');
+  }
 
   // Create resources table
   db.exec(`

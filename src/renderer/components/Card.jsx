@@ -1,9 +1,8 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { useTerminalSessions } from '../contexts/TerminalSessionContext.jsx';
 
 const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }) => {
-  const [isExpanded, setIsExpanded] = useState(false);
   const { hasActiveSession, getSession } = useTerminalSessions();
 
   // Disable drag for stacked cards OR blocked cards (even if at top of stack)
@@ -20,11 +19,11 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
   const isTerminalRunning = terminalSession?.status === 'running';
 
   const handleClick = (e) => {
-    // Don't toggle if clicking the drag handle
+    // Don't trigger if clicking the drag handle or lock icon
     if (e.target.closest('.drag-handle')) {
       return;
     }
-    setIsExpanded(!isExpanded);
+    // Only open detail panel, no inline expansion
     if (onClick) onClick(card);
   };
 
@@ -92,9 +91,8 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
       className={`
         ${statusStyle.bg} ${statusStyle.border} ${statusStyle.borderWidth || 'border'} ${getCardBorderStyle()}
         rounded-lg p-3 transition-all
-        ${isStacked ? 'opacity-70 cursor-default' : ''}
-        ${!isStacked && !card.isBlocked ? 'hover:shadow-lg' : ''}
-        ${isExpanded ? 'ring-2 ring-blue-500' : ''}
+        ${isStacked ? 'opacity-70 cursor-default' : 'cursor-pointer'}
+        ${!isStacked && !card.isBlocked ? 'hover:shadow-lg hover:border-blue-500/50' : ''}
         ${isDragging ? 'opacity-50' : ''}
       `}
       onClick={handleClick}
@@ -233,71 +231,6 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
         )}
       </div>
 
-      {/* Expanded Content */}
-      {isExpanded && (
-        <div className="mt-3 pt-3 border-t border-dark-border space-y-3">
-          {/* Description */}
-          {card.description && (
-            <div>
-              <h4 className="text-xs font-semibold text-dark-text-secondary mb-1">Description</h4>
-              <p className="text-sm text-dark-text whitespace-pre-wrap">{card.description}</p>
-            </div>
-          )}
-
-          {/* Success Criteria */}
-          {card.success_criteria && (
-            <div>
-              <h4 className="text-xs font-semibold text-dark-text-secondary mb-1">Success Criteria</h4>
-              <p className="text-sm text-dark-text whitespace-pre-wrap">{card.success_criteria}</p>
-            </div>
-          )}
-
-          {/* Prompt Guide */}
-          {card.prompt_guide && (
-            <div>
-              <h4 className="text-xs font-semibold text-dark-text-secondary mb-1">Prompt Guide</h4>
-              <p className="text-sm text-dark-text whitespace-pre-wrap">{card.prompt_guide}</p>
-            </div>
-          )}
-
-          {/* Checkpoint */}
-          {card.checkpoint && (
-            <div>
-              <h4 className="text-xs font-semibold text-dark-text-secondary mb-1">Checkpoint</h4>
-              <p className="text-sm text-dark-text whitespace-pre-wrap">{card.checkpoint}</p>
-            </div>
-          )}
-
-          {/* Dependencies */}
-          {card.depends_on_cards && card.depends_on_cards.length > 0 && (
-            <div>
-              <h4 className="text-xs font-semibold text-dark-text-secondary mb-1">Dependencies</h4>
-              <div className="flex gap-2 flex-wrap">
-                {card.depends_on_cards.map((dep, idx) => (
-                  <span key={idx} className="text-xs px-2 py-0.5 rounded bg-dark-bg text-dark-text">
-                    Card {dep}
-                  </span>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Completion Time */}
-          {card.completed_at && (
-            <div>
-              <h4 className="text-xs font-semibold text-dark-text-secondary mb-1">Completed</h4>
-              <p className="text-sm text-dark-text">{new Date(card.completed_at).toLocaleString()}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Expand/Collapse Indicator */}
-      <div className="mt-2 text-center">
-        <span className="text-xs text-dark-text-secondary">
-          {isExpanded ? '▲ Click to collapse' : '▼ Click to expand'}
-        </span>
-      </div>
     </div>
   );
 };

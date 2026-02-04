@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { generatePrompt } from '../services/promptGenerator.js';
 import { useTerminalSessions } from '../contexts/TerminalSessionContext.jsx';
 
-const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusChange, project }) => {
+const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusChange, onCardUpdated, project }) => {
   const [generatedPrompt, setGeneratedPrompt] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
@@ -15,6 +15,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const [editedPromptGuide, setEditedPromptGuide] = useState('');
   const [promptGuideSaveSuccess, setPromptGuideSaveSuccess] = useState(false);
   const [promptGuideSaveError, setPromptGuideSaveError] = useState(null);
+  const [isEditingNotes, setIsEditingNotes] = useState(false);
+  const [editedNotes, setEditedNotes] = useState('');
+  const [notesSaveSuccess, setNotesSaveSuccess] = useState(false);
+  const [notesSaveError, setNotesSaveError] = useState(null);
   const [sessionNotification, setSessionNotification] = useState(null);
   const panelRef = useRef(null);
 
@@ -53,6 +57,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setEditedPromptGuide('');
     setPromptGuideSaveSuccess(false);
     setPromptGuideSaveError(null);
+    setIsEditingNotes(false);
+    setEditedNotes('');
+    setNotesSaveSuccess(false);
+    setNotesSaveError(null);
     // Clean up any temp file from previous card
     if (tempPromptFile) {
       window.electron.deleteTempFile(tempPromptFile).catch(() => {});
@@ -190,14 +198,45 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     try {
       setPromptGuideSaveError(null);
       await window.electron.updateCardPrompt(card.id, { prompt_guide: editedPromptGuide });
-      // Update the card object locally to reflect the change
-      card.prompt_guide = editedPromptGuide;
       setIsEditingPromptGuide(false);
       setPromptGuideSaveSuccess(true);
       setTimeout(() => setPromptGuideSaveSuccess(false), 2000);
+      // Refresh card data in parent component
+      if (onCardUpdated) {
+        await onCardUpdated(card.id);
+      }
     } catch (error) {
       console.error('Failed to save prompt guide:', error);
       setPromptGuideSaveError(error.message || 'Failed to save');
+    }
+  };
+
+  const handleEditNotes = () => {
+    setEditedNotes(card.notes || '');
+    setIsEditingNotes(true);
+    setNotesSaveError(null);
+  };
+
+  const handleCancelEditNotes = () => {
+    setIsEditingNotes(false);
+    setEditedNotes('');
+    setNotesSaveError(null);
+  };
+
+  const handleSaveNotes = async () => {
+    try {
+      setNotesSaveError(null);
+      await window.electron.updateCardNotes(card.id, editedNotes);
+      setIsEditingNotes(false);
+      setNotesSaveSuccess(true);
+      setTimeout(() => setNotesSaveSuccess(false), 2000);
+      // Refresh card data in parent component
+      if (onCardUpdated) {
+        await onCardUpdated(card.id);
+      }
+    } catch (error) {
+      console.error('Failed to save notes:', error);
+      setNotesSaveError(error.message || 'Failed to save');
     }
   };
 
@@ -274,14 +313,15 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/50 z-40 transition-opacity" />
+      <div className="fixed inset-0 bg-black/60 z-40 transition-opacity" />
 
-      {/* Slide-out Panel */}
-      <div
-        ref={panelRef}
-        className="fixed top-0 right-0 h-full w-full max-w-2xl bg-dark-surface border-l border-dark-border shadow-xl z-50 flex flex-col transform transition-transform duration-300 ease-out"
-        style={{ transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
-      >
+      {/* Centered Modal */}
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div
+          ref={panelRef}
+          className="w-full max-w-3xl max-h-[90vh] bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col transform transition-all duration-200 ease-out"
+          style={{ opacity: isOpen ? 1 : 0, transform: isOpen ? 'scale(1)' : 'scale(0.95)' }}
+        >
         {/* Header */}
         <div className="flex items-start justify-between p-6 border-b border-dark-border">
           <div className="flex-1 pr-4">
@@ -498,6 +538,69 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             </div>
           )}
 
+          {/* Notes Section - visible for all cards, prominent for Done cards */}
+          <div className={`${card.status === 'Done' ? 'bg-green-900/10 border border-green-800 rounded-lg p-4' : ''}`}>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <h3 className={`text-sm font-semibold ${card.status === 'Done' ? 'text-green-400' : 'text-dark-text-secondary'}`}>
+                  Notes
+                </h3>
+                {notesSaveSuccess && (
+                  <span className="text-xs text-green-400">Saved!</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {isEditingNotes ? (
+                  <>
+                    <button
+                      onClick={handleCancelEditNotes}
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveNotes}
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                    >
+                      Save
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleEditNotes}
+                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                    title={card.notes ? "Edit notes" : "Add notes"}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span>{card.notes ? 'Edit' : 'Add'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+            {notesSaveError && (
+              <div className="mb-2 text-xs text-red-400">{notesSaveError}</div>
+            )}
+            {isEditingNotes ? (
+              <textarea
+                value={editedNotes}
+                onChange={(e) => setEditedNotes(e.target.value)}
+                className="w-full h-32 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text resize-none focus:outline-none scrollbar-dark"
+                placeholder="Record what was built, decisions made, or anything to remember..."
+                autoFocus
+              />
+            ) : (
+              <div className={`bg-dark-bg border border-dark-border rounded-lg p-3 ${!card.notes ? 'min-h-[60px] flex items-center justify-center' : ''}`}>
+                {card.notes ? (
+                  <p className="text-sm text-dark-text whitespace-pre-wrap">{card.notes}</p>
+                ) : (
+                  <p className="text-sm text-dark-text-secondary italic">No notes</p>
+                )}
+              </div>
+            )}
+          </div>
+
           {/* Manual Card Guidance */}
           {isManual && (
             <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-4">
@@ -683,7 +786,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         </div>
 
         {/* Footer Actions */}
-        <div className="flex-shrink-0 p-6 border-t border-dark-border bg-dark-surface">
+        <div className="flex-shrink-0 p-6 border-t border-dark-border bg-dark-surface rounded-b-xl">
           <div className="flex flex-wrap gap-3">
             {/* When terminal is running - show View Terminal and minimal actions */}
             {cardHasTerminal && isTerminalRunning && (
@@ -773,6 +876,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               </>
             )}
           </div>
+        </div>
         </div>
       </div>
     </>

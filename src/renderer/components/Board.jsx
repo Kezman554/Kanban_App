@@ -488,6 +488,21 @@ const Board = ({ projectId }) => {
     }
   };
 
+  // Handle card data updates (notes, prompt_guide, etc.) from CardDetail
+  const handleCardUpdated = async (cardId) => {
+    try {
+      // Fetch fresh card data directly from database (avoids race condition with state)
+      const freshCard = await window.electron.getCard(cardId);
+      if (freshCard && selectedCard?.id === cardId) {
+        setSelectedCard(freshCard);
+      }
+      // Also refresh project data in background
+      await loadProject(true);
+    } catch (err) {
+      console.error('Failed to refresh card data:', err);
+    }
+  };
+
   // Show confirmation dialog for unlocking a card
   const handleUnlockClick = (card) => {
     setConfirmUnlockCard(card);
@@ -949,6 +964,7 @@ const Board = ({ projectId }) => {
         onClose={handleCloseDetail}
         onMarkDone={handleMarkDone}
         onStatusChange={handleStatusChange}
+        onCardUpdated={handleCardUpdated}
         project={project}
       />
 
