@@ -12,6 +12,7 @@ import Card from './Card';
 import CardStack from './CardStack';
 import CompletedStack from './CompletedStack';
 import CardDetail from './CardDetail';
+import AddCardDialog from './AddCardDialog';
 
 // Droppable Cell Component
 const DroppableCell = ({ id, children, isOver, canDrop, isEmpty }) => {
@@ -49,6 +50,8 @@ const Board = ({ projectId }) => {
   const [unlockError, setUnlockError] = useState(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
   const [expandedSubphases, setExpandedSubphases] = useState({}); // Track manually expanded blocked rows
+  const [isAddCardDialogOpen, setIsAddCardDialogOpen] = useState(false);
+  const [addCardSubphaseId, setAddCardSubphaseId] = useState(null);
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -503,6 +506,46 @@ const Board = ({ projectId }) => {
     }
   };
 
+  // Open add card dialog for a specific subphase
+  const handleOpenAddCard = (subphaseId) => {
+    setAddCardSubphaseId(subphaseId);
+    setIsAddCardDialogOpen(true);
+  };
+
+  // Handle creating a new card
+  const handleCreateCard = async (subphaseId, cardData) => {
+    try {
+      await window.electron.createCard(subphaseId, cardData);
+      await loadProject(true);
+    } catch (err) {
+      console.error('Failed to create card:', err);
+      throw err;
+    }
+  };
+
+  // Get all existing cards in the project for dependency selection
+  const getAllProjectCards = () => {
+    if (!project?.phases) return [];
+    const cards = [];
+    for (const phase of project.phases) {
+      for (const subphase of phase.subphases || []) {
+        for (const card of subphase.cards || []) {
+          cards.push({
+            session_letter: card.session_letter,
+            title: card.title,
+            status: card.status,
+          });
+        }
+      }
+    }
+    return cards.sort((a, b) => {
+      if (a.session_letter.length !== b.session_letter.length) {
+        return a.session_letter.length - b.session_letter.length;
+      }
+      return a.session_letter.localeCompare(b.session_letter);
+    });
+  };
+
   // Show confirmation dialog for unlocking a card
   const handleUnlockClick = (card) => {
     setConfirmUnlockCard(card);
@@ -789,6 +832,20 @@ const Board = ({ projectId }) => {
                                     </div>
                                   )}
                                 </div>
+
+                                {/* Add Card Button */}
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleOpenAddCard(subphase.id);
+                                  }}
+                                  className="flex-shrink-0 w-7 h-7 rounded bg-dark-bg border border-dark-border hover:border-blue-500 hover:bg-blue-500/10 flex items-center justify-center text-dark-text-secondary hover:text-blue-400 transition-colors"
+                                  title="Add card to this subphase"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                                  </svg>
+                                </button>
                               </div>
                             </div>
 
@@ -966,6 +1023,19 @@ const Board = ({ projectId }) => {
         onStatusChange={handleStatusChange}
         onCardUpdated={handleCardUpdated}
         project={project}
+      />
+
+      {/* Add Card Dialog */}
+      <AddCardDialog
+        isOpen={isAddCardDialogOpen}
+        onClose={() => {
+          setIsAddCardDialogOpen(false);
+          setAddCardSubphaseId(null);
+        }}
+        onSave={handleCreateCard}
+        subphaseId={addCardSubphaseId}
+        projectId={projectId}
+        existingCards={getAllProjectCards()}
       />
 
       {/* Unlock Confirmation Dialog */}

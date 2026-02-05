@@ -182,6 +182,24 @@ ipcMain.handle('db:updateCardNotes', async (event, cardId, notes) => {
   }
 })
 
+ipcMain.handle('db:createCard', async (event, subphaseId, cardData) => {
+  try {
+    return db.createCard(subphaseId, cardData)
+  } catch (error) {
+    console.error('Error creating card:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('db:getNextSessionLetter', async (event, projectId, subphaseId) => {
+  try {
+    return db.getNextSessionLetter(projectId, subphaseId)
+  } catch (error) {
+    console.error('Error getting next session letter:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:importProjectFromJson', async (event, jsonData) => {
   try {
     return db.importProjectFromJson(jsonData)

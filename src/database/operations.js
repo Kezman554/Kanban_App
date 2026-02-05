@@ -340,6 +340,166 @@ class KanbanDatabase {
   }
 
   /**
+   * Create a new card in a subphase
+   * @param {number} subphaseId - Subphase ID
+   * @param {Object} cardData - Card data
+   * @returns {number} - The new card ID
+   */
+  createCard(subphaseId, cardData) {
+    try {
+      const sql = `
+        INSERT INTO cards (
+          subphase_id, session_letter, title, description, success_criteria,
+          resource, status, depends_on_cards, is_placeholder, complexity,
+          likely_needs_expansion, prompt_guide, checkpoint, git_commit_message,
+          notes, parent_card_id, is_expanded
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      const result = this.db.prepare(sql).run(
+        subphaseId,
+        cardData.session_letter,
+        cardData.title,
+        cardData.description || null,
+        cardData.success_criteria || null,
+        cardData.resource || 'claude_sub',
+        'Not Started',
+        JSON.stringify(cardData.depends_on_cards || []),
+        cardData.is_placeholder ? 1 : 0,
+        cardData.complexity || 'medium',
+        cardData.likely_needs_expansion ? 1 : 0,
+        cardData.prompt_guide || null,
+        cardData.checkpoint || null,
+        cardData.git_commit_message || null,
+        cardData.notes || null,
+        cardData.parent_card_id || null,
+        0
+      );
+
+      return result.lastInsertRowid;
+    } catch (error) {
+      throw new Error(`Failed to create card: ${error.message}`);
+    }
+  }
+
+  /**
+   * Get the next available session letter for a subphase
+   * @param {number} projectId - Project ID
+   * @param {number} subphaseId - Subphase ID
+   * @returns {string} - Next available session letter
+   *
+   * Logic:
+   * - If subphase has cards: increment from the last card's letter (C → C2, C2 → C3)
+   * - If subphase is empty: find next unused base letter in project
+   */
+  getNextSessionLetter(projectId, subphaseId) {
+    try {
+      // Get cards in this specific subphase
+      const subphaseCards = this.db.prepare(`
+        SELECT session_letter FROM cards WHERE subphase_id = ?
+      `).all(subphaseId).map(row => row.session_letter);
+
+      if (subphaseCards.length > 0) {
+        // Subphase has cards - increment from the last one
+        // Sort to find the "last" card (highest letter/number)
+        const sorted = subphaseCards.sort((a, b) => {
+          const aBase = this._getBaseLetter(a);
+          const bBase = this._getBaseLetter(b);
+          const aNum = this._getSuffix(a);
+          const bNum = this._getSuffix(b);
+
+          // First compare base letters
+          if (aBase !== bBase) {
+            if (aBase.length !== bBase.length) return aBase.length - bBase.length;
+            return aBase.localeCompare(bBase);
+          }
+          // Then compare suffix numbers
+          return aNum - bNum;
+        });
+
+        const lastLetter = sorted[sorted.length - 1];
+        const baseLetter = this._getBaseLetter(lastLetter);
+        const currentSuffix = this._getSuffix(lastLetter);
+
+        // If no suffix (just "C"), return "C2", otherwise increment suffix
+        if (currentSuffix === 1) {
+          return baseLetter + '2';
+        } else {
+          return baseLetter + (currentSuffix + 1);
+        }
+      }
+
+      // Subphase is empty - find next unused base letter
+      const allProjectLetters = this.db.prepare(`
+        SELECT c.session_letter
+        FROM cards c
+        JOIN subphases s ON c.subphase_id = s.id
+        JOIN phases p ON s.phase_id = p.id
+        WHERE p.project_id = ?
+      `).all(projectId).map(row => row.session_letter);
+
+      if (allProjectLetters.length === 0) {
+        return 'A';
+      }
+
+      // Extract all base letters used in the project
+      const usedBaseLetters = new Set(
+        allProjectLetters.map(letter => this._getBaseLetter(letter))
+      );
+
+      // Find next available base letter
+      return this._getNextUnusedBaseLetter(usedBaseLetters);
+    } catch (error) {
+      throw new Error(`Failed to get next session letter: ${error.message}`);
+    }
+  }
+
+  /**
+   * Extract base letter from a session letter (C2 → C, AA3 → AA, M → M)
+   * @private
+   */
+  _getBaseLetter(letter) {
+    // Remove trailing digits to get base letter
+    return letter.replace(/\d+$/, '');
+  }
+
+  /**
+   * Extract numeric suffix from session letter (C2 → 2, C → 1, AA3 → 3)
+   * @private
+   */
+  _getSuffix(letter) {
+    const match = letter.match(/(\d+)$/);
+    return match ? parseInt(match[1], 10) : 1;
+  }
+
+  /**
+   * Find next unused base letter (A, B, C, ... Z, AA, AB, etc.)
+   * @private
+   */
+  _getNextUnusedBaseLetter(usedBaseLetters) {
+    // Try single letters first (A-Z)
+    for (let i = 0; i < 26; i++) {
+      const letter = String.fromCharCode(65 + i); // A=65
+      if (!usedBaseLetters.has(letter)) {
+        return letter;
+      }
+    }
+
+    // Try double letters (AA-ZZ)
+    for (let i = 0; i < 26; i++) {
+      for (let j = 0; j < 26; j++) {
+        const letter = String.fromCharCode(65 + i) + String.fromCharCode(65 + j);
+        if (!usedBaseLetters.has(letter)) {
+          return letter;
+        }
+      }
+    }
+
+    // Fallback (shouldn't happen with 702 possible combinations)
+    return 'AAA';
+  }
+
+  /**
    * Update card status and set completed_at if status is 'Done'
    * @param {number} id - Card ID
    * @param {string} status - New status ('Not Started', 'In Progress', 'Done')
