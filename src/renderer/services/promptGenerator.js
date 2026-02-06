@@ -1,200 +1,115 @@
 /**
  * Prompt Generator Service
  * Generates Claude Code prompts for Kanban cards using the Anthropic API
- * Based on the prompt generator skill from DESIGN_SUMMARY
+ * Gathers full project context before making the API call
  */
 
 import { sendMessageWithRetry, AnthropicError, ErrorTypes } from './anthropic.js'
 
-// System prompt for the prompt generator skill
-const PROMPT_GENERATOR_SYSTEM = `You are a prompt generator for a Kanban project management app that orchestrates Claude Code sessions. Your task is to generate complete, ready-to-run prompts for Claude Code.
+// System prompt for the prompt generator
+const PROMPT_GENERATOR_SYSTEM = `You are generating a Claude Code prompt for a development task.
+You will receive project context including PRD, progress, completed sessions, and card details.
+IMPORTANT: The "USER INSTRUCTIONS" section is the user's direct request. This takes priority.
 
-## Your Role
+If user instructions are provided, follow them as your primary guide
+If user instructions are empty, infer what's needed from the card title, description, and success criteria
 
-When given a card from the Kanban board, along with the project's PRD and progress.json, you generate a prompt that Claude Code can execute to complete that card's task.
+Rules for the generated prompt:
 
-## Input You Receive
+Do NOT include "Read CLAUDE.md" - Claude Code does this automatically
+Do NOT include checkpoint or verification lines at the end
+Do NOT include git commit instructions - this is handled separately
+DO reference specific files created in previous sessions when relevant
+DO include clear numbered steps for what to build
+DO end with a brief "Test by..." line
+Keep the prompt focused and actionable
 
-1. **Card Data**: The specific task card with title, description, success criteria, and other metadata
-2. **PRD Document**: The project's Product Requirements Document with full context
-3. **Progress.json**: Record of completed sessions, files created/modified, and current project structure
-
-## Your Output Format
-
-You MUST respond with a JSON object containing exactly these fields:
-
-\`\`\`json
-{
-  "prompt": "The complete Claude Code prompt ready to run",
-  "checkpoint": "Verification steps to confirm the task is complete",
-  "commitMessage": "Git commit message for when the work is done"
-}
-\`\`\`
-
-## Prompt Generation Guidelines
-
-When generating the prompt:
-
-1. **Reference What Exists**
-   - Use progress.json to understand what's already built
-   - Reference specific files and directories that exist
-   - Build on previous work, don't recreate
-
-2. **Include Context**
-   - Reference relevant parts of the PRD
-   - Mention dependencies and how they connect
-   - Note any previous sessions that relate to this task
-
-3. **Be Specific**
-   - Include concrete implementation steps
-   - Specify file paths and component names
-   - Reference existing patterns in the codebase
-
-4. **Include Testing**
-   - Add testing requirements appropriate to the task
-   - Reference existing test patterns if applicable
-
-5. **Progress Tracking**
-   - Include instruction to update progress.json when done
-   - Specify what to add (files created/modified, notes)
-
-## Checkpoint Guidelines
-
-The checkpoint should:
-- List specific, verifiable checks
-- Include both technical and functional verification
-- Be actionable (the user can actually verify these)
-
-## Commit Message Guidelines
-
-- Use conventional commit format when applicable (feat:, fix:, refactor:, etc.)
-- Be descriptive but concise
-- Reference the session letter
-
-## Example Output
-
-For a card about adding a settings page:
-
-\`\`\`json
-{
-  "prompt": "Create the Settings page component for the Kanban app.\\n\\nContext:\\n- This builds on the layout shell created in Session F (see src/renderer/components/Layout.jsx)\\n- Navigation already includes a Settings link\\n- Use the existing Tailwind CSS patterns from other pages\\n\\nImplementation:\\n1. Create src/renderer/pages/SettingsPage.jsx\\n2. Add sections for: Theme, API Key configuration, Data management\\n3. Use the same card styling from existing components\\n4. Wire up the route in App.jsx\\n\\nTesting:\\n- Verify navigation works from sidebar\\n- Check responsive layout\\n- Ensure settings persist (if implementing persistence)\\n\\nWhen complete, update progress.json with the files created and any relevant notes.",
-  "checkpoint": "1. Settings page renders at /settings route\\n2. Navigation link works from sidebar\\n3. All three sections (Theme, API, Data) are visible\\n4. Matches existing app styling\\n5. progress.json is updated",
-  "commitMessage": "G: Add Settings page with theme, API, and data sections"
-}
-\`\`\`
-
-Always respond with valid JSON only. Do not include any text before or after the JSON object.`
+Return ONLY the prompt text, no preamble, explanation, or markdown code blocks.`
 
 /**
- * Parse the API response to extract prompt, checkpoint, and commit message
- * Handles both clean JSON and JSON embedded in markdown code blocks
- *
- * @param {string} responseText - Raw text response from the API
- * @returns {Object} - Parsed result with prompt, checkpoint, commitMessage
+ * Gather all context needed for prompt generation
+ * @param {Object} options
+ * @param {Object} options.card - Card data from database
+ * @param {Object} options.project - Project data from database
+ * @returns {Promise<Object>} - Gathered context
  */
-function parseResponse(responseText) {
-  let jsonStr = responseText.trim()
-
-  // Try to extract JSON from markdown code blocks
-  const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
-  if (jsonMatch) {
-    jsonStr = jsonMatch[1].trim()
+async function gatherContext({ card, project }) {
+  const context = {
+    projectName: project?.name || 'Unknown Project',
+    prd: null,
+    progress: null,
+    doneCards: []
   }
 
-  try {
-    const parsed = JSON.parse(jsonStr)
-
-    // Validate required fields
-    if (!parsed.prompt) {
-      throw new Error('Response missing required "prompt" field')
+  // Get project files (PRD and progress.txt)
+  if (project?.directory_path) {
+    try {
+      const files = await window.electron.readProjectFiles(
+        project.directory_path,
+        project.prd_path
+      )
+      context.prd = files.prd
+      context.progress = files.progress
+    } catch (error) {
+      console.error('Failed to read project files:', error)
     }
-    if (!parsed.checkpoint) {
-      throw new Error('Response missing required "checkpoint" field')
-    }
-    if (!parsed.commitMessage) {
-      throw new Error('Response missing required "commitMessage" field')
-    }
-
-    return {
-      prompt: parsed.prompt,
-      checkpoint: parsed.checkpoint,
-      commitMessage: parsed.commitMessage
-    }
-  } catch (error) {
-    if (error instanceof SyntaxError) {
-      throw new Error(`Failed to parse API response as JSON: ${error.message}\n\nRaw response:\n${responseText.substring(0, 500)}...`)
-    }
-    throw error
   }
+
+  // Get done cards for the project
+  if (project?.id) {
+    try {
+      context.doneCards = await window.electron.getDoneCards(project.id)
+    } catch (error) {
+      console.error('Failed to get done cards:', error)
+    }
+  }
+
+  return context
 }
 
 /**
- * Format card data for the API request
- *
- * @param {Object} card - Card object from database
- * @returns {string} - Formatted card data string
+ * Format the full context message for the API
+ * @param {Object} card - Card data
+ * @param {Object} context - Gathered context from gatherContext
+ * @returns {string} - Formatted context string
  */
-function formatCardData(card) {
-  const parts = [
-    `Session: ${card.session_letter}`,
-    `Title: ${card.title}`,
-    `Description: ${card.description || 'No description provided'}`,
-    `Success Criteria: ${card.success_criteria || 'No specific criteria'}`,
-    `Complexity: ${card.complexity || 'medium'}`,
-    `Resource: ${card.resource || 'claude_sub'}`
-  ]
+function formatContextMessage(card, context) {
+  const parts = []
 
-  if (card.depends_on_cards && card.depends_on_cards.length > 0) {
-    const deps = Array.isArray(card.depends_on_cards)
-      ? card.depends_on_cards
-      : JSON.parse(card.depends_on_cards)
-    if (deps.length > 0) {
-      parts.push(`Dependencies: Sessions ${deps.join(', ')}`)
-    }
-  }
+  // Project context
+  parts.push(`=== PROJECT CONTEXT ===`)
+  parts.push(`Project: ${context.projectName}`)
 
-  if (card.prompt_guide) {
-    parts.push(`Prompt Guide: ${card.prompt_guide}`)
-  }
+  // PRD
+  parts.push(`\n=== PRD ===`)
+  parts.push(context.prd || 'No PRD file found at expected location')
 
-  return parts.join('\n')
-}
+  // Progress
+  parts.push(`\n=== PROGRESS SO FAR ===`)
+  parts.push(context.progress || 'No progress file found - this may be early in the project')
 
-/**
- * Format progress.json content for the API request
- *
- * @param {Object} progress - Progress object
- * @returns {string} - Formatted progress string
- */
-function formatProgress(progress) {
-  if (!progress) {
-    return 'No progress.json available - this appears to be the first session.'
-  }
-
-  const parts = [`Project: ${progress.project || 'Unknown'}`]
-
-  if (progress.completed_sessions && progress.completed_sessions.length > 0) {
-    parts.push('\nCompleted Sessions:')
-    progress.completed_sessions.forEach(session => {
-      parts.push(`- ${session.session}: ${session.title}`)
-      if (session.files_created?.length > 0) {
-        parts.push(`  Created: ${session.files_created.join(', ')}`)
-      }
-      if (session.files_modified?.length > 0) {
-        parts.push(`  Modified: ${session.files_modified.join(', ')}`)
-      }
-      if (session.notes) {
-        parts.push(`  Notes: ${session.notes}`)
-      }
+  // Completed sessions
+  parts.push(`\n=== COMPLETED SESSIONS ===`)
+  if (context.doneCards && context.doneCards.length > 0) {
+    context.doneCards.forEach(doneCard => {
+      parts.push(`\nSession ${doneCard.session_letter}: ${doneCard.title}`)
+      parts.push(`Success Criteria: ${doneCard.success_criteria || 'None'}`)
+      parts.push(`Notes: ${doneCard.notes || 'None'}`)
     })
+  } else {
+    parts.push('No completed sessions yet')
   }
 
-  if (progress.current_structure) {
-    parts.push('\nCurrent Project Structure:')
-    Object.entries(progress.current_structure).forEach(([dir, files]) => {
-      parts.push(`- ${dir}/: ${Array.isArray(files) ? files.join(', ') : files}`)
-    })
-  }
+  // Card to generate prompt for
+  parts.push(`\n=== CARD TO GENERATE PROMPT FOR ===`)
+  parts.push(`Session: ${card.session_letter}`)
+  parts.push(`Title: ${card.title}`)
+  parts.push(`Description: ${card.description || 'None'}`)
+  parts.push(`Success Criteria: ${card.success_criteria || 'None'}`)
+
+  // User instructions (notes field)
+  parts.push(`\n=== USER INSTRUCTIONS ===`)
+  parts.push(card.notes || 'None provided - generate based on card details above')
 
   return parts.join('\n')
 }
@@ -204,11 +119,10 @@ function formatProgress(progress) {
  *
  * @param {Object} options - Generation options
  * @param {Object} options.card - Card data from database
- * @param {string} options.prdContent - PRD document content
- * @param {Object} options.progress - Progress.json content (parsed object)
- * @returns {Promise<Object>} - Generated result with prompt, checkpoint, commitMessage
+ * @param {Object} options.project - Project data from database
+ * @returns {Promise<Object>} - Generated result with prompt text
  */
-export async function generatePrompt({ card, prdContent, progress }) {
+export async function generatePrompt({ card, project }) {
   // Validate inputs
   if (!card) {
     throw new Error('Card data is required')
@@ -218,41 +132,29 @@ export async function generatePrompt({ card, prdContent, progress }) {
     throw new Error('Card must have session_letter and title')
   }
 
-  // Format the request content
-  const cardDataStr = formatCardData(card)
-  const progressStr = formatProgress(progress)
-  const prdStr = prdContent || 'No PRD document provided.'
+  // Gather all context
+  const context = await gatherContext({ card, project })
 
-  const userMessage = `Generate a Claude Code prompt for this card:
-
-## Card Data
-${cardDataStr}
-
-## PRD Document
-${prdStr}
-
-## Progress (What's Been Built)
-${progressStr}
-
-Generate the prompt, checkpoint, and commit message as a JSON object.`
+  // Format the user message
+  const userMessage = formatContextMessage(card, context)
 
   try {
     const response = await sendMessageWithRetry({
       system: PROMPT_GENERATOR_SYSTEM,
       messages: [{ role: 'user', content: userMessage }],
       maxTokens: 4096,
-      temperature: 0.3 // Lower temperature for more consistent output
+      temperature: 0.3
     })
 
-    const result = parseResponse(response.text)
+    // The response is just the prompt text - no JSON parsing needed
+    const promptText = response.text.trim()
 
     return {
       success: true,
-      ...result,
+      prompt: promptText,
       usage: response.usage
     }
   } catch (error) {
-    // Re-throw with more context
     if (error instanceof AnthropicError) {
       return {
         success: false,
@@ -272,8 +174,6 @@ Generate the prompt, checkpoint, and commit message as a JSON object.`
 
 /**
  * Test the prompt generator with sample data
- * Useful for verifying the service works correctly
- *
  * @returns {Promise<Object>} - Test result
  */
 export async function testPromptGenerator() {
@@ -282,45 +182,30 @@ export async function testPromptGenerator() {
     session_letter: 'TEST',
     title: 'Test Session: Verify Prompt Generator',
     description: 'A test card to verify the prompt generator service is working correctly.',
-    success_criteria: 'The prompt generator returns valid JSON with prompt, checkpoint, and commit message.',
+    success_criteria: 'The prompt generator returns a valid prompt.',
     complexity: 'low',
     resource: 'anthropic_api',
-    depends_on_cards: []
+    depends_on_cards: [],
+    notes: null
   }
 
-  const samplePrd = `# Test Project PRD
-
-## Overview
-This is a test project to verify the prompt generator service.
-
-## Goals
-- Verify API connectivity
-- Verify response parsing
-- Verify error handling`
-
-  const sampleProgress = {
-    project: 'test-project',
-    last_updated: new Date().toISOString(),
-    completed_sessions: [],
-    current_structure: {
-      src: ['main.js'],
-      docs: ['README.md']
-    }
+  const sampleProject = {
+    id: 1,
+    name: 'Test Project',
+    directory_path: null,
+    prd_path: null
   }
 
   console.log('Testing prompt generator with sample data...')
 
   const result = await generatePrompt({
     card: sampleCard,
-    prdContent: samplePrd,
-    progress: sampleProgress
+    project: sampleProject
   })
 
   if (result.success) {
     console.log('Prompt generator test PASSED')
     console.log('Generated prompt length:', result.prompt.length)
-    console.log('Checkpoint length:', result.checkpoint.length)
-    console.log('Commit message:', result.commitMessage)
     console.log('Token usage:', result.usage)
   } else {
     console.error('Prompt generator test FAILED:', result.error)
@@ -331,8 +216,5 @@ This is a test project to verify the prompt generator service.
 
 export default {
   generatePrompt,
-  testPromptGenerator,
-  parseResponse,
-  formatCardData,
-  formatProgress
+  testPromptGenerator
 }

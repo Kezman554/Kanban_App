@@ -687,6 +687,28 @@ class KanbanDatabase {
     }
   }
 
+  /**
+   * Get all Done cards for a project with their notes
+   * @param {number} projectId - Project ID
+   * @returns {Array} - Array of done cards with session_letter, title, success_criteria, notes
+   */
+  getDoneCardsForProject(projectId) {
+    try {
+      const cards = this.db.prepare(`
+        SELECT c.session_letter, c.title, c.success_criteria, c.notes
+        FROM cards c
+        JOIN subphases s ON c.subphase_id = s.id
+        JOIN phases p ON s.phase_id = p.id
+        WHERE p.project_id = ? AND c.status = 'Done'
+        ORDER BY p.display_order, s.display_order, c.session_letter
+      `).all(projectId);
+
+      return cards;
+    } catch (error) {
+      throw new Error(`Failed to get done cards: ${error.message}`);
+    }
+  }
+
   // ============================================================================
   // IMPORT/EXPORT OPERATIONS
   // ============================================================================

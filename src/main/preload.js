@@ -51,6 +51,12 @@ contextBridge.exposeInMainWorld('electron', {
   writePromptToTemp: (prompt, cardId) => ipcRenderer.invoke('file:writePromptToTemp', prompt, cardId),
   deleteTempFile: (filePath) => ipcRenderer.invoke('file:deleteTempFile', filePath),
 
+  // Project file reading
+  readProjectFiles: (directoryPath, prdPath) => ipcRenderer.invoke('files:readProjectFiles', directoryPath, prdPath),
+
+  // Done cards
+  getDoneCards: (projectId) => ipcRenderer.invoke('cards:getDoneCards', projectId),
+
   // Terminal operations
   terminal: {
     create: (options) => ipcRenderer.invoke('terminal:create', options),

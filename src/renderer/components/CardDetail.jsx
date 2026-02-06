@@ -3,11 +3,8 @@ import { generatePrompt } from '../services/promptGenerator.js';
 import { useTerminalSessions } from '../contexts/TerminalSessionContext.jsx';
 
 const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusChange, onCardUpdated, project }) => {
-  const [generatedPrompt, setGeneratedPrompt] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
-  const [isEditing, setIsEditing] = useState(false);
-  const [editedPrompt, setEditedPrompt] = useState('');
   const [copySuccess, setCopySuccess] = useState(false);
   const [promptGuideCopySuccess, setPromptGuideCopySuccess] = useState(false);
   const [commitMessageCopySuccess, setCommitMessageCopySuccess] = useState(false);
@@ -43,11 +40,8 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
   // Reset state when card changes
   useEffect(() => {
-    setGeneratedPrompt(null);
     setIsGenerating(false);
     setGenerateError(null);
-    setIsEditing(false);
-    setEditedPrompt('');
     setCopySuccess(false);
     setPromptGuideCopySuccess(false);
     setCommitMessageCopySuccess(false);
@@ -130,23 +124,20 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setGenerateError(null);
 
     try {
-      // Get PRD content and progress from project if available
-      const prdContent = project?.prd_content || '';
-      const progress = project?.progress || null;
-
       const result = await generatePrompt({
         card,
-        prdContent,
-        progress
+        project
       });
 
       if (result.success) {
-        setGeneratedPrompt({
-          prompt: result.prompt,
-          checkpoint: result.checkpoint,
-          commitMessage: result.commitMessage
-        });
-        setEditedPrompt(result.prompt);
+        // Save generated prompt to card's prompt_guide
+        await window.electron.updateCardPrompt(card.id, { prompt_guide: result.prompt });
+
+        // Refresh card data in parent component
+        if (onCardUpdated) {
+          await onCardUpdated(card.id);
+        }
+
       } else {
         setGenerateError(result.error || 'Failed to generate prompt');
       }
@@ -158,7 +149,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   };
 
   const handleCopyToClipboard = async () => {
-    const textToCopy = isEditing ? editedPrompt : (generatedPrompt?.prompt || '');
+    const textToCopy = card.prompt_guide || '';
 
     try {
       await navigator.clipboard.writeText(textToCopy);
@@ -253,7 +244,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   };
 
   const handleStartSession = async () => {
-    const prompt = isEditing ? editedPrompt : (generatedPrompt?.prompt || '');
+    const prompt = card.prompt_guide || '';
     if (!prompt) return;
 
     // Copy prompt to clipboard
@@ -307,8 +298,6 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
       onExpandPlan(card.id);
     }
   };
-
-  const currentPrompt = isEditing ? editedPrompt : (generatedPrompt?.prompt || '');
 
   return (
     <>
@@ -458,6 +447,19 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   ) : (
                     <>
                       <button
+                        onClick={handleGeneratePrompt}
+                        disabled={isGenerating}
+                        className={`
+                          text-xs px-3 py-1 rounded font-medium transition-colors
+                          ${isGenerating
+                            ? 'bg-dark-border text-dark-text-secondary cursor-not-allowed'
+                            : 'bg-purple-700 hover:bg-purple-600 text-white'}
+                        `}
+                        title="Regenerate prompt using AI"
+                      >
+                        {isGenerating ? 'Generating...' : 'Regenerate'}
+                      </button>
+                      <button
                         onClick={handleEditPromptGuide}
                         className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
                         title="Edit prompt"
@@ -484,6 +486,11 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               {promptGuideSaveError && (
                 <div className="mb-2 text-xs text-red-400">{promptGuideSaveError}</div>
               )}
+              {generateError && !isEditingPromptGuide && (
+                <div className="mb-2 bg-red-900/20 border border-red-700 rounded-lg p-2">
+                  <p className="text-xs text-red-300">{generateError}</p>
+                </div>
+              )}
               {isEditingPromptGuide ? (
                 <textarea
                   value={editedPromptGuide}
@@ -500,18 +507,34 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             </div>
           )}
 
-          {/* Add Prompt Button - shown when no prompt exists for non-manual, non-TBC cards */}
+          {/* Generate Prompt Button - shown when no prompt exists for non-manual, non-TBC cards */}
           {!hasPromptGuide && !isEditingPromptGuide && !isManual && !isTBC && (
-            <div>
+            <div className="space-y-3">
               <button
-                onClick={handleEditPromptGuide}
-                className="text-sm text-blue-400 hover:text-blue-300 transition-colors flex items-center gap-1.5"
+                onClick={handleGeneratePrompt}
+                disabled={isGenerating}
+                className={`
+                  w-full px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2
+                  ${isGenerating
+                    ? 'bg-dark-border text-dark-text-secondary cursor-not-allowed'
+                    : 'bg-blue-600 hover:bg-blue-500 text-white'}
+                `}
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Claude Code Prompt
+                {isGenerating ? (
+                  <>
+                    <span className="animate-spin">...</span> Generating...
+                  </>
+                ) : (
+                  <>
+                    <span>*</span> Generate Prompt
+                  </>
+                )}
               </button>
+              {generateError && (
+                <div className="bg-red-900/20 border border-red-700 rounded-lg p-3">
+                  <p className="text-sm text-red-300">{generateError}</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -640,104 +663,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             </div>
           )}
 
-          {/* Prompt Section (for non-manual, non-TBC cards) */}
-          {!isManual && !isTBC && (
-            <div>
-              <h3 className="text-sm font-semibold text-dark-text-secondary mb-2">Generated Prompt</h3>
-
-              {/* Generate Button (if no generated prompt yet) */}
-              {!generatedPrompt && (
-                <div className="space-y-3">
-                  <button
-                    onClick={handleGeneratePrompt}
-                    disabled={isGenerating}
-                    className={`
-                      w-full px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2
-                      ${isGenerating
-                        ? 'bg-dark-border text-dark-text-secondary cursor-not-allowed'
-                        : 'bg-blue-600 hover:bg-blue-500 text-white'}
-                    `}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <span className="animate-spin">...</span> Generating...
-                      </>
-                    ) : (
-                      <>
-                        <span>*</span> Generate Prompt
-                      </>
-                    )}
-                  </button>
-
-                  {generateError && (
-                    <div className="bg-red-900/20 border border-red-700 rounded-lg p-3">
-                      <p className="text-sm text-red-300">{generateError}</p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Generated Prompt Display */}
-              {generatedPrompt && (
-                <div className="space-y-3">
-                  {/* Edit Toggle */}
-                  <div className="flex items-center justify-between">
-                    <label className="flex items-center gap-2 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={isEditing}
-                        onChange={(e) => setIsEditing(e.target.checked)}
-                        className="rounded border-dark-border bg-dark-bg text-blue-600 focus:ring-blue-500"
-                      />
-                      <span className="text-sm text-dark-text-secondary">Edit Prompt</span>
-                    </label>
-                    <button
-                      onClick={() => {
-                        setGeneratedPrompt(null);
-                        setEditedPrompt('');
-                        setIsEditing(false);
-                      }}
-                      className="text-xs text-dark-text-secondary hover:text-dark-text"
-                    >
-                      Regenerate
-                    </button>
-                  </div>
-
-                  {/* Prompt Text Area */}
-                  <div className="relative">
-                    {isEditing ? (
-                      <textarea
-                        value={editedPrompt}
-                        onChange={(e) => setEditedPrompt(e.target.value)}
-                        className="w-full h-64 p-3 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text font-mono resize-none focus:outline-none focus:border-blue-500 scrollbar-dark"
-                        placeholder="Edit the prompt..."
-                      />
-                    ) : (
-                      <pre className="w-full h-64 p-3 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text font-mono whitespace-pre-wrap overflow-y-auto scrollbar-dark">
-                        {currentPrompt}
-                      </pre>
-                    )}
-                  </div>
-
-                  {/* Checkpoint */}
-                  {generatedPrompt.checkpoint && (
-                    <div className="bg-dark-bg p-3 rounded border border-dark-border">
-                      <h4 className="text-xs font-semibold text-dark-text-secondary mb-1">Checkpoint</h4>
-                      <p className="text-sm text-dark-text whitespace-pre-wrap">{generatedPrompt.checkpoint}</p>
-                    </div>
-                  )}
-
-                  {/* Commit Message */}
-                  {generatedPrompt.commitMessage && (
-                    <div className="bg-dark-bg p-3 rounded border border-dark-border">
-                      <h4 className="text-xs font-semibold text-dark-text-secondary mb-1">Commit Message</h4>
-                      <code className="text-sm text-green-400">{generatedPrompt.commitMessage}</code>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          )}
+          {/* Removed old Generated Prompt section - prompt generation now saves directly to prompt_guide */}
 
           {/* Active Terminal Session Info */}
           {cardHasTerminal && (
@@ -814,7 +740,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 </button>
                 <button
                   onClick={handleStartSession}
-                  disabled={!generatedPrompt}
+                  disabled={!hasPromptGuide}
                   className="flex-1 min-w-[120px] px-4 py-2 bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <span>+</span> New Session
@@ -831,8 +757,8 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             {/* When no terminal - show normal actions */}
             {!cardHasTerminal && (
               <>
-                {/* Copy to Clipboard (only if prompt exists) */}
-                {generatedPrompt && !isManual && !isTBC && (
+                {/* Copy to Clipboard (only if prompt_guide exists) */}
+                {hasPromptGuide && !isManual && !isTBC && (
                   <button
                     onClick={handleCopyToClipboard}
                     className={`
@@ -854,8 +780,8 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   </button>
                 )}
 
-                {/* Start Session (only if prompt exists) */}
-                {generatedPrompt && !isManual && !isTBC && (
+                {/* Start Session (only if prompt_guide exists) */}
+                {hasPromptGuide && !isManual && !isTBC && (
                   <button
                     onClick={handleStartSession}
                     className="flex-1 min-w-[140px] px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"

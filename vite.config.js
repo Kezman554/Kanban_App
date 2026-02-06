@@ -36,6 +36,14 @@ export default defineConfig({
           },
         },
       },
+      {
+        entry: resolve(__dirname, 'src/main/fileReader.js'),
+        vite: {
+          build: {
+            outDir: resolve(__dirname, 'dist-electron'),
+          },
+        },
+      },
     ]),
     renderer(),
   ],

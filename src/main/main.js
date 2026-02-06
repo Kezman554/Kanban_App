@@ -7,6 +7,9 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') })
 // Terminal management
 const terminal = require('./terminal')
 
+// File reader for project files
+const { readProjectFiles } = require('./fileReader')
+
 // Resolve the correct path to database operations
 // In dev mode with vite-plugin-electron, __dirname is dist-electron
 // We need to go up one level to project root and into src/database
@@ -449,6 +452,26 @@ ipcMain.handle('db:updateProjectPath', async (event, projectId, directoryPath) =
     return db.updateProjectPath(projectId, directoryPath)
   } catch (error) {
     console.error('Error updating project path:', error)
+    throw error
+  }
+})
+
+// File reading handlers
+ipcMain.handle('files:readProjectFiles', async (event, directoryPath, prdPath) => {
+  try {
+    return readProjectFiles(directoryPath, prdPath)
+  } catch (error) {
+    console.error('Error reading project files:', error)
+    return { prd: null, progress: null }
+  }
+})
+
+// Done cards handler
+ipcMain.handle('cards:getDoneCards', async (event, projectId) => {
+  try {
+    return db.getDoneCardsForProject(projectId)
+  } catch (error) {
+    console.error('Error getting done cards:', error)
     throw error
   }
 })
