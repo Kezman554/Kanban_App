@@ -8,6 +8,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const [copySuccess, setCopySuccess] = useState(false);
   const [promptGuideCopySuccess, setPromptGuideCopySuccess] = useState(false);
   const [commitMessageCopySuccess, setCommitMessageCopySuccess] = useState(false);
+  const [isEditingCommitMessage, setIsEditingCommitMessage] = useState(false);
+  const [editedCommitMessage, setEditedCommitMessage] = useState('');
+  const [commitMessageSaveSuccess, setCommitMessageSaveSuccess] = useState(false);
+  const [commitMessageSaveError, setCommitMessageSaveError] = useState(null);
   const [isEditingPromptGuide, setIsEditingPromptGuide] = useState(false);
   const [editedPromptGuide, setEditedPromptGuide] = useState('');
   const [promptGuideSaveSuccess, setPromptGuideSaveSuccess] = useState(false);
@@ -45,6 +49,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setCopySuccess(false);
     setPromptGuideCopySuccess(false);
     setCommitMessageCopySuccess(false);
+    setIsEditingCommitMessage(false);
+    setEditedCommitMessage('');
+    setCommitMessageSaveSuccess(false);
+    setCommitMessageSaveError(null);
     setSessionNotification(null);
     setProgressNotes('');
     setIsEditingPromptGuide(false);
@@ -232,14 +240,43 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   };
 
   const handleCopyCommitMessage = async () => {
-    if (!card.git_commit_message) return;
+    const textToCopy = isEditingCommitMessage ? editedCommitMessage : card.git_commit_message;
+    if (!textToCopy) return;
 
     try {
-      await navigator.clipboard.writeText(card.git_commit_message);
+      await navigator.clipboard.writeText(textToCopy);
       setCommitMessageCopySuccess(true);
       setTimeout(() => setCommitMessageCopySuccess(false), 2000);
     } catch (error) {
       console.error('Failed to copy commit message:', error);
+    }
+  };
+
+  const handleEditCommitMessage = () => {
+    setEditedCommitMessage(card.git_commit_message || '');
+    setIsEditingCommitMessage(true);
+    setCommitMessageSaveError(null);
+  };
+
+  const handleCancelEditCommitMessage = () => {
+    setIsEditingCommitMessage(false);
+    setEditedCommitMessage('');
+    setCommitMessageSaveError(null);
+  };
+
+  const handleSaveCommitMessage = async () => {
+    try {
+      setCommitMessageSaveError(null);
+      await window.electron.updateCardPrompt(card.id, { git_commit_message: editedCommitMessage });
+      setIsEditingCommitMessage(false);
+      setCommitMessageSaveSuccess(true);
+      setTimeout(() => setCommitMessageSaveSuccess(false), 2000);
+      if (onCardUpdated) {
+        await onCardUpdated(card.id);
+      }
+    } catch (error) {
+      console.error('Failed to save commit message:', error);
+      setCommitMessageSaveError(error.message || 'Failed to save');
     }
   };
 
@@ -539,25 +576,73 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
           )}
 
           {/* Commit Message (git_commit_message) - only for non-manual cards */}
-          {!isManual && card.git_commit_message && card.git_commit_message.trim() !== '' && (
+          {!isManual && (isEditingCommitMessage || (card.git_commit_message && card.git_commit_message.trim() !== '')) && (
             <div>
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-dark-text-secondary">Commit Message</h3>
-                <button
-                  onClick={handleCopyCommitMessage}
-                  className={`
-                    text-xs px-3 py-1 rounded font-medium transition-colors
-                    ${commitMessageCopySuccess
-                      ? 'bg-green-700 text-white'
-                      : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text'}
-                  `}
-                >
-                  {commitMessageCopySuccess ? 'Copied!' : 'Copy'}
-                </button>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-semibold text-dark-text-secondary">Commit Message</h3>
+                  {commitMessageSaveSuccess && (
+                    <span className="text-xs text-green-400">Saved!</span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2">
+                  {isEditingCommitMessage ? (
+                    <>
+                      <button
+                        onClick={handleCancelEditCommitMessage}
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSaveCommitMessage}
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                      >
+                        Save
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleEditCommitMessage}
+                        className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                        title="Edit commit message"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                      </button>
+                      <button
+                        onClick={handleCopyCommitMessage}
+                        className={`
+                          text-xs px-3 py-1 rounded font-medium transition-colors
+                          ${commitMessageCopySuccess
+                            ? 'bg-green-700 text-white'
+                            : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text'}
+                        `}
+                      >
+                        {commitMessageCopySuccess ? 'Copied!' : 'Copy'}
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
-              <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
-                <code className="text-sm text-green-400 whitespace-pre-wrap">{card.git_commit_message}</code>
-              </div>
+              {commitMessageSaveError && (
+                <div className="mb-2 text-xs text-red-400">{commitMessageSaveError}</div>
+              )}
+              {isEditingCommitMessage ? (
+                <textarea
+                  value={editedCommitMessage}
+                  onChange={(e) => setEditedCommitMessage(e.target.value)}
+                  className="w-full h-24 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-green-400 font-mono resize-none focus:outline-none scrollbar-dark"
+                  placeholder="Enter commit message..."
+                  autoFocus
+                />
+              ) : (
+                <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
+                  <code className="text-sm text-green-400 whitespace-pre-wrap">{card.git_commit_message}</code>
+                </div>
+              )}
             </div>
           )}
 

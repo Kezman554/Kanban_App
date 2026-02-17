@@ -52,6 +52,7 @@ const Board = ({ projectId }) => {
   const [expandedSubphases, setExpandedSubphases] = useState({}); // Track manually expanded blocked rows
   const [isAddCardDialogOpen, setIsAddCardDialogOpen] = useState(false);
   const [addCardSubphaseId, setAddCardSubphaseId] = useState(null);
+  const [exportCopied, setExportCopied] = useState(false);
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -126,6 +127,185 @@ const Board = ({ projectId }) => {
       }
     }
     return null;
+  };
+
+  // Comparison function for session letters: A, B, C, C2, C3, D, D2... Z, AA, AA2, AB
+  const compareSessionLetters = (a, b) => {
+    const parse = (s) => {
+      const match = s.match(/^([A-Z]+)(\d*)$/);
+      if (!match) return { base: s, num: 0 };
+      return { base: match[1], num: match[2] ? parseInt(match[2], 10) : 0 };
+    };
+    const pa = parse(a), pb = parse(b);
+    // Compare base: shorter base first (A < AA), then alphabetical
+    if (pa.base.length !== pb.base.length) return pa.base.length - pb.base.length;
+    if (pa.base !== pb.base) return pa.base.localeCompare(pb.base);
+    // Same base: sort by numeric suffix (C=0 < C2 < C3)
+    return pa.num - pb.num;
+  };
+
+  // Get all cards from nested project structure
+  const getAllCards = () => {
+    if (!project) return [];
+    const cards = [];
+    for (const phase of project.phases) {
+      for (const subphase of phase.subphases) {
+        cards.push(...subphase.cards);
+      }
+    }
+    return cards;
+  };
+
+  // Strip session letter prefix from git_commit_message (e.g. "A: ", "C2: ", "AA: ")
+  const stripCommitPrefix = (msg) => {
+    return msg.replace(/^[A-Z]+\d*:\s*/, '');
+  };
+
+  // Extract brief "built" summary from a DONE card
+  const extractBuiltSummary = (card) => {
+    const desc = card.description && card.description.trim();
+    const commit = card.git_commit_message && card.git_commit_message.trim();
+
+    if (desc && commit) {
+      return `${desc} | ${stripCommitPrefix(commit)}`;
+    }
+    if (commit) {
+      return stripCommitPrefix(commit);
+    }
+    if (desc) {
+      return desc;
+    }
+
+    // Fallback: notes first line
+    if (card.notes && card.notes.trim()) {
+      return card.notes.trim().split('\n')[0].slice(0, 100);
+    }
+    // Fallback: extract from prompt_guide
+    if (card.prompt_guide && card.prompt_guide.trim()) {
+      const text = card.prompt_guide;
+      const pathPattern = /(?:[\w.-]+\/)+[\w.-]+(?:\.(?:py|js|jsx|ts|tsx|sql|json|css|html|md|yaml|yml|sh|go|rs|rb|java))?/g;
+      const pathMatches = text.match(pathPattern);
+      const uniquePaths = pathMatches ? [...new Set(pathMatches)].slice(0, 3) : [];
+
+      const actionWords = text.match(/\b(?:create|build|set up|implement|add|configure|define|initialize|migrate|endpoints?|routes?|schema|database|API|CRUD|auth\w*|component|service|model|middleware|handler)\b/gi);
+      const uniqueActions = actionWords ? [...new Set(actionWords.map(w => w.toLowerCase()))].slice(0, 3) : [];
+
+      const parts = [];
+      if (uniquePaths.length > 0) parts.push(uniquePaths.join(', '));
+      if (uniqueActions.length > 0) parts.push(uniqueActions.join(' '));
+
+      if (parts.length > 0) return parts.join(', ');
+    }
+    return 'completed';
+  };
+
+  const handleExportForClaude = async () => {
+    const allCards = getAllCards();
+    if (allCards.length === 0) return;
+
+    // Find highest session letter
+    const letters = allCards
+      .map(c => c.session_letter)
+      .filter(Boolean)
+      .sort(compareSessionLetters);
+    const lastSessionLetter = letters[letters.length - 1] || 'none';
+
+    // Group by status
+    const groups = {
+      'Done': [],
+      'In Progress': [],
+      'Not Started': [],
+    };
+    for (const card of allCards) {
+      if (groups[card.status]) {
+        groups[card.status].push(card);
+      }
+    }
+
+    // Sort each group by session letter
+    for (const status of Object.keys(groups)) {
+      groups[status].sort((a, b) => compareSessionLetters(a.session_letter || '', b.session_letter || ''));
+    }
+
+    // Strip "Session X:" prefix from title since we already show the letter
+    const cleanTitle = (title) => title.replace(/^Session\s+[A-Z]+\d*:\s*/i, '');
+
+    // Build export text
+    let lines = [];
+    lines.push(`Project: ${project.name}`);
+    lines.push(`Slug: ${project.slug}`);
+    lines.push(`Last session letter: ${lastSessionLetter}`);
+    lines.push('');
+
+    // PHASES section
+    if (project.phases && project.phases.length > 0) {
+      lines.push('PHASES:');
+      for (const phase of project.phases) {
+        lines.push(`- ${phase.id}: ${phase.name}`);
+        for (const subphase of phase.subphases || []) {
+          const subphaseLetters = (subphase.cards || [])
+            .map(c => c.session_letter)
+            .filter(Boolean)
+            .sort(compareSessionLetters);
+          lines.push(`  - ${subphase.id}: ${subphase.name} [${subphaseLetters.join(', ')}]`);
+        }
+      }
+      lines.push('');
+    }
+
+    // DONE section
+    if (groups['Done'].length > 0) {
+      lines.push('DONE:');
+      for (const card of groups['Done']) {
+        const deps = (card.depends_on_cards && card.depends_on_cards.length > 0)
+          ? card.depends_on_cards.join(', ')
+          : '';
+        const built = extractBuiltSummary(card);
+        lines.push(`- ${card.session_letter}: ${cleanTitle(card.title)} → depends on [${deps}], built: ${built}`);
+      }
+      lines.push('');
+    }
+
+    // IN PROGRESS section
+    if (groups['In Progress'].length > 0) {
+      lines.push('IN PROGRESS:');
+      for (const card of groups['In Progress']) {
+        const deps = (card.depends_on_cards && card.depends_on_cards.length > 0)
+          ? card.depends_on_cards.join(', ')
+          : '';
+        lines.push(`- ${card.session_letter}: ${cleanTitle(card.title)} → depends on [${deps}]`);
+      }
+      lines.push('');
+    }
+
+    // NOT STARTED section
+    if (groups['Not Started'].length > 0) {
+      lines.push('NOT STARTED:');
+      for (const card of groups['Not Started']) {
+        const deps = (card.depends_on_cards && card.depends_on_cards.length > 0)
+          ? card.depends_on_cards.join(', ')
+          : '';
+        lines.push(`- ${card.session_letter}: ${cleanTitle(card.title)} → depends on [${deps}]`);
+      }
+      lines.push('');
+    }
+
+    // Available for dependency
+    const allLetters = allCards
+      .map(c => c.session_letter)
+      .filter(Boolean)
+      .sort(compareSessionLetters);
+    lines.push(`Available for dependency: ${allLetters.join(', ')}`);
+
+    const text = lines.join('\n');
+
+    try {
+      await navigator.clipboard.writeText(text);
+      setExportCopied(true);
+      setTimeout(() => setExportCopied(false), 3000);
+    } catch (err) {
+      console.error('Failed to copy export:', err);
+    }
   };
 
   const isCardBlocked = (card) => {
@@ -627,10 +807,24 @@ const Board = ({ projectId }) => {
       <div className="h-full flex flex-col bg-dark-bg">
         {/* Board Header */}
         <div className="flex-shrink-0 p-6 border-b border-dark-border">
-          <h1 className="text-2xl font-bold text-dark-text mb-2">{project.name}</h1>
-          {project.description && (
-            <p className="text-sm text-dark-text-secondary mb-2">{project.description}</p>
-          )}
+          <div className="flex items-start justify-between mb-2">
+            <div>
+              <h1 className="text-2xl font-bold text-dark-text">{project.name}</h1>
+              {project.description && (
+                <p className="text-sm text-dark-text-secondary mt-1">{project.description}</p>
+              )}
+            </div>
+            <button
+              onClick={handleExportForClaude}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 border border-purple-500/30 transition-colors flex-shrink-0"
+              title="Copy project context for Claude"
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+              </svg>
+              {exportCopied ? 'Copied!' : 'Export for Claude'}
+            </button>
+          </div>
           {/* Directory Path */}
           <div className="flex items-center gap-2 text-xs">
             {project.directory_path ? (
@@ -1075,6 +1269,12 @@ const Board = ({ projectId }) => {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Export toast notification */}
+      {exportCopied && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-purple-600/90 text-white text-sm font-medium rounded-lg shadow-lg backdrop-blur-sm border border-purple-400/30 transition-opacity duration-300">
+          Project context copied to clipboard
         </div>
       )}
     </DndContext>
