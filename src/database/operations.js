@@ -801,27 +801,29 @@ class KanbanDatabase {
       if (data.dependency_updates && Array.isArray(data.dependency_updates)) {
         for (const update of data.dependency_updates) {
           // Find the card by session_letter in this project
+          const targetLetter = update.card || update.session_letter;
           const targetCard = this.db.prepare(`
             SELECT c.id, c.session_letter, c.status, c.depends_on_cards
             FROM cards c
             JOIN subphases s ON c.subphase_id = s.id
             JOIN phases p ON s.phase_id = p.id
             WHERE p.project_id = ? AND c.session_letter = ?
-          `).get(projectId, update.session_letter);
+          `).get(projectId, targetLetter);
 
           if (!targetCard) {
-            warnings.push(`Card "${update.session_letter}" not found, skipping dependency update`);
+            warnings.push(`Card "${targetLetter}" not found, skipping dependency update`);
             continue;
           }
 
           if (targetCard.status !== 'Not Started') {
-            warnings.push(`Card "${update.session_letter}" is "${targetCard.status}", skipping dependency update`);
+            warnings.push(`Card "${targetLetter}" is "${targetCard.status}", skipping dependency update`);
             continue;
           }
 
           // Append new dependencies to existing ones
+          // Support both add_dependency (single string) and add_dependencies (array)
           const currentDeps = JSON.parse(targetCard.depends_on_cards);
-          const newDeps = update.add_dependencies || [];
+          const newDeps = [].concat(update.add_dependencies || update.add_dependency || []);
           const mergedDeps = [...new Set([...currentDeps, ...newDeps])];
 
           this.db.prepare(`

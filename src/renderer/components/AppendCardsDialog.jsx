@@ -94,13 +94,14 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
     // Validate dependency updates
     if (data.dependency_updates && Array.isArray(data.dependency_updates)) {
       for (const update of data.dependency_updates) {
-        const target = projectLookups.cardsByLetter[update.session_letter];
+        const letter = update.card || update.session_letter;
+        const target = projectLookups.cardsByLetter[letter];
         if (!target) {
-          errors.push(`Dependency update target "${update.session_letter}" not found in project`);
+          errors.push(`Dependency update target "${letter}" not found in project`);
         } else if (target.status === 'Done') {
-          warnings.push(`Card "${update.session_letter}" is Done - dependency update will be skipped`);
+          warnings.push(`Card "${letter}" is Done - dependency update will be skipped`);
         } else if (target.status === 'In Progress') {
-          warnings.push(`Card "${update.session_letter}" is In Progress - dependency update will be skipped`);
+          warnings.push(`Card "${letter}" is In Progress - dependency update will be skipped`);
         }
       }
     }
@@ -289,7 +290,7 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
                     </p>
                     {fileData.dependency_updates.map((update, i) => (
                       <div key={i} className="text-xs text-dark-text-secondary pl-2">
-                        Card {update.session_letter} + deps: [{(update.add_dependencies || []).join(', ')}]
+                        Card {update.card || update.session_letter} + deps: [{([].concat(update.add_dependencies || update.add_dependency || [])).join(', ')}]
                       </div>
                     ))}
                   </div>
