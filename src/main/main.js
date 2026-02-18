@@ -194,6 +194,15 @@ ipcMain.handle('db:createCard', async (event, subphaseId, cardData) => {
   }
 })
 
+ipcMain.handle('db:deleteCard', async (event, cardId) => {
+  try {
+    return db.deleteCard(cardId)
+  } catch (error) {
+    console.error('Error deleting card:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:getNextSessionLetter', async (event, projectId, subphaseId) => {
   try {
     return db.getNextSessionLetter(projectId, subphaseId)

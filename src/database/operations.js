@@ -595,6 +595,39 @@ class KanbanDatabase {
   }
 
   /**
+   * Delete a card and clean up dependency references in other cards
+   * @param {number} cardId - Card ID to delete
+   * @returns {{ deletedLetter: string }}
+   */
+  deleteCard(cardId) {
+    const transaction = this.db.transaction((id) => {
+      const card = this.db.prepare('SELECT id, session_letter FROM cards WHERE id = ?').get(id);
+      if (!card) throw new Error(`Card ${id} not found`);
+
+      // Find all cards whose depends_on_cards contains this letter (broad LIKE search)
+      const dependentCards = this.db.prepare(
+        `SELECT id, depends_on_cards FROM cards WHERE depends_on_cards LIKE ?`
+      ).all(`%${card.session_letter}%`);
+
+      // Remove the letter from each dependent card's array
+      for (const dep of dependentCards) {
+        const deps = JSON.parse(dep.depends_on_cards);
+        const updated = deps.filter(d => d !== card.session_letter);
+        if (updated.length !== deps.length) {
+          this.db.prepare(
+            'UPDATE cards SET depends_on_cards = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?'
+          ).run(JSON.stringify(updated), dep.id);
+        }
+      }
+
+      this.db.prepare('DELETE FROM cards WHERE id = ?').run(id);
+      return { deletedLetter: card.session_letter };
+    });
+
+    return transaction(cardId);
+  }
+
+  /**
    * Get workable cards for a project (not blocked by dependencies)
    * @param {number} projectId - Project ID
    * @returns {Array} - Array of workable cards

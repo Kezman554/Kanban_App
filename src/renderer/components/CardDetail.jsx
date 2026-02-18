@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { generatePrompt } from '../services/promptGenerator.js';
 import { useTerminalSessions } from '../contexts/TerminalSessionContext.jsx';
 
-const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusChange, onCardUpdated, project }) => {
+const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusChange, onCardUpdated, onCardDeleted, project }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [generateError, setGenerateError] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
@@ -21,6 +21,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const [notesSaveSuccess, setNotesSaveSuccess] = useState(false);
   const [notesSaveError, setNotesSaveError] = useState(null);
   const [sessionNotification, setSessionNotification] = useState(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState(null);
   const panelRef = useRef(null);
 
   // Terminal session context
@@ -63,6 +66,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setEditedNotes('');
     setNotesSaveSuccess(false);
     setNotesSaveError(null);
+    setShowDeleteConfirm(false);
+    setIsDeleting(false);
+    setDeleteError(null);
     // Clean up any temp file from previous card
     if (tempPromptFile) {
       window.electron.deleteTempFile(tempPromptFile).catch(() => {});
@@ -336,6 +342,37 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     }
   };
 
+  const getDependentCards = () => {
+    if (!project || !card) return [];
+    const allCards = [];
+    for (const phase of project.phases || []) {
+      for (const sub of phase.subphases || []) {
+        allCards.push(...(sub.cards || []));
+      }
+    }
+    return allCards.filter(c => {
+      try {
+        const deps = Array.isArray(c.depends_on_cards)
+          ? c.depends_on_cards
+          : JSON.parse(c.depends_on_cards || '[]');
+        return deps.includes(card.session_letter);
+      } catch { return false; }
+    });
+  };
+
+  const handleDeleteConfirm = async () => {
+    setIsDeleting(true);
+    setDeleteError(null);
+    try {
+      await window.electron.deleteCard(card.id);
+      setShowDeleteConfirm(false);
+      onCardDeleted(card.id);
+    } catch (err) {
+      setDeleteError(err.message || 'Failed to delete card');
+      setIsDeleting(false);
+    }
+  };
+
   return (
     <>
       {/* Backdrop */}
@@ -397,6 +434,15 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               )}
             </div>
           </div>
+
+          {/* Delete Button */}
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="flex-shrink-0 p-2 rounded hover:bg-red-900/40 text-dark-text-secondary hover:text-red-400 transition-colors mr-1"
+            title="Delete card"
+          >
+            <span className="text-lg">🗑</span>
+          </button>
 
           {/* Close Button */}
           <button
@@ -795,6 +841,52 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             </div>
           )}
         </div>
+
+        {/* Delete Confirmation */}
+        {showDeleteConfirm && (() => {
+          const dependents = getDependentCards();
+          return (
+            <div className="flex-shrink-0 p-6 border-t border-red-800 bg-red-950/30">
+              <p className="text-white font-semibold mb-1">
+                Delete Session {card.session_letter}: {card.title}?
+              </p>
+              <p className="text-sm text-dark-text-secondary mb-3">This cannot be undone.</p>
+
+              {card.status === 'In Progress' && (
+                <p className="text-sm text-yellow-400 mb-2">⚠ This card is currently in progress.</p>
+              )}
+              {card.status === 'Done' && (
+                <p className="text-sm text-yellow-400 mb-2">⚠ This card is marked complete. Deleting may affect project history.</p>
+              )}
+              {dependents.length > 0 && (
+                <p className="text-sm text-blue-300 mb-3">
+                  Note: {dependents.length} card(s) depend on this card and will be unblocked: {dependents.map(d => d.session_letter).join(', ')}
+                </p>
+              )}
+
+              {deleteError && (
+                <p className="text-sm text-red-400 mb-2">{deleteError}</p>
+              )}
+
+              <div className="flex gap-3 mt-2">
+                <button
+                  onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDeleteConfirm}
+                  disabled={isDeleting}
+                  className="px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                >
+                  {isDeleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          );
+        })()}
 
         {/* Footer Actions */}
         <div className="flex-shrink-0 p-6 border-t border-dark-border bg-dark-surface rounded-b-xl">

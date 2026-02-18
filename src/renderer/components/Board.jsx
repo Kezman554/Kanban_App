@@ -688,6 +688,11 @@ const Board = ({ projectId }) => {
     }
   };
 
+  const handleCardDeleted = async (cardId) => {
+    handleCloseDetail();
+    await loadProject(true);
+  };
+
   // Open add card dialog for a specific subphase
   const handleOpenAddCard = (subphaseId) => {
     setAddCardSubphaseId(subphaseId);
@@ -1230,6 +1235,7 @@ const Board = ({ projectId }) => {
         onMarkDone={handleMarkDone}
         onStatusChange={handleStatusChange}
         onCardUpdated={handleCardUpdated}
+        onCardDeleted={handleCardDeleted}
         project={project}
       />
 
