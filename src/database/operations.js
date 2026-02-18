@@ -710,6 +710,139 @@ class KanbanDatabase {
   }
 
   // ============================================================================
+  // APPEND CARDS OPERATIONS
+  // ============================================================================
+
+  /**
+   * Append new cards to an existing project from JSON data
+   * @param {number} projectId - Project ID to append to
+   * @param {Object} data - { add_to_phase, add_to_subphase, new_cards, dependency_updates }
+   * @returns {Object} - { cardsAdded, dependenciesUpdated, warnings }
+   */
+  appendCards(projectId, data) {
+    const transaction = this.db.transaction((projectId, data) => {
+      const warnings = [];
+      let cardsAdded = 0;
+      let dependenciesUpdated = 0;
+
+      // Validate phase exists in this project
+      const phase = this.db.prepare(`
+        SELECT id FROM phases WHERE id = ? AND project_id = ?
+      `).get(data.add_to_phase, projectId);
+
+      if (!phase) {
+        throw new Error(`Phase ${data.add_to_phase} not found in project ${projectId}`);
+      }
+
+      // Validate subphase exists in that phase
+      const subphase = this.db.prepare(`
+        SELECT id FROM subphases WHERE id = ? AND phase_id = ?
+      `).get(data.add_to_subphase, data.add_to_phase);
+
+      if (!subphase) {
+        throw new Error(`Subphase ${data.add_to_subphase} not found in phase ${data.add_to_phase}`);
+      }
+
+      // Get all existing session letters in the project
+      const existingLetters = this.db.prepare(`
+        SELECT c.session_letter
+        FROM cards c
+        JOIN subphases s ON c.subphase_id = s.id
+        JOIN phases p ON s.phase_id = p.id
+        WHERE p.project_id = ?
+      `).all(projectId).map(row => row.session_letter);
+
+      const existingLetterSet = new Set(existingLetters);
+
+      // Check for duplicate session letters
+      if (data.new_cards && Array.isArray(data.new_cards)) {
+        for (const card of data.new_cards) {
+          if (existingLetterSet.has(card.session_letter)) {
+            throw new Error(`Duplicate session letter "${card.session_letter}" already exists in project`);
+          }
+        }
+      }
+
+      // Insert new cards
+      const insertCard = this.db.prepare(`
+        INSERT INTO cards (
+          subphase_id, session_letter, title, description, success_criteria,
+          resource, status, depends_on_cards, is_placeholder, complexity,
+          likely_needs_expansion, prompt_guide, checkpoint, git_commit_message,
+          parent_card_id, is_expanded
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      if (data.new_cards && Array.isArray(data.new_cards)) {
+        for (const card of data.new_cards) {
+          insertCard.run(
+            data.add_to_subphase,
+            card.session_letter,
+            card.title,
+            card.description || null,
+            card.success_criteria || null,
+            card.resource || 'claude_sub',
+            card.status || 'Not Started',
+            JSON.stringify(card.depends_on_cards || []),
+            card.is_placeholder ? 1 : 0,
+            card.complexity || 'medium',
+            card.likely_needs_expansion ? 1 : 0,
+            card.prompt_guide || null,
+            card.checkpoint || null,
+            card.git_commit_message || null,
+            card.parent_card_id || null,
+            card.is_expanded ? 1 : 0
+          );
+          cardsAdded++;
+        }
+      }
+
+      // Process dependency updates
+      if (data.dependency_updates && Array.isArray(data.dependency_updates)) {
+        for (const update of data.dependency_updates) {
+          // Find the card by session_letter in this project
+          const targetCard = this.db.prepare(`
+            SELECT c.id, c.session_letter, c.status, c.depends_on_cards
+            FROM cards c
+            JOIN subphases s ON c.subphase_id = s.id
+            JOIN phases p ON s.phase_id = p.id
+            WHERE p.project_id = ? AND c.session_letter = ?
+          `).get(projectId, update.session_letter);
+
+          if (!targetCard) {
+            warnings.push(`Card "${update.session_letter}" not found, skipping dependency update`);
+            continue;
+          }
+
+          if (targetCard.status !== 'Not Started') {
+            warnings.push(`Card "${update.session_letter}" is "${targetCard.status}", skipping dependency update`);
+            continue;
+          }
+
+          // Append new dependencies to existing ones
+          const currentDeps = JSON.parse(targetCard.depends_on_cards);
+          const newDeps = update.add_dependencies || [];
+          const mergedDeps = [...new Set([...currentDeps, ...newDeps])];
+
+          this.db.prepare(`
+            UPDATE cards SET depends_on_cards = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+          `).run(JSON.stringify(mergedDeps), targetCard.id);
+
+          dependenciesUpdated++;
+        }
+      }
+
+      return { cardsAdded, dependenciesUpdated, warnings };
+    });
+
+    try {
+      return transaction(projectId, data);
+    } catch (error) {
+      throw new Error(`Failed to append cards: ${error.message}`);
+    }
+  }
+
+  // ============================================================================
   // IMPORT/EXPORT OPERATIONS
   // ============================================================================
 

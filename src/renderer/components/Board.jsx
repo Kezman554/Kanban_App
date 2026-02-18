@@ -13,6 +13,7 @@ import CardStack from './CardStack';
 import CompletedStack from './CompletedStack';
 import CardDetail from './CardDetail';
 import AddCardDialog from './AddCardDialog';
+import AppendCardsDialog from './AppendCardsDialog';
 
 // Droppable Cell Component
 const DroppableCell = ({ id, children, isOver, canDrop, isEmpty }) => {
@@ -53,6 +54,7 @@ const Board = ({ projectId }) => {
   const [isAddCardDialogOpen, setIsAddCardDialogOpen] = useState(false);
   const [addCardSubphaseId, setAddCardSubphaseId] = useState(null);
   const [exportCopied, setExportCopied] = useState(false);
+  const [isAppendCardsDialogOpen, setIsAppendCardsDialogOpen] = useState(false);
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -237,9 +239,9 @@ const Board = ({ projectId }) => {
     lines.push(`Last session letter: ${lastSessionLetter}`);
     lines.push('');
 
-    // PHASES section
+    // PHASES section - IDs are for use with add_to_phase / add_to_subphase in append JSON
     if (project.phases && project.phases.length > 0) {
-      lines.push('PHASES:');
+      lines.push('PHASES (phase_id: name / subphase_id: name [cards]):');
       for (const phase of project.phases) {
         lines.push(`- ${phase.id}: ${phase.name}`);
         for (const subphase of phase.subphases || []) {
@@ -814,16 +816,28 @@ const Board = ({ projectId }) => {
                 <p className="text-sm text-dark-text-secondary mt-1">{project.description}</p>
               )}
             </div>
-            <button
-              onClick={handleExportForClaude}
-              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 border border-purple-500/30 transition-colors flex-shrink-0"
-              title="Copy project context for Claude"
-            >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-              </svg>
-              {exportCopied ? 'Copied!' : 'Export for Claude'}
-            </button>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setIsAppendCardsDialogOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-green-600/20 text-green-300 hover:bg-green-600/30 border border-green-500/30 transition-colors"
+                title="Append cards from JSON file"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Append Cards
+              </button>
+              <button
+                onClick={handleExportForClaude}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-purple-600/20 text-purple-300 hover:bg-purple-600/30 border border-purple-500/30 transition-colors"
+                title="Copy project context for Claude"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                {exportCopied ? 'Copied!' : 'Export for Claude'}
+              </button>
+            </div>
           </div>
           {/* Directory Path */}
           <div className="flex items-center gap-2 text-xs">
@@ -1230,6 +1244,14 @@ const Board = ({ projectId }) => {
         subphaseId={addCardSubphaseId}
         projectId={projectId}
         existingCards={getAllProjectCards()}
+      />
+
+      {/* Append Cards Dialog */}
+      <AppendCardsDialog
+        isOpen={isAppendCardsDialogOpen}
+        onClose={() => setIsAppendCardsDialogOpen(false)}
+        project={project}
+        onSuccess={() => loadProject(true)}
       />
 
       {/* Unlock Confirmation Dialog */}

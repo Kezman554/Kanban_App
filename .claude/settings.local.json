@@ -25,7 +25,10 @@
       "Bash(git -C \"C:\\\\Users\\\\Nick\\\\Desktop\\\\KanbanBuild\" commit -m \"$\\(cat <<''EOF''\nL: Add CardDetail panel\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(npx electron-rebuild:*)",
       "mcp__ide__getDiagnostics",
-      "Bash(npx electron:*)"
+      "Bash(npx electron:*)",
+      "Bash(sqlite3:*)",
+      "Bash(npx vite build:*)",
+      "Bash(dir:*)"
     ]
   }
 }

@@ -227,6 +227,15 @@ ipcMain.handle('db:importProjectFromFile', async (event, filePath) => {
   }
 })
 
+ipcMain.handle('db:appendCards', async (event, projectId, data) => {
+  try {
+    return db.appendCards(projectId, data)
+  } catch (error) {
+    console.error('Error appending cards:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:exportProjectToJson', async (event, projectId) => {
   try {
     return db.exportProjectToJson(projectId)

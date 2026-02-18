@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld('electron', {
   // Import/Export operations
   importProjectFromJson: (jsonData) => ipcRenderer.invoke('db:importProjectFromJson', jsonData),
   importProjectFromFile: (filePath) => ipcRenderer.invoke('db:importProjectFromFile', filePath),
+  appendCards: (projectId, data) => ipcRenderer.invoke('db:appendCards', projectId, data),
   exportProjectToJson: (projectId) => ipcRenderer.invoke('db:exportProjectToJson', projectId),
 
   // API operations
