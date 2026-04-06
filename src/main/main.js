@@ -254,6 +254,20 @@ ipcMain.handle('db:exportProjectToJson', async (event, projectId) => {
   }
 })
 
+const VAULT_EXPORT_PATH = 'C:\\Dev\\alfred-vault\\4-dev-hub\\kanban-export.json'
+
+ipcMain.handle('db:exportToVault', async () => {
+  try {
+    const data = db.exportForVault()
+    fs.writeFileSync(VAULT_EXPORT_PATH, JSON.stringify(data, null, 2), 'utf-8')
+    const cardCount = data.projects.reduce((sum, p) => sum + p.unblocked_cards.length, 0)
+    return { success: true, path: VAULT_EXPORT_PATH, projectCount: data.projects.length, cardCount }
+  } catch (error) {
+    console.error('Error exporting to vault:', error)
+    throw error
+  }
+})
+
 // API Key handler
 ipcMain.handle('api:getAnthropicKey', async () => {
   const apiKey = process.env.ANTHROPIC_API_KEY

@@ -958,6 +958,80 @@ class KanbanDatabase {
       throw new Error(`Failed to export project: ${error.message}`);
     }
   }
+
+  /**
+   * Export all projects for Obsidian vault consumption
+   * Returns roadmap overview + unblocked cards per project
+   */
+  exportForVault() {
+    try {
+      const projects = this.getAllProjects();
+      const exportProjects = projects.map(project => {
+        const fullProject = this.getProject(project.id);
+        const workableCards = this.getWorkableCards(project.id);
+
+        // Build roadmap: phases -> subphases -> card counts by status
+        const roadmap = (fullProject.phases || []).map(phase => ({
+          phase: phase.name,
+          short_name: phase.short_name,
+          subphases: (phase.subphases || []).map(sub => {
+            const cards = sub.cards || [];
+            return {
+              name: sub.name,
+              short_name: sub.short_name,
+              not_started: cards.filter(c => c.status === 'Not Started').length,
+              in_progress: cards.filter(c => c.status === 'In Progress').length,
+              done: cards.filter(c => c.status === 'Done').length,
+            };
+          })
+        }));
+
+        const shapeCard = (card) => ({
+          session_letter: card.session_letter,
+          title: card.title,
+          description: card.description,
+          phase: card.phase_name,
+          subphase: card.subphase_name,
+          complexity: card.complexity,
+          resource: card.resource,
+          depends_on_cards: card.depends_on_cards,
+          success_criteria: card.success_criteria,
+        });
+
+        const unblockedCards = workableCards.map(shapeCard);
+
+        // Get in-progress cards
+        const inProgressCards = this.db.prepare(`
+          SELECT c.*, s.name as subphase_name, p.name as phase_name
+          FROM cards c
+          JOIN subphases s ON c.subphase_id = s.id
+          JOIN phases p ON s.phase_id = p.id
+          WHERE p.project_id = ? AND c.status = 'In Progress'
+          ORDER BY p.display_order, s.display_order
+        `).all(project.id).map(card => {
+          card.depends_on_cards = JSON.parse(card.depends_on_cards);
+          return shapeCard(card);
+        });
+
+        return {
+          name: project.name,
+          slug: project.slug,
+          description: project.description,
+          stats: project.stats,
+          roadmap,
+          in_progress_cards: inProgressCards,
+          unblocked_cards: unblockedCards,
+        };
+      });
+
+      return {
+        exported_at: new Date().toISOString(),
+        projects: exportProjects,
+      };
+    } catch (error) {
+      throw new Error(`Failed to export for vault: ${error.message}`);
+    }
+  }
 }
 
 module.exports = KanbanDatabase;

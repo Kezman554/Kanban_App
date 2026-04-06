@@ -23,6 +23,7 @@ contextBridge.exposeInMainWorld('electron', {
   importProjectFromFile: (filePath) => ipcRenderer.invoke('db:importProjectFromFile', filePath),
   appendCards: (projectId, data) => ipcRenderer.invoke('db:appendCards', projectId, data),
   exportProjectToJson: (projectId) => ipcRenderer.invoke('db:exportProjectToJson', projectId),
+  exportToVault: () => ipcRenderer.invoke('db:exportToVault'),
 
   // API operations
   getAnthropicApiKey: () => ipcRenderer.invoke('api:getAnthropicKey'),
