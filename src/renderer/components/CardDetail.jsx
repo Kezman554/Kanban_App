@@ -758,13 +758,73 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
           {/* Manual Card Guidance */}
           {isManual && (
             <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-4">
-              <h3 className="text-sm font-semibold text-purple-300 mb-2 flex items-center gap-2">
-                <span>@</span> Manual Task Guidance
-              </h3>
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-semibold text-purple-300 flex items-center gap-2">
+                  <span>@</span> Manual Task Guidance
+                </h3>
+                <div className="flex items-center gap-2">
+                  {promptGuideSaveSuccess && (
+                    <span className="text-xs text-green-400">Saved!</span>
+                  )}
+                  {isEditingPromptGuide ? (
+                    <>
+                      <button
+                        onClick={handleCancelEditPromptGuide}
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={handleSavePromptGuide}
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                      >
+                        Save
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        onClick={handleEditPromptGuide}
+                        className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                        title={card.prompt_guide ? "Edit guidance" : "Add guidance"}
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                        <span>{card.prompt_guide ? 'Edit' : 'Add'}</span>
+                      </button>
+                      {card.prompt_guide && (
+                        <button
+                          onClick={handleCopyPromptGuide}
+                          className={`
+                            text-xs px-3 py-1 rounded font-medium transition-colors
+                            ${promptGuideCopySuccess
+                              ? 'bg-green-700 text-white'
+                              : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text'}
+                          `}
+                        >
+                          {promptGuideCopySuccess ? 'Copied!' : 'Copy'}
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+              {promptGuideSaveError && (
+                <div className="mb-2 text-xs text-red-400">{promptGuideSaveError}</div>
+              )}
               <p className="text-sm text-dark-text mb-3">
                 This task requires manual action and cannot be automated with Claude Code.
               </p>
-              {card.prompt_guide ? (
+              {isEditingPromptGuide ? (
+                <textarea
+                  value={editedPromptGuide}
+                  onChange={(e) => setEditedPromptGuide(e.target.value)}
+                  className="w-full h-48 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text font-mono resize-none focus:outline-none scrollbar-dark"
+                  placeholder="Enter task guidance or instructions..."
+                  autoFocus
+                />
+              ) : card.prompt_guide ? (
                 <div className="bg-dark-bg p-3 rounded">
                   <p className="text-sm text-dark-text whitespace-pre-wrap">{card.prompt_guide}</p>
                 </div>
