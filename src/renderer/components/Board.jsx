@@ -14,6 +14,7 @@ import CompletedStack from './CompletedStack';
 import CardDetail from './CardDetail';
 import AddCardDialog from './AddCardDialog';
 import AppendCardsDialog from './AppendCardsDialog';
+import ShortNameField from './ShortNameField';
 
 // Droppable Cell Component
 const DroppableCell = ({ id, children, isOver, canDrop, isEmpty }) => {
@@ -827,7 +828,16 @@ const Board = ({ projectId }) => {
         <div className="flex-shrink-0 p-6 border-b border-dark-border">
           <div className="flex items-start justify-between mb-2">
             <div>
-              <h1 className="text-2xl font-bold text-dark-text">{project.name}</h1>
+              <div className="flex items-center gap-3 flex-wrap">
+                <h1 className="text-2xl font-bold text-dark-text">{project.name}</h1>
+                <ShortNameField
+                  value={project.short_name}
+                  onSave={async (next) => {
+                    await window.electron.updateProject(project.id, { short_name: next });
+                    await loadProject(true);
+                  }}
+                />
+              </div>
               {project.description && (
                 <p className="text-sm text-dark-text-secondary mt-1">{project.description}</p>
               )}

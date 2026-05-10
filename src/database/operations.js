@@ -28,14 +28,16 @@ class KanbanDatabase {
     const transaction = this.db.transaction((projectData) => {
       // Insert project
       const insertProject = this.db.prepare(`
-        INSERT INTO projects (name, slug, description, prd_path, github_repo, directory_path, columns)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO projects (name, slug, short_name, description, prd_path, github_repo, directory_path, columns)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       const columns = projectData.columns || ['Not Started', 'In Progress', 'Done'];
+      const shortName = typeof projectData.short_name === 'string' ? projectData.short_name.trim() : null;
       const result = insertProject.run(
         projectData.name,
         projectData.slug,
+        shortName || null,
         projectData.description || null,
         projectData.prd_path || null,
         projectData.github_repo || null,
@@ -246,14 +248,21 @@ class KanbanDatabase {
    */
   updateProject(id, data) {
     try {
-      const allowedFields = ['name', 'slug', 'description', 'prd_path', 'github_repo', 'directory_path', 'columns'];
+      const allowedFields = ['name', 'slug', 'short_name', 'description', 'prd_path', 'github_repo', 'directory_path', 'columns'];
       const updates = [];
       const values = [];
 
       for (const [key, value] of Object.entries(data)) {
         if (allowedFields.includes(key)) {
           updates.push(`${key} = ?`);
-          values.push(key === 'columns' ? JSON.stringify(value) : value);
+          let stored = value;
+          if (key === 'columns') {
+            stored = JSON.stringify(value);
+          } else if (key === 'short_name') {
+            const trimmed = typeof value === 'string' ? value.trim() : value;
+            stored = trimmed ? trimmed : null;
+          }
+          values.push(stored);
         }
       }
 
@@ -1016,6 +1025,7 @@ class KanbanDatabase {
         return {
           name: project.name,
           slug: project.slug,
+          short_name: project.short_name || null,
           description: project.description,
           stats: project.stats,
           roadmap,

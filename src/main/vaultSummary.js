@@ -1,20 +1,12 @@
-// Maps project slug -> short, recognisable display name used in the
-// "Ready to Pick Up" section of kanban-summary.md. Add an entry here when
-// a new project is created if the auto-derived fallback isn't ideal.
-const PROJECT_SHORT_NAMES = {
-  'alfred-vault': 'Vault',
-  'lotr-youtube': 'LOTR',
-  'alarm-clock': 'Alarm',
-  'kitchen-sync': 'KitchenSync',
-  'requiem': 'Requiem',
-  'portfolio': 'Portfolio',
-}
-
+// Short label used for each project in the "Ready to Pick Up" section.
+// Reads project.short_name (set per-project in the UI). Falls back to the
+// first word of project.name when short_name is unset/blank.
 function getShortName(project) {
-  if (project.slug && PROJECT_SHORT_NAMES[project.slug]) {
-    return PROJECT_SHORT_NAMES[project.slug]
+  if (project && typeof project.short_name === 'string') {
+    const trimmed = project.short_name.trim()
+    if (trimmed) return trimmed
   }
-  const source = project.name || project.slug || ''
+  const source = (project && (project.name || project.slug)) || ''
   const first = source.split(/[\s\-_]+/)[0] || source
   return first
 }
@@ -126,4 +118,4 @@ function buildSummaryMarkdown(data) {
   return lines.join('\n')
 }
 
-module.exports = { buildSummaryMarkdown, PROJECT_SHORT_NAMES, getShortName }
+module.exports = { buildSummaryMarkdown, getShortName }

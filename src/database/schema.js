@@ -46,6 +46,18 @@ function initDb(dbPath = null) {
     db.exec('ALTER TABLE projects ADD COLUMN directory_path TEXT');
   }
 
+  // Add short_name column if it doesn't exist (for existing databases)
+  const hasShortName = projectColumns.some(col => col.name === 'short_name');
+  if (!hasShortName) {
+    db.exec('ALTER TABLE projects ADD COLUMN short_name TEXT');
+  }
+
+  // Backfill short_name for known projects whose first-word fallback would be wrong.
+  // Only updates rows where short_name IS NULL so user edits are never overwritten.
+  const backfill = db.prepare('UPDATE projects SET short_name = ? WHERE slug = ? AND short_name IS NULL');
+  backfill.run('Vault', 'obsidian-vault');
+  backfill.run('Alarm', 'wake-up-alarm');
+
   // Create phases table
   db.exec(`
     CREATE TABLE IF NOT EXISTS phases (
