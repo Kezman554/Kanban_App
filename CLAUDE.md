@@ -71,6 +71,10 @@ cd C:\Users\Nick\Desktop\KanbanBuild
 npm run dev
 ```
 
+## Windows shell note
+
+Never redirect with `> nul` in PowerShell — `nul` is a reserved device name on Windows but PowerShell treats it as a literal filename, so the redirect creates a junk file in the working directory. Use `| Out-Null` (or `2>&1 | Out-Null` to also swallow stderr) in PowerShell, or `> /dev/null` only inside a true bash context.
+
 ## Common Issues
 
 ### Blank window on launch

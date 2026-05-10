@@ -23,6 +23,11 @@ yarn-error.log*
 .DS_Store
 Thumbs.db
 
+# Windows reserved-name accidents: `> nul` in PowerShell creates a literal file
+# instead of redirecting to the null device. Belt-and-braces guard.
+nul
+**/nul
+
 # IDE
 .vscode/
 .idea/
