@@ -10,6 +10,9 @@ const terminal = require('./terminal')
 // File reader for project files
 const { readProjectFiles } = require('./fileReader')
 
+// Vault summary markdown builder
+const { buildSummaryMarkdown } = require('./vaultSummary')
+
 // Resolve the correct path to database operations
 // In dev mode with vite-plugin-electron, __dirname is dist-electron
 // We need to go up one level to project root and into src/database
@@ -255,13 +258,29 @@ ipcMain.handle('db:exportProjectToJson', async (event, projectId) => {
 })
 
 const VAULT_EXPORT_PATH = 'C:\\Dev\\alfred-vault\\4-dev-hub\\kanban-export.json'
+const VAULT_SUMMARY_PATH = path.join(path.dirname(VAULT_EXPORT_PATH), 'kanban-summary.md')
 
 ipcMain.handle('db:exportToVault', async () => {
   try {
     const data = db.exportForVault()
-    fs.writeFileSync(VAULT_EXPORT_PATH, JSON.stringify(data, null, 2), 'utf-8')
+    const summary = buildSummaryMarkdown(data)
+
+    // Write each file via tmp + rename so a reader never sees a half-written file.
+    const jsonTmp = VAULT_EXPORT_PATH + '.tmp'
+    const summaryTmp = VAULT_SUMMARY_PATH + '.tmp'
+    fs.writeFileSync(jsonTmp, JSON.stringify(data, null, 2), 'utf-8')
+    fs.writeFileSync(summaryTmp, summary, 'utf-8')
+    fs.renameSync(jsonTmp, VAULT_EXPORT_PATH)
+    fs.renameSync(summaryTmp, VAULT_SUMMARY_PATH)
+
     const cardCount = data.projects.reduce((sum, p) => sum + p.unblocked_cards.length, 0)
-    return { success: true, path: VAULT_EXPORT_PATH, projectCount: data.projects.length, cardCount }
+    return {
+      success: true,
+      path: VAULT_EXPORT_PATH,
+      summaryPath: VAULT_SUMMARY_PATH,
+      projectCount: data.projects.length,
+      cardCount,
+    }
   } catch (error) {
     console.error('Error exporting to vault:', error)
     throw error
