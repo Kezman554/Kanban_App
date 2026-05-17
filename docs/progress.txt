@@ -1,0 +1,76 @@
+Session Progress — 2026-05-10
+=============================
+
+Goal: Add an Alfred-readable markdown summary alongside the existing
+JSON vault export, and make the project short names data-driven.
+
+Three commits landed on master.
+
+1. 18e8a65 — summary file export function added, but format needs amending
+------------------------------------------------------------------------
+- New module src/main/vaultSummary.js with buildSummaryMarkdown(data).
+  - Frontmatter: tags [generated, kanban], status active, synced (ISO UTC).
+  - Header with sync timestamp + N projects, X of Y cards done (Z%).
+  - Per-project section in kanban natural order (created_at DESC):
+    "## <Name> — <pct>% (<done>/<total>)" with "In progress" and
+    "Next unblocked" (top 3) lines; "—" when empty.
+  - "Ready to Pick Up" with Solo (resource != claude_sub) and
+    Claude Session (resource == claude_sub) buckets. Filter: complexity
+    in {low, medium}. Stable sort: low before medium, original order as
+    tiebreaker. Empty list emits "_(none)_" so headers stay stable.
+- Initial implementation used an in-code PROJECT_SHORT_NAMES dict
+  keyed by slug.
+- main.js (db:exportToVault): writes both files via tmp + rename so
+  readers never see a half-written file.
+- vite.config.js: registered vaultSummary.js as a separate electron
+  build entry.
+
+2. 998d533 — updated project names, still an issue with nul files
+-----------------------------------------------------------------
+Replaced the hard-coded short-name dict with a per-project field.
+- Schema: added nullable TEXT column `short_name` to projects table
+  with idempotent PRAGMA-guarded migration. Backfill (only where
+  short_name IS NULL):
+    obsidian-vault → Vault
+    wake-up-alarm  → Alarm
+  Other slugs left NULL because their first-word fallback already
+  matches the desired display (kitchensync → KitchenSync,
+  ny-portfolio → Portfolio, requiem-nft-launcher → Requiem,
+  lotr-youtube-channel → LOTR).
+- operations.js:
+  - createProject: inserts short_name (trimmed; empty → NULL).
+  - updateProject: allowlist now includes short_name with same
+    trim-to-null treatment.
+  - exportForVault: emits short_name on each project entry — only
+    additive change to kanban-export.json's schema.
+- vaultSummary.js: PROJECT_SHORT_NAMES deleted. getShortName(project)
+  reads project.short_name; falls back to first word of name (then
+  slug) when null/empty/whitespace.
+- UI: new src/renderer/components/ShortNameField.jsx — click-to-edit
+  pill rendered next to project name in Board.jsx. Hint text:
+  "Short label used in summary exports. Defaults to the first word
+  of the project name if blank." Trim on save; Enter commits, Esc
+  cancels. Saves via existing window.electron.updateProject IPC.
+
+3. 35194d8 — Block stray Windows 'nul' files
+--------------------------------------------
+PowerShell treats `> nul` as a literal filename, not /dev/null, so
+prior sessions accidentally created nul and docs/nul. Removed both
+files (required [System.IO.File]::Delete with \\?\ prefix because
+PowerShell special-cases the literal name even under -LiteralPath).
+- .gitignore: added `nul` and `**/nul`.
+- CLAUDE.md: added "Windows shell note" telling future sessions to
+  use `| Out-Null` instead of `> nul`.
+
+Known gaps / followups
+----------------------
+- The kanban-summary.md format is functional but Nick flagged it
+  needs amending (per commit 1's message). Specifics TBD.
+- src/database/operations.test.js can't run from system node due
+  to better-sqlite3 ABI mismatch (compiled against Electron's Node).
+  Pre-existing; not addressed.
+- .claude/settings.local.json carries a local permission tweak that
+  has been intentionally left out of every commit this session.
+- Next step (per Nick's plan): regenerate the summary, eyeball it,
+  then move on to "Prompt 2" — updating the weekly-review skill to
+  consume kanban-summary.md.
