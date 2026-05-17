@@ -1005,6 +1005,7 @@ class KanbanDatabase {
           resource: card.resource,
           depends_on_cards: card.depends_on_cards,
           success_criteria: card.success_criteria,
+          notes: card.notes || '',
         });
 
         const unblockedCards = workableCards.map(shapeCard);
