@@ -27,6 +27,13 @@ function formatSyncedHuman(iso) {
   return `${safe.getUTCFullYear()}-${pad(safe.getUTCMonth() + 1)}-${pad(safe.getUTCDate())} ${pad(safe.getUTCHours())}:${pad(safe.getUTCMinutes())}`
 }
 
+// Notes are free-form text; flatten newlines/extra whitespace so they sit
+// cleanly on a single markdown sub-bullet line. Returns '' for blank input.
+function normaliseNotes(notes) {
+  if (typeof notes !== 'string') return ''
+  return notes.replace(/\s+/g, ' ').trim()
+}
+
 const COMPLEXITY_RANK = { low: 0, medium: 1 }
 
 function sortByComplexityStable(items) {
@@ -71,10 +78,22 @@ function buildSummaryMarkdown(data) {
     const pct = p.stats?.completion_percentage ?? 0
     lines.push(`## ${p.name} — ${pct}% (${done}/${total})`)
 
-    const inProg = (p.in_progress_cards || [])
+    const inProgCards = p.in_progress_cards || []
+    const inProg = inProgCards
       .map(c => `${c.session_letter} — ${c.title}`)
       .join('; ')
     lines.push(`- **In progress:** ${inProg || '—'}`)
+
+    // Resume hints for in-progress cards with non-empty notes. Single card
+    // -> bare *Resume:*; multiple cards -> *Resume <letter>:* so each hint
+    // unambiguously belongs to its card.
+    const withNotes = inProgCards.filter(c => normaliseNotes(c.notes))
+    const labelByLetter = inProgCards.length > 1
+    for (const c of withNotes) {
+      const note = normaliseNotes(c.notes)
+      const label = labelByLetter ? `*Resume ${c.session_letter}:*` : '*Resume:*'
+      lines.push(`  - ${label} ${note}`)
+    }
 
     const next = (p.unblocked_cards || [])
       .slice(0, 3)
