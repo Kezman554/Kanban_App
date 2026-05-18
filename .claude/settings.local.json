@@ -28,7 +28,8 @@
       "Bash(npx electron:*)",
       "Bash(sqlite3:*)",
       "Bash(npx vite build:*)",
-      "Bash(dir:*)"
+      "Bash(dir:*)",
+      "Bash(./node_modules/.bin/electron:*)"
     ]
   }
 }
