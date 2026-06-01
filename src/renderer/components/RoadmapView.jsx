@@ -7,6 +7,7 @@ const RoadmapView = ({ projectId }) => {
   const [error, setError] = useState(null);
   const [selectedCard, setSelectedCard] = useState(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [pathCopied, setPathCopied] = useState(false);
 
   useEffect(() => {
     if (!projectId) {
@@ -204,6 +205,29 @@ const RoadmapView = ({ projectId }) => {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                     </svg>
                     <span className="font-mono">{project.directory_path}</span>
+                  </button>
+                  <button
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(project.directory_path);
+                        setPathCopied(true);
+                        setTimeout(() => setPathCopied(false), 2000);
+                      } catch (err) {
+                        console.error('Failed to copy path:', err);
+                      }
+                    }}
+                    className={`transition-colors ${pathCopied ? 'text-green-400' : 'text-dark-text-secondary hover:text-dark-text'}`}
+                    title={pathCopied ? 'Copied!' : 'Copy path to clipboard'}
+                  >
+                    {pathCopied ? (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    ) : (
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                      </svg>
+                    )}
                   </button>
                   <button
                     onClick={async () => {
