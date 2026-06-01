@@ -445,7 +445,8 @@ ipcMain.handle('app:getInfo', async () => {
     electron: process.versions.electron,
     node: process.versions.node,
     platform: process.platform,
-    arch: process.arch
+    arch: process.arch,
+    directory: projectRoot
   }
 })
 

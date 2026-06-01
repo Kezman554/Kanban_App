@@ -562,6 +562,10 @@ function SettingsPage({ onProjectsChange }) {
               <span className="text-dark-text-secondary">Platform</span>
               <span className="text-dark-text font-mono">{appInfo?.platform || '-'} ({appInfo?.arch || '-'})</span>
             </div>
+            <div className="flex justify-between gap-4 py-2 border-b border-dark-border">
+              <span className="text-dark-text-secondary whitespace-nowrap">Directory</span>
+              <span className="text-dark-text font-mono text-right break-all">{appInfo?.directory || '-'}</span>
+            </div>
             <div className="flex justify-between py-2">
               <span className="text-dark-text-secondary">GitHub</span>
               <span className="text-blue-400 font-mono">github.com/Kezman554/Kanban_App</span>
