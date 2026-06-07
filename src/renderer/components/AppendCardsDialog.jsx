@@ -42,27 +42,57 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
       return { errors, warnings };
     }
 
-    // Check add_to_phase
-    if (!data.add_to_phase) {
-      errors.push('Missing "add_to_phase" field');
-    } else if (!projectLookups.phases[data.add_to_phase]) {
-      errors.push(`Phase ID ${data.add_to_phase} not found in project`);
-    }
+    const hasNewPhase = data.new_phase && typeof data.new_phase === 'object';
+    const hasNewSubphase = data.new_subphase && typeof data.new_subphase === 'object';
+    const hasAddToPhase = data.add_to_phase !== undefined && data.add_to_phase !== null;
+    const hasAddToSubphase = data.add_to_subphase !== undefined && data.add_to_subphase !== null;
 
-    // Check add_to_subphase
-    if (!data.add_to_subphase) {
-      errors.push('Missing "add_to_subphase" field');
-    } else if (!projectLookups.subphases[data.add_to_subphase]) {
-      errors.push(`Subphase ID ${data.add_to_subphase} not found in project`);
+    // Validate the combination of targeting fields
+    if (hasNewPhase && hasAddToPhase) {
+      errors.push('Provide either "add_to_phase" (existing) or "new_phase" (new), not both');
+    } else if (hasNewPhase) {
+      // Creating a new phase requires a new subphase too
+      if (!hasNewSubphase) {
+        errors.push('"new_phase" requires "new_subphase" (a phase cannot be created without a subphase)');
+      }
+      if (!data.new_phase.name) {
+        errors.push('"new_phase" is missing a name');
+      }
+      if (hasNewSubphase && !data.new_subphase.name) {
+        errors.push('"new_subphase" is missing a name');
+      }
+    } else if (hasNewSubphase) {
+      // New subphase under an existing phase
+      if (!hasAddToPhase) {
+        errors.push('"new_subphase" without "new_phase" requires a valid "add_to_phase" ID');
+      } else if (!projectLookups.phases[data.add_to_phase]) {
+        errors.push(`Phase ID ${data.add_to_phase} not found in project`);
+      }
+      if (!data.new_subphase.name) {
+        errors.push('"new_subphase" is missing a name');
+      }
     } else {
-      // Verify subphase belongs to the specified phase
-      const sub = projectLookups.subphases[data.add_to_subphase];
-      if (data.add_to_phase && sub) {
-        const phase = projectLookups.phases[data.add_to_phase];
-        if (phase) {
-          const belongsToPhase = (phase.subphases || []).some(s => s.id === data.add_to_subphase);
-          if (!belongsToPhase) {
-            errors.push(`Subphase ${data.add_to_subphase} does not belong to phase ${data.add_to_phase}`);
+      // Existing phase + existing subphase (original behavior)
+      if (!hasAddToPhase) {
+        errors.push('Missing "add_to_phase" field');
+      } else if (!projectLookups.phases[data.add_to_phase]) {
+        errors.push(`Phase ID ${data.add_to_phase} not found in project`);
+      }
+
+      if (!hasAddToSubphase) {
+        errors.push('Missing "add_to_subphase" field');
+      } else if (!projectLookups.subphases[data.add_to_subphase]) {
+        errors.push(`Subphase ID ${data.add_to_subphase} not found in project`);
+      } else {
+        // Verify subphase belongs to the specified phase
+        const sub = projectLookups.subphases[data.add_to_subphase];
+        if (hasAddToPhase && sub) {
+          const phase = projectLookups.phases[data.add_to_phase];
+          if (phase) {
+            const belongsToPhase = (phase.subphases || []).some(s => s.id === data.add_to_subphase);
+            if (!belongsToPhase) {
+              errors.push(`Subphase ${data.add_to_subphase} does not belong to phase ${data.add_to_phase}`);
+            }
           }
         }
       }
@@ -167,9 +197,22 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
 
   if (!isOpen) return null;
 
-  const targetSubphase = fileData?.add_to_subphase
-    ? projectLookups.subphases[fileData.add_to_subphase]
-    : null;
+  // Describe where the cards will land, accounting for new phase/subphase creation
+  const targetDescription = (() => {
+    if (!fileData) return null;
+    const newPhase = fileData.new_phase && typeof fileData.new_phase === 'object' ? fileData.new_phase : null;
+    const newSubphase = fileData.new_subphase && typeof fileData.new_subphase === 'object' ? fileData.new_subphase : null;
+
+    if (newPhase && newSubphase) {
+      return { name: newSubphase.name, note: `new phase "${newPhase.name}"` };
+    }
+    if (newSubphase) {
+      const phase = projectLookups.phases[fileData.add_to_phase];
+      return { name: newSubphase.name, note: phase ? `new subphase in "${phase.name}"` : 'new subphase' };
+    }
+    const existing = fileData.add_to_subphase ? projectLookups.subphases[fileData.add_to_subphase] : null;
+    return existing ? { name: existing.name, note: null } : null;
+  })();
 
   const canAppend = fileData && validationErrors.length === 0 && !appending && !result;
 
@@ -260,10 +303,13 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
                 </h3>
 
                 {/* Target info */}
-                {targetSubphase && (
+                {targetDescription && (
                   <p className="text-sm text-dark-text">
                     Adding <span className="font-bold text-blue-400">{fileData.new_cards.length}</span> card{fileData.new_cards.length !== 1 ? 's' : ''} to{' '}
-                    <span className="font-semibold">{targetSubphase.name}</span>
+                    <span className="font-semibold">{targetDescription.name}</span>
+                    {targetDescription.note && (
+                      <span className="text-green-400"> ({targetDescription.note})</span>
+                    )}
                   </p>
                 )}
 
@@ -307,6 +353,13 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
                 <p className="text-sm text-green-400">
                   {result.cardsAdded} card{result.cardsAdded !== 1 ? 's' : ''} added, {result.dependenciesUpdated} dependenc{result.dependenciesUpdated !== 1 ? 'ies' : 'y'} updated
                 </p>
+                {(result.createdPhase || result.createdSubphase) && (
+                  <p className="text-sm text-green-400">
+                    Created{result.createdPhase ? ` phase "${result.createdPhase.name}"` : ''}
+                    {result.createdPhase && result.createdSubphase ? ' and' : ''}
+                    {result.createdSubphase ? ` subphase "${result.createdSubphase.name}"` : ''}
+                  </p>
+                )}
                 {result.warnings && result.warnings.length > 0 && (
                   <div className="pt-1">
                     {result.warnings.map((w, i) => (

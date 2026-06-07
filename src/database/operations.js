@@ -757,9 +757,15 @@ class KanbanDatabase {
 
   /**
    * Append new cards to an existing project from JSON data
+   *
+   * The target subphase can be specified three ways:
+   *   1. Existing phase + existing subphase: add_to_phase (int) + add_to_subphase (int)
+   *   2. New phase + new subphase: new_phase (object) + new_subphase (object)
+   *   3. Existing phase + new subphase: add_to_phase (int) + new_subphase (object)
+   *
    * @param {number} projectId - Project ID to append to
-   * @param {Object} data - { add_to_phase, add_to_subphase, new_cards, dependency_updates }
-   * @returns {Object} - { cardsAdded, dependenciesUpdated, warnings }
+   * @param {Object} data - { add_to_phase, add_to_subphase, new_phase, new_subphase, new_cards, dependency_updates }
+   * @returns {Object} - { cardsAdded, dependenciesUpdated, warnings, createdPhase, createdSubphase }
    */
   appendCards(projectId, data) {
     const transaction = this.db.transaction((projectId, data) => {
@@ -767,22 +773,107 @@ class KanbanDatabase {
       let cardsAdded = 0;
       let dependenciesUpdated = 0;
 
-      // Validate phase exists in this project
-      const phase = this.db.prepare(`
-        SELECT id FROM phases WHERE id = ? AND project_id = ?
-      `).get(data.add_to_phase, projectId);
+      const hasNewPhase = data.new_phase && typeof data.new_phase === 'object';
+      const hasNewSubphase = data.new_subphase && typeof data.new_subphase === 'object';
+      const hasAddToPhase = data.add_to_phase !== undefined && data.add_to_phase !== null;
+      const hasAddToSubphase = data.add_to_subphase !== undefined && data.add_to_subphase !== null;
 
-      if (!phase) {
-        throw new Error(`Phase ${data.add_to_phase} not found in project ${projectId}`);
+      // Validate the combination of targeting fields
+      if (hasNewPhase && hasAddToPhase) {
+        throw new Error('Provide either add_to_phase (existing) or new_phase (new), not both');
+      }
+      if (hasNewPhase && !hasNewSubphase) {
+        throw new Error('new_phase requires new_subphase (a phase cannot be created without a subphase)');
+      }
+      if (hasNewSubphase && !hasNewPhase && !hasAddToPhase) {
+        throw new Error('new_subphase without new_phase requires a valid add_to_phase ID');
+      }
+      if (!hasNewPhase && !hasNewSubphase && (!hasAddToPhase || !hasAddToSubphase)) {
+        throw new Error('Must provide add_to_phase + add_to_subphase, new_phase + new_subphase, or add_to_phase + new_subphase');
       }
 
-      // Validate subphase exists in that phase
-      const subphase = this.db.prepare(`
-        SELECT id FROM subphases WHERE id = ? AND phase_id = ?
-      `).get(data.add_to_subphase, data.add_to_phase);
+      let targetSubphaseId;
+      let createdPhase = null;
+      let createdSubphase = null;
 
-      if (!subphase) {
-        throw new Error(`Subphase ${data.add_to_subphase} not found in phase ${data.add_to_phase}`);
+      if (hasNewPhase) {
+        // Create a brand new phase (with the next available display_order) and a subphase under it
+        const phaseOrderRow = this.db.prepare(`
+          SELECT MAX(display_order) AS maxOrder FROM phases WHERE project_id = ?
+        `).get(projectId);
+        const nextPhaseOrder = phaseOrderRow.maxOrder !== null ? phaseOrderRow.maxOrder + 1 : 0;
+
+        const phaseResult = this.db.prepare(`
+          INSERT INTO phases (project_id, name, short_name, description, display_order)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(
+          projectId,
+          data.new_phase.name,
+          data.new_phase.short_name || null,
+          data.new_phase.description || null,
+          nextPhaseOrder
+        );
+        const newPhaseId = phaseResult.lastInsertRowid;
+
+        const subphaseResult = this.db.prepare(`
+          INSERT INTO subphases (phase_id, name, short_name, description, display_order)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(
+          newPhaseId,
+          data.new_subphase.name,
+          data.new_subphase.short_name || null,
+          data.new_subphase.description || null,
+          1
+        );
+        targetSubphaseId = subphaseResult.lastInsertRowid;
+        createdPhase = { id: newPhaseId, name: data.new_phase.name };
+        createdSubphase = { id: targetSubphaseId, name: data.new_subphase.name };
+      } else if (hasNewSubphase) {
+        // Add a new subphase to an existing phase (with the next available display_order in that phase)
+        const phase = this.db.prepare(`
+          SELECT id FROM phases WHERE id = ? AND project_id = ?
+        `).get(data.add_to_phase, projectId);
+
+        if (!phase) {
+          throw new Error(`Phase ${data.add_to_phase} not found in project ${projectId}`);
+        }
+
+        const subOrderRow = this.db.prepare(`
+          SELECT MAX(display_order) AS maxOrder FROM subphases WHERE phase_id = ?
+        `).get(data.add_to_phase);
+        const nextSubOrder = subOrderRow.maxOrder !== null ? subOrderRow.maxOrder + 1 : 0;
+
+        const subphaseResult = this.db.prepare(`
+          INSERT INTO subphases (phase_id, name, short_name, description, display_order)
+          VALUES (?, ?, ?, ?, ?)
+        `).run(
+          data.add_to_phase,
+          data.new_subphase.name,
+          data.new_subphase.short_name || null,
+          data.new_subphase.description || null,
+          nextSubOrder
+        );
+        targetSubphaseId = subphaseResult.lastInsertRowid;
+        createdSubphase = { id: targetSubphaseId, name: data.new_subphase.name };
+      } else {
+        // Existing phase + existing subphase (original behavior)
+        const phase = this.db.prepare(`
+          SELECT id FROM phases WHERE id = ? AND project_id = ?
+        `).get(data.add_to_phase, projectId);
+
+        if (!phase) {
+          throw new Error(`Phase ${data.add_to_phase} not found in project ${projectId}`);
+        }
+
+        const subphase = this.db.prepare(`
+          SELECT id FROM subphases WHERE id = ? AND phase_id = ?
+        `).get(data.add_to_subphase, data.add_to_phase);
+
+        if (!subphase) {
+          throw new Error(`Subphase ${data.add_to_subphase} not found in phase ${data.add_to_phase}`);
+        }
+
+        targetSubphaseId = data.add_to_subphase;
       }
 
       // Get all existing session letters in the project
@@ -818,7 +909,7 @@ class KanbanDatabase {
       if (data.new_cards && Array.isArray(data.new_cards)) {
         for (const card of data.new_cards) {
           insertCard.run(
-            data.add_to_subphase,
+            targetSubphaseId,
             card.session_letter,
             card.title,
             card.description || null,
@@ -876,7 +967,7 @@ class KanbanDatabase {
         }
       }
 
-      return { cardsAdded, dependenciesUpdated, warnings };
+      return { cardsAdded, dependenciesUpdated, warnings, createdPhase, createdSubphase };
     });
 
     try {
