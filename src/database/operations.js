@@ -16,6 +16,93 @@ class KanbanDatabase {
   }
 
   // ============================================================================
+  // EXTERNAL (CROSS-PROJECT) DEPENDENCY HELPERS
+  // ============================================================================
+
+  /**
+   * Validate and normalize an external_dependencies array for storage.
+   * Each entry references a card in another project by project slug + session letter.
+   * Computed/enriched fields are stripped so only the canonical shape is persisted.
+   *
+   * @param {*} entries - Raw external_dependencies value from import JSON
+   * @param {boolean} validate - When true, throw on malformed entries
+   * @returns {Array} - Array of { project_slug, card_letter, description }
+   */
+  normalizeExternalDependencies(entries, validate = true) {
+    if (entries === undefined || entries === null) return [];
+    if (!Array.isArray(entries)) {
+      if (validate) throw new Error('external_dependencies must be an array');
+      return [];
+    }
+
+    return entries.map((entry, i) => {
+      const slug = entry && entry.project_slug;
+      const letter = entry && entry.card_letter;
+
+      if (validate) {
+        if (typeof slug !== 'string' || slug.trim() === '') {
+          throw new Error(`external_dependencies[${i}].project_slug must be a non-empty string`);
+        }
+        if (typeof letter !== 'string' || letter.trim() === '') {
+          throw new Error(`external_dependencies[${i}].card_letter must be a non-empty string`);
+        }
+      }
+
+      return {
+        project_slug: typeof slug === 'string' ? slug.trim() : slug,
+        card_letter: typeof letter === 'string' ? letter.trim() : letter,
+        description: (entry && entry.description) || '',
+      };
+    });
+  }
+
+  /**
+   * Resolve external dependencies against the current database state.
+   * An entry is resolved when the referenced card (by project slug + session letter)
+   * exists and has status "Done". A missing project or card is treated as unresolved.
+   * Does NOT validate at import time — the referenced project may not be imported yet.
+   *
+   * @param {Array} entries - Stored external_dependencies (project_slug, card_letter, description)
+   * @returns {Array} - Entries enriched with { resolved, status, project_name }
+   */
+  resolveExternalDependencies(entries) {
+    if (!Array.isArray(entries)) return [];
+
+    return entries.map(entry => {
+      const resolved = {
+        project_slug: entry.project_slug,
+        card_letter: entry.card_letter,
+        description: entry.description || '',
+        resolved: false,
+        status: null,
+        project_name: null,
+      };
+
+      if (!entry.project_slug || !entry.card_letter) return resolved;
+
+      const project = this.db.prepare(
+        'SELECT id, name FROM projects WHERE slug = ?'
+      ).get(entry.project_slug);
+
+      if (!project) return resolved; // project not imported yet -> unresolved
+      resolved.project_name = project.name;
+
+      const refCard = this.db.prepare(`
+        SELECT c.status
+        FROM cards c
+        JOIN subphases s ON c.subphase_id = s.id
+        JOIN phases p ON s.phase_id = p.id
+        WHERE p.project_id = ? AND c.session_letter = ?
+      `).get(project.id, entry.card_letter);
+
+      if (!refCard) return resolved; // referenced card doesn't exist yet -> unresolved
+      resolved.status = refCard.status;
+      resolved.resolved = refCard.status === 'Done';
+      return resolved;
+    });
+  }
+
+  // ============================================================================
   // PROJECT OPERATIONS
   // ============================================================================
 
@@ -62,10 +149,10 @@ class KanbanDatabase {
         const insertCard = this.db.prepare(`
           INSERT INTO cards (
             subphase_id, session_letter, title, description, success_criteria,
-            resource, status, depends_on_cards, is_placeholder, complexity,
+            resource, status, depends_on_cards, external_dependencies, is_placeholder, complexity,
             likely_needs_expansion, prompt_guide, checkpoint, git_commit_message,
             parent_card_id, is_expanded
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `);
 
         projectData.phases.forEach((phase, phaseIndex) => {
@@ -104,6 +191,7 @@ class KanbanDatabase {
                     card.resource || 'claude_sub',
                     card.status || 'Not Started',
                     JSON.stringify(card.depends_on_cards || []),
+                    JSON.stringify(this.normalizeExternalDependencies(card.external_dependencies)),
                     card.is_placeholder ? 1 : 0,
                     card.complexity || 'medium',
                     card.likely_needs_expansion ? 1 : 0,
@@ -173,6 +261,9 @@ class KanbanDatabase {
       // Parse JSON fields in cards
       cards.forEach(card => {
         card.depends_on_cards = JSON.parse(card.depends_on_cards);
+        card.external_dependencies = this.resolveExternalDependencies(
+          JSON.parse(card.external_dependencies || '[]')
+        );
         card.is_placeholder = Boolean(card.is_placeholder);
         card.likely_needs_expansion = Boolean(card.likely_needs_expansion);
         card.is_expanded = Boolean(card.is_expanded);
@@ -338,6 +429,9 @@ class KanbanDatabase {
 
       // Parse JSON fields
       card.depends_on_cards = JSON.parse(card.depends_on_cards);
+      card.external_dependencies = this.resolveExternalDependencies(
+        JSON.parse(card.external_dependencies || '[]')
+      );
       card.is_placeholder = Boolean(card.is_placeholder);
       card.likely_needs_expansion = Boolean(card.likely_needs_expansion);
       card.is_expanded = Boolean(card.is_expanded);
@@ -359,10 +453,10 @@ class KanbanDatabase {
       const sql = `
         INSERT INTO cards (
           subphase_id, session_letter, title, description, success_criteria,
-          resource, status, depends_on_cards, is_placeholder, complexity,
+          resource, status, depends_on_cards, external_dependencies, is_placeholder, complexity,
           likely_needs_expansion, prompt_guide, checkpoint, git_commit_message,
           notes, parent_card_id, is_expanded
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `;
 
       const result = this.db.prepare(sql).run(
@@ -374,6 +468,7 @@ class KanbanDatabase {
         cardData.resource || 'claude_sub',
         'Not Started',
         JSON.stringify(cardData.depends_on_cards || []),
+        JSON.stringify(this.normalizeExternalDependencies(cardData.external_dependencies)),
         cardData.is_placeholder ? 1 : 0,
         cardData.complexity || 'medium',
         cardData.likely_needs_expansion ? 1 : 0,
@@ -688,6 +783,7 @@ class KanbanDatabase {
       }
 
       const dependsOnCards = JSON.parse(card.depends_on_cards);
+      const reasons = [];
 
       // Check if depends on specific cards
       if (dependsOnCards.length > 0) {
@@ -719,11 +815,21 @@ class KanbanDatabase {
         }
 
         if (incompleteCards.length > 0) {
-          return `Waiting on card${incompleteCards.length > 1 ? 's' : ''}: ${incompleteCards.join(', ')}`;
+          reasons.push(`Waiting on card${incompleteCards.length > 1 ? 's' : ''}: ${incompleteCards.join(', ')}`);
         }
       }
 
-      return null;
+      // Check cross-project (external) dependencies
+      const externalDeps = this.resolveExternalDependencies(
+        JSON.parse(card.external_dependencies || '[]')
+      );
+      const unresolvedExternal = externalDeps.filter(dep => !dep.resolved);
+      if (unresolvedExternal.length > 0) {
+        const labels = unresolvedExternal.map(dep => `${dep.project_slug}/${dep.card_letter}`);
+        reasons.push(`Waiting on external: ${labels.join(', ')}`);
+      }
+
+      return reasons.length > 0 ? reasons.join('; ') : null;
     } catch (error) {
       throw new Error(`Failed to get blocked reason: ${error.message}`);
     }
@@ -900,10 +1006,10 @@ class KanbanDatabase {
       const insertCard = this.db.prepare(`
         INSERT INTO cards (
           subphase_id, session_letter, title, description, success_criteria,
-          resource, status, depends_on_cards, is_placeholder, complexity,
+          resource, status, depends_on_cards, external_dependencies, is_placeholder, complexity,
           likely_needs_expansion, prompt_guide, checkpoint, git_commit_message,
           parent_card_id, is_expanded
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       if (data.new_cards && Array.isArray(data.new_cards)) {
@@ -917,6 +1023,7 @@ class KanbanDatabase {
             card.resource || 'claude_sub',
             card.status || 'Not Started',
             JSON.stringify(card.depends_on_cards || []),
+            JSON.stringify(this.normalizeExternalDependencies(card.external_dependencies)),
             card.is_placeholder ? 1 : 0,
             card.complexity || 'medium',
             card.likely_needs_expansion ? 1 : 0,
@@ -1043,6 +1150,15 @@ class KanbanDatabase {
                   // Remove subphase_id as it's relative to this structure
                   delete cleanCard.subphase_id;
                   delete cleanCard.parent_card_id;
+                  // Strip computed resolution fields from external_dependencies,
+                  // keeping only the canonical { project_slug, card_letter, description }
+                  if (Array.isArray(cleanCard.external_dependencies)) {
+                    cleanCard.external_dependencies = cleanCard.external_dependencies.map(dep => ({
+                      project_slug: dep.project_slug,
+                      card_letter: dep.card_letter,
+                      description: dep.description || '',
+                    }));
+                  }
                   return cleanCard;
                 });
               }

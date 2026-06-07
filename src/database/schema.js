@@ -100,6 +100,7 @@ function initDb(dbPath = null) {
       resource TEXT DEFAULT 'claude_sub' CHECK(resource IN ('claude_sub', 'anthropic_api', 'none', 'tbc')),
       status TEXT DEFAULT 'Not Started' CHECK(status IN ('Not Started', 'In Progress', 'Done')),
       depends_on_cards TEXT DEFAULT '[]',
+      external_dependencies TEXT DEFAULT '[]',
       is_placeholder INTEGER DEFAULT 0,
       complexity TEXT DEFAULT 'medium' CHECK(complexity IN ('low', 'medium', 'high')),
       likely_needs_expansion INTEGER DEFAULT 0,
@@ -122,6 +123,13 @@ function initDb(dbPath = null) {
   const hasNotes = cardColumns.some(col => col.name === 'notes');
   if (!hasNotes) {
     db.exec('ALTER TABLE cards ADD COLUMN notes TEXT');
+  }
+
+  // Add external_dependencies column if it doesn't exist (for existing databases)
+  // Stores cross-project dependencies: [{ project_slug, card_letter, description }]
+  const hasExternalDeps = cardColumns.some(col => col.name === 'external_dependencies');
+  if (!hasExternalDeps) {
+    db.exec("ALTER TABLE cards ADD COLUMN external_dependencies TEXT DEFAULT '[]'");
   }
 
   // Create resources table

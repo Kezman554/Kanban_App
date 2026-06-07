@@ -235,6 +235,20 @@ const Board = ({ projectId }) => {
     // Strip "Session X:" prefix from title since we already show the letter
     const cleanTitle = (title) => title.replace(/^Session\s+[A-Z]+\d*:\s*/i, '');
 
+    // Format cross-project dependencies as ", external deps: [slug/letter: description, ...]"
+    // so a Claude chat can see blockers from other projects. Empty string when none.
+    const formatExternalDeps = (card) => {
+      const deps = card.external_dependencies || [];
+      if (deps.length === 0) return '';
+      const parts = deps.map(d => {
+        const label = `${d.project_slug}/${d.card_letter}`;
+        const desc = d.description ? `: ${d.description}` : '';
+        const mark = d.resolved ? ' (done)' : '';
+        return `${label}${desc}${mark}`;
+      });
+      return `, external deps: [${parts.join(', ')}]`;
+    };
+
     // Build export text
     let lines = [];
     lines.push(`Project: ${project.name}`);
@@ -266,7 +280,7 @@ const Board = ({ projectId }) => {
           ? card.depends_on_cards.join(', ')
           : '';
         const built = extractBuiltSummary(card);
-        lines.push(`- ${card.session_letter}: ${cleanTitle(card.title)} → depends on [${deps}], built: ${built}`);
+        lines.push(`- ${card.session_letter}: ${cleanTitle(card.title)} → depends on [${deps}]${formatExternalDeps(card)}, built: ${built}`);
       }
       lines.push('');
     }
@@ -278,7 +292,7 @@ const Board = ({ projectId }) => {
         const deps = (card.depends_on_cards && card.depends_on_cards.length > 0)
           ? card.depends_on_cards.join(', ')
           : '';
-        lines.push(`- ${card.session_letter}: ${cleanTitle(card.title)} → depends on [${deps}]`);
+        lines.push(`- ${card.session_letter}: ${cleanTitle(card.title)} → depends on [${deps}]${formatExternalDeps(card)}`);
       }
       lines.push('');
     }
@@ -290,7 +304,7 @@ const Board = ({ projectId }) => {
         const deps = (card.depends_on_cards && card.depends_on_cards.length > 0)
           ? card.depends_on_cards.join(', ')
           : '';
-        lines.push(`- ${card.session_letter}: ${cleanTitle(card.title)} → depends on [${deps}]`);
+        lines.push(`- ${card.session_letter}: ${cleanTitle(card.title)} → depends on [${deps}]${formatExternalDeps(card)}`);
       }
       lines.push('');
     }
@@ -326,7 +340,13 @@ const Board = ({ projectId }) => {
   const isCardBlocked = (card) => {
     if (!card) return false;
 
-    // Check if card has dependencies
+    // Cross-project (external) dependencies: blocked if any is unresolved.
+    // Resolution status is computed by the backend (resolveExternalDependencies).
+    if ((card.external_dependencies || []).some(dep => !dep.resolved)) {
+      return true;
+    }
+
+    // Check if card has internal dependencies
     if (!card.depends_on_cards || card.depends_on_cards.length === 0) {
       return false;
     }

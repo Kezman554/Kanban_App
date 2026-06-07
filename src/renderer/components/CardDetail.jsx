@@ -501,6 +501,42 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             </div>
           )}
 
+          {/* External (cross-project) Dependencies */}
+          {card.external_dependencies && card.external_dependencies.length > 0 && (
+            <div>
+              <h3 className="text-sm font-semibold text-dark-text-secondary mb-2 flex items-center gap-1">
+                <span>🔗</span> External Dependencies
+              </h3>
+              <div className="space-y-2">
+                {card.external_dependencies.map((dep, idx) => (
+                  <div
+                    key={idx}
+                    className={`text-sm px-3 py-2 rounded border ${
+                      dep.resolved
+                        ? 'bg-green-900/20 border-green-700/60'
+                        : 'bg-amber-900/20 border-amber-700/60'
+                    }`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-dark-text">
+                        {dep.project_name || dep.project_slug}
+                        <span className="text-dark-text-secondary"> · Session {dep.card_letter}</span>
+                      </span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
+                        dep.resolved ? 'bg-green-700 text-green-100' : 'bg-amber-700 text-amber-100'
+                      }`}>
+                        {dep.resolved ? 'Resolved' : (dep.project_name ? (dep.status || 'card not found') : 'project not imported')}
+                      </span>
+                    </div>
+                    {dep.description && (
+                      <p className="text-dark-text-secondary mt-1">{dep.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Claude Code Prompt (prompt_guide) - only for non-manual cards */}
           {(hasPromptGuide || isEditingPromptGuide) && !isManual && (
             <div>

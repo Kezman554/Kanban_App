@@ -69,6 +69,12 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
   const actualStatus = isBlocked ? 'Blocked' : card.status;
   const statusStyle = statusStyles[actualStatus] || statusStyles['Not Started'];
 
+  // Cross-project (external) dependencies that are not yet resolved
+  const unresolvedExternalDeps = (card.external_dependencies || []).filter(d => !d.resolved);
+  const externalDepTooltip = unresolvedExternalDeps
+    .map(d => `${d.project_slug}/${d.card_letter}${d.description ? `: ${d.description}` : ''} — ${d.status ? d.status : 'not found'}`)
+    .join('\n');
+
   // Complexity badge colors
   const complexityColors = {
     low: 'bg-green-900 text-green-300',
@@ -181,6 +187,21 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
           >
             <span>🔒</span>
             <span>Blocked</span>
+          </div>
+        )}
+
+        {/* External (cross-project) Dependency Indicator - distinct from internal lock */}
+        {unresolvedExternalDeps.length > 0 && (
+          <div
+            className="text-xs px-2 py-0.5 rounded bg-amber-900 text-amber-300 border border-amber-700/60 flex items-center gap-1 max-w-[12rem]"
+            title={`Blocked by other project${unresolvedExternalDeps.length > 1 ? 's' : ''}:\n${externalDepTooltip}`}
+          >
+            <span>🔗</span>
+            <span className="truncate">
+              {unresolvedExternalDeps.length === 1
+                ? unresolvedExternalDeps[0].project_slug
+                : `${unresolvedExternalDeps.length} external`}
+            </span>
           </div>
         )}
 
