@@ -74,3 +74,67 @@ Known gaps / followups
 - Next step (per Nick's plan): regenerate the summary, eyeball it,
   then move on to "Prompt 2" — updating the weekly-review skill to
   consume kanban-summary.md.
+
+
+GAP NOTICE — undocumented sessions
+==================================
+This log has gaps: work landed between 2026-05-10 and 2026-07-04
+without progress entries. Known only from commit messages (details
+not captured here):
+
+- 2026-05-17: d623416 include card notes in kanban-export.json;
+  344cf8d surface in-progress card notes as Resume hints in
+  kanban-summary.md. (This presumably was the "format needs
+  amending" followup, but that's inferred, not recorded.)
+- 2026-06-01: e4e002a show app directory in Settings About;
+  eedc04d one-click copy button for project directory path;
+  2f8b920 collapsible sidebar toggle.
+- 2026-06-07: f3741f8 inline phase/subphase creation in Append
+  Cards import; 9e48426 cross-project (external) card dependencies.
+
+
+Session Progress — 2026-07-04
+=============================
+
+Goal: Add edit buttons to cards for Title, Description and Success
+Criteria, working on any card including blocked ones.
+
+1. Card detail editing (uncommitted at time of writing)
+--------------------------------------------------------
+- operations.js: new updateCardDetails(id, {title, description,
+  success_criteria}) — partial-update pattern matching
+  updateCardPrompt. Title is trimmed and rejected if empty;
+  description/success_criteria may be cleared.
+- main.js: new db:updateCardDetails IPC handler.
+- preload.js: exposed window.electron.updateCardDetails.
+- CardDetail.jsx:
+  - Title: pencil button beside the modal-header title; inline
+    input while editing (Enter saves, Esc cancels without closing
+    the modal via stopPropagation).
+  - Description and Success Criteria: sections previously hidden
+    when empty now always render, with Edit/Add button and
+    "No description" / "No success criteria" placeholders, so the
+    fields can be added to cards that never had them. Cancel/Save +
+    "Saved!" flash + inline error, same styling as Notes editor.
+  - Shared editingField/editedFieldValue state for the three fields
+    (only one editable at a time) rather than three copies of the
+    per-field state pattern.
+- RoadmapView.jsx: was never passing onCardUpdated to CardDetail
+  (pre-existing gap — notes/prompt edits there didn't refresh).
+  Added handleCardUpdated (reload project + refetch card) and wired
+  the prop.
+- Blocked cards needed no gating change: the lock only disables
+  drag; clicking any card already opens the detail modal, so the
+  edit buttons work on blocked cards in Board, Roadmap and
+  stack-expand views automatically.
+- Verified with npm run build (clean).
+
+Known gaps / followups
+----------------------
+- Clicking outside the modal or pressing Esc while editing a
+  textarea still discards the draft silently (pre-existing pattern
+  shared with Notes/prompt editing).
+- operations.test.js still can't run from system node
+  (better-sqlite3 ABI mismatch) — updateCardDetails has no test.
+- .claude/settings.local.json still carries an uncommitted local
+  permission tweak, intentionally left out again.
