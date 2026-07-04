@@ -684,6 +684,50 @@ class KanbanDatabase {
   }
 
   /**
+   * Update card core details (title, description, success criteria)
+   * @param {number} id - Card ID
+   * @param {Object} details - Object with title, description, success_criteria
+   * @returns {boolean} - Success status
+   */
+  updateCardDetails(id, details) {
+    try {
+      const updates = [];
+      const values = [];
+
+      if (details.title !== undefined) {
+        const title = String(details.title).trim();
+        if (!title) {
+          throw new Error('Title cannot be empty');
+        }
+        updates.push('title = ?');
+        values.push(title);
+      }
+      if (details.description !== undefined) {
+        updates.push('description = ?');
+        values.push(details.description);
+      }
+      if (details.success_criteria !== undefined) {
+        updates.push('success_criteria = ?');
+        values.push(details.success_criteria);
+      }
+
+      if (updates.length === 0) {
+        return false;
+      }
+
+      updates.push('updated_at = CURRENT_TIMESTAMP');
+      values.push(id);
+
+      const sql = `UPDATE cards SET ${updates.join(', ')} WHERE id = ?`;
+      const result = this.db.prepare(sql).run(...values);
+
+      return result.changes > 0;
+    } catch (error) {
+      throw new Error(`Failed to update card details: ${error.message}`);
+    }
+  }
+
+  /**
    * Clear all dependencies for a card (unlock it)
    * @param {number} id - Card ID
    * @returns {boolean} - Success status

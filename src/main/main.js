@@ -179,6 +179,15 @@ ipcMain.handle('db:updateCardPrompt', async (event, cardId, promptData) => {
   }
 })
 
+ipcMain.handle('db:updateCardDetails', async (event, cardId, details) => {
+  try {
+    return db.updateCardDetails(cardId, details)
+  } catch (error) {
+    console.error('Error updating card details:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:updateCardNotes', async (event, cardId, notes) => {
   try {
     return db.updateCardNotes(cardId, notes)

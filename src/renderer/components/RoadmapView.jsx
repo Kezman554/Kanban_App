@@ -114,6 +114,16 @@ const RoadmapView = ({ projectId }) => {
     }, 300);
   };
 
+  const handleCardUpdated = async (cardId) => {
+    try {
+      await loadProject();
+      const freshCard = await window.electron.getCard(cardId);
+      if (freshCard) setSelectedCard(freshCard);
+    } catch (err) {
+      console.error('Failed to refresh card:', err);
+    }
+  };
+
   const handleMarkDone = async (cardId, progressNotes) => {
     try {
       await window.electron.updateCardStatus(cardId, 'Done');
@@ -493,6 +503,7 @@ const RoadmapView = ({ projectId }) => {
         onClose={handleCloseDetail}
         onMarkDone={handleMarkDone}
         onStatusChange={handleStatusChange}
+        onCardUpdated={handleCardUpdated}
         project={project}
       />
     </div>

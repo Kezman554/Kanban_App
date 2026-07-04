@@ -16,6 +16,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const [editedPromptGuide, setEditedPromptGuide] = useState('');
   const [promptGuideSaveSuccess, setPromptGuideSaveSuccess] = useState(false);
   const [promptGuideSaveError, setPromptGuideSaveError] = useState(null);
+  const [editingField, setEditingField] = useState(null); // 'title' | 'description' | 'success_criteria'
+  const [editedFieldValue, setEditedFieldValue] = useState('');
+  const [fieldSaveSuccess, setFieldSaveSuccess] = useState(null);
+  const [fieldSaveError, setFieldSaveError] = useState(null);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
   const [notesSaveSuccess, setNotesSaveSuccess] = useState(false);
@@ -62,6 +66,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setEditedPromptGuide('');
     setPromptGuideSaveSuccess(false);
     setPromptGuideSaveError(null);
+    setEditingField(null);
+    setEditedFieldValue('');
+    setFieldSaveSuccess(null);
+    setFieldSaveError(null);
     setIsEditingNotes(false);
     setEditedNotes('');
     setNotesSaveSuccess(false);
@@ -213,6 +221,42 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     } catch (error) {
       console.error('Failed to save prompt guide:', error);
       setPromptGuideSaveError(error.message || 'Failed to save');
+    }
+  };
+
+  const handleEditField = (field) => {
+    setEditedFieldValue(card[field] || '');
+    setEditingField(field);
+    setFieldSaveError(null);
+  };
+
+  const handleCancelEditField = () => {
+    setEditingField(null);
+    setEditedFieldValue('');
+    setFieldSaveError(null);
+  };
+
+  const handleSaveField = async () => {
+    const field = editingField;
+    if (!field) return;
+    const value = field === 'title' ? editedFieldValue.trim() : editedFieldValue;
+    if (field === 'title' && !value) {
+      setFieldSaveError('Title cannot be empty');
+      return;
+    }
+    try {
+      setFieldSaveError(null);
+      await window.electron.updateCardDetails(card.id, { [field]: value });
+      setEditingField(null);
+      setEditedFieldValue('');
+      setFieldSaveSuccess(field);
+      setTimeout(() => setFieldSaveSuccess(null), 2000);
+      if (onCardUpdated) {
+        await onCardUpdated(card.id);
+      }
+    } catch (error) {
+      console.error('Failed to save card details:', error);
+      setFieldSaveError(error.message || 'Failed to save');
     }
   };
 
@@ -396,8 +440,57 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               `}>
                 {card.status === 'Done' ? '✓' : card.session_letter}
               </div>
-              <h2 className="text-xl font-bold text-dark-text">{card.title}</h2>
+              {editingField === 'title' ? (
+                <div className="flex-1 flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={editedFieldValue}
+                    onChange={(e) => setEditedFieldValue(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') handleSaveField();
+                      if (e.key === 'Escape') {
+                        e.stopPropagation();
+                        handleCancelEditField();
+                      }
+                    }}
+                    className="flex-1 px-2 py-1 bg-dark-bg border border-blue-500 rounded text-xl font-bold text-dark-text focus:outline-none"
+                    placeholder="Card title..."
+                    autoFocus
+                  />
+                  <button
+                    onClick={handleCancelEditField}
+                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveField}
+                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                  >
+                    Save
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <h2 className="text-xl font-bold text-dark-text">{card.title}</h2>
+                  <button
+                    onClick={() => handleEditField('title')}
+                    className="flex-shrink-0 p-1 rounded hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text transition-colors"
+                    title="Edit title"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  {fieldSaveSuccess === 'title' && (
+                    <span className="text-xs text-green-400">Saved!</span>
+                  )}
+                </>
+              )}
             </div>
+            {editingField === 'title' && fieldSaveError && (
+              <div className="mb-2 text-xs text-red-400">{fieldSaveError}</div>
+            )}
 
             {/* Status and Resource Badges */}
             <div className="flex items-center gap-2 flex-wrap">
@@ -465,24 +558,126 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto scrollbar-dark p-6 space-y-6">
           {/* Description */}
-          {card.description && (
-            <div>
-              <h3 className="text-sm font-semibold text-dark-text-secondary mb-2">Description</h3>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-dark-text-secondary">Description</h3>
+                {fieldSaveSuccess === 'description' && (
+                  <span className="text-xs text-green-400">Saved!</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {editingField === 'description' ? (
+                  <>
+                    <button
+                      onClick={handleCancelEditField}
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveField}
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                    >
+                      Save
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => handleEditField('description')}
+                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                    title={card.description ? 'Edit description' : 'Add description'}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span>{card.description ? 'Edit' : 'Add'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+            {editingField === 'description' && fieldSaveError && (
+              <div className="mb-2 text-xs text-red-400">{fieldSaveError}</div>
+            )}
+            {editingField === 'description' ? (
+              <textarea
+                value={editedFieldValue}
+                onChange={(e) => setEditedFieldValue(e.target.value)}
+                className="w-full h-32 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text resize-none focus:outline-none scrollbar-dark"
+                placeholder="Describe what this card involves..."
+                autoFocus
+              />
+            ) : card.description ? (
               <p className="text-sm text-dark-text whitespace-pre-wrap bg-dark-bg p-3 rounded">
                 {card.description}
               </p>
-            </div>
-          )}
+            ) : (
+              <p className="text-sm text-dark-text-secondary italic bg-dark-bg p-3 rounded">
+                No description
+              </p>
+            )}
+          </div>
 
           {/* Success Criteria */}
-          {card.success_criteria && (
-            <div>
-              <h3 className="text-sm font-semibold text-dark-text-secondary mb-2">Success Criteria</h3>
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-dark-text-secondary">Success Criteria</h3>
+                {fieldSaveSuccess === 'success_criteria' && (
+                  <span className="text-xs text-green-400">Saved!</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {editingField === 'success_criteria' ? (
+                  <>
+                    <button
+                      onClick={handleCancelEditField}
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveField}
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                    >
+                      Save
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => handleEditField('success_criteria')}
+                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                    title={card.success_criteria ? 'Edit success criteria' : 'Add success criteria'}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span>{card.success_criteria ? 'Edit' : 'Add'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+            {editingField === 'success_criteria' && fieldSaveError && (
+              <div className="mb-2 text-xs text-red-400">{fieldSaveError}</div>
+            )}
+            {editingField === 'success_criteria' ? (
+              <textarea
+                value={editedFieldValue}
+                onChange={(e) => setEditedFieldValue(e.target.value)}
+                className="w-full h-32 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text resize-none focus:outline-none scrollbar-dark"
+                placeholder="How will you know this card is done?"
+                autoFocus
+              />
+            ) : card.success_criteria ? (
               <p className="text-sm text-dark-text whitespace-pre-wrap bg-dark-bg p-3 rounded">
                 {card.success_criteria}
               </p>
-            </div>
-          )}
+            ) : (
+              <p className="text-sm text-dark-text-secondary italic bg-dark-bg p-3 rounded">
+                No success criteria
+              </p>
+            )}
+          </div>
 
           {/* Dependencies */}
           {card.depends_on_cards && card.depends_on_cards.length > 0 && (
