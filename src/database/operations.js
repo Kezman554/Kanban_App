@@ -906,6 +906,50 @@ class KanbanDatabase {
   // ============================================================================
 
   /**
+   * Scan an append-import payload for keys the importer does not understand.
+   * Unknown keys are never an error (forward compatibility) but must be
+   * reported so generated fields are not silently discarded.
+   *
+   * @param {Object} data - The append JSON payload
+   * @returns {Array<string>} - Human-readable warnings, one per unknown key
+   */
+  findUnrecognisedImportKeys(data) {
+    const KNOWN_TOP_LEVEL_KEYS = new Set([
+      'add_to_phase', 'add_to_subphase', 'new_phase', 'new_subphase',
+      'new_cards', 'dependency_updates',
+    ]);
+    const KNOWN_CARD_KEYS = new Set([
+      'session_letter', 'title', 'description', 'success_criteria',
+      'resource', 'status', 'depends_on_cards', 'external_dependencies',
+      'is_placeholder', 'complexity', 'likely_needs_expansion',
+      'prompt_guide', 'checkpoint', 'git_commit_message', 'notes',
+      'parent_card_id', 'is_expanded',
+    ]);
+
+    const warnings = [];
+    if (!data || typeof data !== 'object') return warnings;
+
+    for (const key of Object.keys(data)) {
+      if (!KNOWN_TOP_LEVEL_KEYS.has(key)) {
+        warnings.push(`Unrecognised field "${key}" was ignored`);
+      }
+    }
+
+    if (Array.isArray(data.new_cards)) {
+      for (const card of data.new_cards) {
+        if (!card || typeof card !== 'object') continue;
+        for (const key of Object.keys(card)) {
+          if (!KNOWN_CARD_KEYS.has(key)) {
+            warnings.push(`Card "${card.session_letter || '?'}": unrecognised field "${key}" was ignored`);
+          }
+        }
+      }
+    }
+
+    return warnings;
+  }
+
+  /**
    * Append new cards to an existing project from JSON data
    *
    * The target subphase can be specified three ways:
@@ -922,6 +966,9 @@ class KanbanDatabase {
       const warnings = [];
       let cardsAdded = 0;
       let dependenciesUpdated = 0;
+
+      // Report unrecognised keys instead of silently discarding them
+      warnings.push(...this.findUnrecognisedImportKeys(data));
 
       const hasNewPhase = data.new_phase && typeof data.new_phase === 'object';
       const hasNewSubphase = data.new_subphase && typeof data.new_subphase === 'object';
@@ -1052,8 +1099,8 @@ class KanbanDatabase {
           subphase_id, session_letter, title, description, success_criteria,
           resource, status, depends_on_cards, external_dependencies, is_placeholder, complexity,
           likely_needs_expansion, prompt_guide, checkpoint, git_commit_message,
-          parent_card_id, is_expanded
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          notes, parent_card_id, is_expanded
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
       if (data.new_cards && Array.isArray(data.new_cards)) {
@@ -1074,6 +1121,7 @@ class KanbanDatabase {
             card.prompt_guide || null,
             card.checkpoint || null,
             card.git_commit_message || null,
+            card.notes || null,
             card.parent_card_id || null,
             card.is_expanded ? 1 : 0
           );

@@ -121,6 +121,33 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
       }
     }
 
+    // Warn about unrecognised keys so generated fields are never silently dropped
+    // (mirrors findUnrecognisedImportKeys in src/database/operations.js)
+    const knownTopLevelKeys = new Set([
+      'add_to_phase', 'add_to_subphase', 'new_phase', 'new_subphase',
+      'new_cards', 'dependency_updates',
+    ]);
+    const knownCardKeys = new Set([
+      'session_letter', 'title', 'description', 'success_criteria',
+      'resource', 'status', 'depends_on_cards', 'external_dependencies',
+      'is_placeholder', 'complexity', 'likely_needs_expansion',
+      'prompt_guide', 'checkpoint', 'git_commit_message', 'notes',
+      'parent_card_id', 'is_expanded',
+    ]);
+    for (const key of Object.keys(data)) {
+      if (!knownTopLevelKeys.has(key)) {
+        warnings.push(`Unrecognised field "${key}" will be ignored`);
+      }
+    }
+    for (const card of data.new_cards) {
+      if (!card || typeof card !== 'object') continue;
+      for (const key of Object.keys(card)) {
+        if (!knownCardKeys.has(key)) {
+          warnings.push(`Card "${card.session_letter || '?'}": unrecognised field "${key}" will be ignored`);
+        }
+      }
+    }
+
     // Validate dependency updates
     if (data.dependency_updates && Array.isArray(data.dependency_updates)) {
       for (const update of data.dependency_updates) {
