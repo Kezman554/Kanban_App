@@ -106,7 +106,12 @@ The app includes LOTR YouTube Channel project as test data (imported from `docs/
 ```
 https://github.com/Kezman554/Kanban_App.git
 ```
-Do not push to GitHub unless explicitly asked. Wait for manual testing and approval. Nick will manually push git commits in most cases
+- **Commit locally, frequently and without asking:** commit after each completed piece of work (a feature, a fix, a data repair script, a docs update) rather than accumulating one big diff at the end of a session.
+- **Never push to GitHub without Nick's explicit permission** — ask each time; permission for one push does not carry over to the next.
+
+## Progress Log
+
+After completing any significant task (feature, bug fix, investigation with findings, data repair), append a session entry to `docs/progress.txt` without being asked. Follow the existing format (`Session Progress - YYYY-MM-DD` header, numbered sections, "Known gaps / followups"). Date entries by the day the work happened. Small tweaks don't need an entry.
 ## Terminal error
 Embedded terminal disabled - node-pty won't compile with VS Build Tools 2026 (folder naming issue). Revisit when node-gyp updates.
 

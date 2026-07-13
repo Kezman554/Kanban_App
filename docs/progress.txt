@@ -138,3 +138,57 @@ Known gaps / followups
   (better-sqlite3 ABI mismatch) — updateCardDetails has no test.
 - .claude/settings.local.json still carries an uncommitted local
   permission tweak, intentionally left out again.
+
+
+Session Progress - 2026-07-13
+=============================
+
+Goal: Investigate the 7 Jun append import that silently dropped
+external_dependencies from Personal Morning Alarm cards AE/AF, test
+same-batch dependency resolution, make the importer report unknown
+fields, and repair the live data.
+
+1. Findings (no fix needed)
+---------------------------
+- Bug 1 (external_dependencies dropped) was already fixed by commit
+  9e48426 (2026-06-07): import, storage, gating (getBlockedReason /
+  getWorkableCards), UI (CardDetail badges incl. "project not
+  imported" / "card not found", card lock + tooltip) and export all
+  handle external_dependencies. Only the AE/AF data predating that
+  commit was still broken.
+- Bug 2 (same-batch depends_on_cards) is NOT a bug: deps are stored
+  as letters and resolved lazily at gating time, so a card referencing
+  another card from the same import batch works. Proven by test.
+
+2. Importer changes (commit a07181f, pushed)
+--------------------------------------------
+- operations.js: new findUnrecognisedImportKeys(); appendCards now
+  returns 'Unrecognised field "X" was ignored' warnings for unknown
+  top-level and card keys instead of silently discarding them.
+- AppendCardsDialog.jsx: same unknown-key check runs pre-import in
+  validate() so warnings show before clicking Append.
+- Fixed appendCards silently dropping the notes field on imported
+  cards (same bug class as the external_dependencies drop).
+- New src/database/append-import.test.js (17 checks): same-batch dep
+  resolution + gating, external dep import/blocking/release, dangling
+  project/card refs stay blocked, unknown-key warnings, notes
+  survival, export schema. Run via:
+  ELECTRON_RUN_AS_NODE=1 .\node_modules\.bin\electron.cmd <file>
+  (better-sqlite3 is built for the Electron ABI - this also unblocks
+  the old operations.test.js/schema.test.js, which both pass this way).
+
+3. Live data repair (DB only, backup at data/kanban.db.bak-2026-07-13)
+----------------------------------------------------------------------
+- AE (card 443) + AF (card 444) in Personal Morning Alarm: attached
+  external_dependencies on alfred-home-hub L and T (AF's T entry says
+  "serving chalkboard as JSON"); AF depends_on_cards set to ["AE"].
+- Acceptance verified on a throwaway DB copy: AE/AF excluded from
+  unblocked cards while L/T incomplete; L+T done releases AE only;
+  AE done releases AF; export carries external_dependencies on both.
+
+Known gaps / followups
+----------------------
+- importProjectFromJson (full project import) does not yet report
+  unrecognised fields - only the append path does.
+- .claude/settings.local.json still carries an uncommitted local
+  permission tweak, intentionally left out again.
