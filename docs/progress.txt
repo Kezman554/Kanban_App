@@ -241,3 +241,35 @@ Known gaps / followups
 - Empty SUBPHASES inside a non-empty phase still have no delete UI
   (only whole empty phases).
 - Roadmap "Delete empty phase" not yet manually tested in the app.
+
+
+Session Progress - 2026-07-13 (third session)
+=============================================
+
+Goal: Fix Roadmap view showing externally-blocked cards (AE) as
+unblocked while the Board showed them correctly.
+
+Cause: three views each had their own copy of the blocked check.
+Commit 9e48426 taught Board.jsx about external_dependencies but not
+RoadmapView.jsx (internal deps only) or AllProjectsView.jsx (same gap -
+externally-blocked cards leaked into the cross-project workable list).
+
+Fix: new shared module src/renderer/utils/cardBlocking.js
+(buildCardStatusByLetter, isCardBlocked, getBlockedReason) mirroring
+the backend logic; Board, RoadmapView and AllProjectsView all use it
+now. getBlockedReason combines internal + external, e.g.
+"Waiting on: AE; Waiting on external: Alfred Home Hub L, T".
+
+Behaviour notes vs old per-view copies:
+- A depends_on_cards letter that doesn't exist in the project now
+  BLOCKS in Board too (matches backend "never silently unblock";
+  Board previously ignored missing letters).
+- Done/In Progress cards are never shown blocked in any view.
+
+Verified: 8-check logic run against the AE/AF scenario (block, combined
+reasons, release on resolution) passes; npm run build clean.
+
+Known gaps / followups
+----------------------
+- Not yet eyeballed in the running app (Roadmap should now show AE
+  blocked with "Waiting on external: Alfred Home Hub L, T").

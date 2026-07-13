@@ -15,6 +15,7 @@ import CardDetail from './CardDetail';
 import AddCardDialog from './AddCardDialog';
 import AppendCardsDialog from './AppendCardsDialog';
 import ShortNameField from './ShortNameField';
+import { buildCardStatusByLetter, isCardBlocked as isCardBlockedShared } from '../utils/cardBlocking';
 
 // Droppable Cell Component
 const DroppableCell = ({ id, children, isOver, canDrop, isEmpty }) => {
@@ -337,33 +338,9 @@ const Board = ({ projectId }) => {
     }
   };
 
-  const isCardBlocked = (card) => {
-    if (!card) return false;
-
-    // Cross-project (external) dependencies: blocked if any is unresolved.
-    // Resolution status is computed by the backend (resolveExternalDependencies).
-    if ((card.external_dependencies || []).some(dep => !dep.resolved)) {
-      return true;
-    }
-
-    // Check if card has internal dependencies
-    if (!card.depends_on_cards || card.depends_on_cards.length === 0) {
-      return false;
-    }
-
-    // Check if all dependencies are completed
-    for (const phase of project.phases) {
-      for (const subphase of phase.subphases) {
-        for (const depCardLetter of card.depends_on_cards) {
-          const depCard = subphase.cards.find(c => c.session_letter === depCardLetter);
-          if (depCard && depCard.status !== 'Done') {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
-  };
+  // Blocked check shared with RoadmapView / AllProjectsView (utils/cardBlocking)
+  const cardStatusByLetter = useMemo(() => buildCardStatusByLetter(project), [project]);
+  const isCardBlocked = (card) => isCardBlockedShared(card, cardStatusByLetter);
 
   // Build dependency stacks for "Not Started" column
   // Returns: { stacks: Map<rootCardId, Card[]>, claimedCardIds: Set<cardId> }

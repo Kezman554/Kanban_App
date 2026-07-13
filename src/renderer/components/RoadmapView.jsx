@@ -1,5 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import CardDetail from './CardDetail';
+import {
+  buildCardStatusByLetter,
+  isCardBlocked as isCardBlockedShared,
+  getBlockedReason as getBlockedReasonShared,
+} from '../utils/cardBlocking';
 
 const RoadmapView = ({ projectId }) => {
   const [project, setProject] = useState(null);
@@ -52,42 +57,11 @@ const RoadmapView = ({ projectId }) => {
   };
 
   // Build a map of card status by session letter for dependency checking
-  const cardStatusByLetter = useMemo(() => {
-    if (!project?.phases) return {};
+  const cardStatusByLetter = useMemo(() => buildCardStatusByLetter(project), [project]);
 
-    const map = {};
-    for (const phase of project.phases) {
-      for (const subphase of phase.subphases || []) {
-        for (const card of subphase.cards || []) {
-          map[card.session_letter] = card.status;
-        }
-      }
-    }
-    return map;
-  }, [project]);
-
-  // Check if a card is blocked
-  const isCardBlocked = (card) => {
-    if (!card.depends_on_cards || card.depends_on_cards.length === 0) {
-      return false;
-    }
-    if (card.status === 'Done' || card.status === 'In Progress') {
-      return false;
-    }
-    return card.depends_on_cards.some(
-      letter => cardStatusByLetter[letter] !== 'Done'
-    );
-  };
-
-  // Get blocked reason
-  const getBlockedReason = (card) => {
-    if (!card.depends_on_cards || card.depends_on_cards.length === 0) return null;
-    const incomplete = card.depends_on_cards.filter(
-      letter => cardStatusByLetter[letter] !== 'Done'
-    );
-    if (incomplete.length === 0) return null;
-    return `Waiting on: ${incomplete.join(', ')}`;
-  };
+  // Blocked check shared with Board / AllProjectsView (utils/cardBlocking)
+  const isCardBlocked = (card) => isCardBlockedShared(card, cardStatusByLetter);
+  const getBlockedReason = (card) => getBlockedReasonShared(card, cardStatusByLetter);
 
   // Calculate phase stats
   const getPhaseStats = (phase) => {

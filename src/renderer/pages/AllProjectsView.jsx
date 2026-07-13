@@ -1,4 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import {
+  buildCardStatusByLetter,
+  isCardBlocked,
+  getBlockedReason,
+} from '../utils/cardBlocking';
 
 function AllProjectsView() {
   const [projects, setProjects] = useState([]);
@@ -41,17 +46,16 @@ function AllProjectsView() {
   };
 
   // Get all cards from a project with blocked status calculated
+  // (blocked check shared with Board / RoadmapView via utils/cardBlocking)
   const getCardsWithBlockedStatus = (project) => {
     if (!project?.phases) return [];
 
     const allCards = [];
-    const cardStatusByLetter = {};
+    const cardStatusByLetter = buildCardStatusByLetter(project);
 
-    // First pass: collect all cards and their statuses
     for (const phase of project.phases) {
       for (const subphase of phase.subphases || []) {
         for (const card of subphase.cards || []) {
-          cardStatusByLetter[card.session_letter] = card.status;
           allCards.push({
             ...card,
             phaseName: phase.name,
@@ -63,23 +67,11 @@ function AllProjectsView() {
       }
     }
 
-    // Second pass: determine blocked status
-    return allCards.map(card => {
-      let isBlocked = false;
-      let blockedReason = null;
-
-      if (card.depends_on_cards && card.depends_on_cards.length > 0 && card.status === 'Not Started') {
-        const incompleteCards = card.depends_on_cards.filter(
-          letter => cardStatusByLetter[letter] !== 'Done'
-        );
-        if (incompleteCards.length > 0) {
-          isBlocked = true;
-          blockedReason = `Waiting on: ${incompleteCards.join(', ')}`;
-        }
-      }
-
-      return { ...card, isBlocked, blockedReason };
-    });
+    return allCards.map(card => ({
+      ...card,
+      isBlocked: isCardBlocked(card, cardStatusByLetter),
+      blockedReason: getBlockedReason(card, cardStatusByLetter),
+    }));
   };
 
   // Filter and sort cards across all projects
