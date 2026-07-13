@@ -100,6 +100,22 @@ function buildSummaryMarkdown(data) {
       .map(c => `${c.session_letter} — ${c.title} *(${c.complexity})*`)
       .join('; ')
     lines.push(`- **Next unblocked:** ${next || '—'}`)
+
+    // Blocked line: cards gated on another project are listed individually
+    // (they are otherwise invisible); internally-blocked cards are rolled up
+    // into a count to keep the summary readable.
+    const blockedCards = p.blocked_cards || []
+    const externallyBlocked = blockedCards.filter(c =>
+      (c.external_dependencies || []).some(d => !d.resolved)
+    )
+    const internalOnlyCount = blockedCards.length - externallyBlocked.length
+    if (blockedCards.length > 0) {
+      const parts = externallyBlocked.map(c => `${c.session_letter} — blocked by ${c.blocked_by}`)
+      if (internalOnlyCount > 0) {
+        parts.push(`${internalOnlyCount} card${internalOnlyCount > 1 ? 's' : ''} blocked internally`)
+      }
+      lines.push(`- **Blocked:** ${parts.join('; ')}`)
+    }
     lines.push('')
   }
 

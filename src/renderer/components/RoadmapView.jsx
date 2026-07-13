@@ -37,6 +37,20 @@ const RoadmapView = ({ projectId }) => {
     }
   };
 
+  const handleDeleteEmptyPhase = async (phase) => {
+    const confirmed = window.confirm(
+      `Delete empty phase "${phase.name}"?\n\nIts subphases will be removed too. This cannot be undone.`
+    );
+    if (!confirmed) return;
+
+    try {
+      await window.electron.deletePhase(phase.id);
+      await loadProject();
+    } catch (err) {
+      setError(err.message || 'Failed to delete phase');
+    }
+  };
+
   // Build a map of card status by session letter for dependency checking
   const cardStatusByLetter = useMemo(() => {
     if (!project?.phases) return {};
@@ -322,6 +336,15 @@ const RoadmapView = ({ projectId }) => {
                     <span className="text-base font-normal text-dark-text-secondary ml-2">
                       ({phaseStats.done}/{phaseStats.total} complete)
                     </span>
+                    {phaseStats.total === 0 && (
+                      <button
+                        onClick={() => handleDeleteEmptyPhase(phase)}
+                        className="text-sm font-normal font-sans px-3 py-1 rounded border border-red-700 text-red-400 hover:bg-red-900/30 transition-colors"
+                        title="This phase has no cards and doesn't appear on the board"
+                      >
+                        Delete empty phase
+                      </button>
+                    )}
                   </h2>
                   {phase.description && (
                     <p className="text-dark-text-secondary mt-1 ml-8">

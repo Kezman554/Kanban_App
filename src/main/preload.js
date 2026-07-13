@@ -19,6 +19,9 @@ contextBridge.exposeInMainWorld('electron', {
   clearCardDependencies: (cardId) => ipcRenderer.invoke('db:clearCardDependencies', cardId),
   deleteCard: (cardId) => ipcRenderer.invoke('db:deleteCard', cardId),
 
+  // Phase operations
+  deletePhase: (phaseId) => ipcRenderer.invoke('db:deletePhase', phaseId),
+
   // Import/Export operations
   importProjectFromJson: (jsonData) => ipcRenderer.invoke('db:importProjectFromJson', jsonData),
   importProjectFromFile: (filePath) => ipcRenderer.invoke('db:importProjectFromFile', filePath),

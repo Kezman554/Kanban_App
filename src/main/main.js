@@ -248,6 +248,15 @@ ipcMain.handle('db:importProjectFromFile', async (event, filePath) => {
   }
 })
 
+ipcMain.handle('db:deletePhase', async (event, phaseId) => {
+  try {
+    return db.deletePhase(phaseId)
+  } catch (error) {
+    console.error('Error deleting phase:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:appendCards', async (event, projectId, data) => {
   try {
     return db.appendCards(projectId, data)

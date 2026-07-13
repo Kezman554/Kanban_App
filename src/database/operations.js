@@ -403,6 +403,41 @@ class KanbanDatabase {
     }
   }
 
+  /**
+   * Delete a phase, but only if it contains no cards. Empty phases don't
+   * render on the board, so they can strand invisibly (e.g. leftovers from
+   * import testing) — this gives the Roadmap view a way to remove them.
+   * Subphases are removed by the ON DELETE CASCADE foreign key.
+   *
+   * @param {number} phaseId - Phase ID
+   * @returns {boolean} - Success status
+   * @throws {Error} - If the phase doesn't exist or still contains cards
+   */
+  deletePhase(phaseId) {
+    try {
+      const phase = this.db.prepare('SELECT id, name FROM phases WHERE id = ?').get(phaseId);
+      if (!phase) {
+        throw new Error(`Phase ${phaseId} not found`);
+      }
+
+      const cardCount = this.db.prepare(`
+        SELECT COUNT(*) AS count
+        FROM cards c
+        JOIN subphases s ON c.subphase_id = s.id
+        WHERE s.phase_id = ?
+      `).get(phaseId).count;
+
+      if (cardCount > 0) {
+        throw new Error(`Phase "${phase.name}" still contains ${cardCount} card${cardCount > 1 ? 's' : ''} - only empty phases can be deleted`);
+      }
+
+      const result = this.db.prepare('DELETE FROM phases WHERE id = ?').run(phaseId);
+      return result.changes > 0;
+    } catch (error) {
+      throw new Error(`Failed to delete phase: ${error.message}`);
+    }
+  }
+
   // ============================================================================
   // CARD OPERATIONS
   // ============================================================================
@@ -1309,6 +1344,55 @@ class KanbanDatabase {
 
         const unblockedCards = workableCards.map(shapeCard);
 
+        // Blocked cards: Not Started but gated by internal and/or external
+        // dependencies. Exported so downstream consumers can see WHY a
+        // project has nothing unblocked, with a human-readable blocked_by.
+        const statusByLetter = {};
+        for (const phase of fullProject.phases || []) {
+          for (const sub of phase.subphases || []) {
+            for (const c of sub.cards || []) {
+              statusByLetter[c.session_letter] = c.status;
+            }
+          }
+        }
+
+        const blockedCards = [];
+        for (const phase of fullProject.phases || []) {
+          for (const sub of phase.subphases || []) {
+            for (const c of sub.cards || []) {
+              if (c.status !== 'Not Started') continue;
+
+              const internalBlockers = (c.depends_on_cards || [])
+                .filter(letter => statusByLetter[letter] !== 'Done');
+              // external_dependencies come pre-resolved from getProject
+              const externalBlockers = (c.external_dependencies || [])
+                .filter(dep => !dep.resolved);
+              if (internalBlockers.length === 0 && externalBlockers.length === 0) continue;
+
+              const blockedByParts = [];
+              if (internalBlockers.length > 0) {
+                blockedByParts.push(`card${internalBlockers.length > 1 ? 's' : ''} ${internalBlockers.join(', ')}`);
+              }
+              // Group external blockers by project for a compact label
+              const byProject = new Map();
+              for (const dep of externalBlockers) {
+                const label = dep.project_name || dep.project_slug;
+                if (!byProject.has(label)) byProject.set(label, []);
+                byProject.get(label).push(dep.card_letter);
+              }
+              for (const [label, letters] of byProject) {
+                blockedByParts.push(`${label} ${letters.join(', ')}`);
+              }
+
+              blockedCards.push({
+                ...shapeCard({ ...c, phase_name: phase.name, subphase_name: sub.name }),
+                external_dependencies: c.external_dependencies || [],
+                blocked_by: blockedByParts.join('; '),
+              });
+            }
+          }
+        }
+
         // Get in-progress cards
         const inProgressCards = this.db.prepare(`
           SELECT c.*, s.name as subphase_name, p.name as phase_name
@@ -1331,6 +1415,7 @@ class KanbanDatabase {
           roadmap,
           in_progress_cards: inProgressCards,
           unblocked_cards: unblockedCards,
+          blocked_cards: blockedCards,
         };
       });
 

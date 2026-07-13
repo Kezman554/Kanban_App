@@ -192,3 +192,52 @@ Known gaps / followups
   unrecognised fields - only the append path does.
 - .claude/settings.local.json still carries an uncommitted local
   permission tweak, intentionally left out again.
+
+
+Session Progress - 2026-07-13 (second session)
+==============================================
+
+Goal: Follow-ups to the external_dependencies work - make blocked cards
+visible in the vault export, and remove the stranded empty test phase.
+
+1. blocked_cards in vault export
+--------------------------------
+- operations.js exportForVault: each project now has a blocked_cards
+  array - Not Started cards gated by internal and/or external deps,
+  same shape as unblocked_cards plus external_dependencies (resolved
+  entries) and a human blocked_by label (e.g. "card AE; Alfred Home
+  Hub L, T"; external blockers grouped by project name).
+- vaultSummary.js: per-project "- **Blocked:**" line. Externally
+  blocked cards are listed individually ("AE - blocked by Alfred Home
+  Hub L, T"); internal-only blocked cards roll up into a count
+  ("N cards blocked internally") to keep the summary readable.
+
+2. deletePhase for empty phases
+-------------------------------
+- operations.js: deletePhase(id), guarded - throws if the phase still
+  contains cards; subphases removed via FK cascade.
+- main.js db:deletePhase IPC + preload deletePhase.
+- RoadmapView.jsx: phases with zero cards (invisible on the Board, so
+  they could strand) show a "Delete empty phase" button with confirm.
+
+3. Data cleanup (DB only, backup at data/kanban.db.bak-2026-07-13b)
+-------------------------------------------------------------------
+- Deleted phase 113 "Phase 10: Test Phase - Delete Me" (+ subphase 200
+  "10.1 Test Subphase", zero cards) from Personal Morning Alarm.
+- Verified fresh export: no "Delete Me" anywhere; AE and AF appear in
+  blocked_cards with external_dependencies on alfred-home-hub L and T;
+  summary Blocked line reads "AE - blocked by Alfred Home Hub L, T;
+  AF - blocked by card AE; Alfred Home Hub L, T".
+
+Tests / verification
+--------------------
+- New src/database/vault-export.test.js (12 checks): blocked_cards
+  contents and labels, summary Blocked line, deletePhase guard +
+  cascade. All pass; append-import (17) and operations (17) suites
+  still pass; npm run build clean.
+
+Known gaps / followups
+----------------------
+- Empty SUBPHASES inside a non-empty phase still have no delete UI
+  (only whole empty phases).
+- Roadmap "Delete empty phase" not yet manually tested in the app.
