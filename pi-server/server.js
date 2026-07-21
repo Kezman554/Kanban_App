@@ -19,6 +19,8 @@
  */
 
 const express = require('express');
+const path = require('path');
+const fs = require('fs');
 
 // Wrapped, never modified. Resolves both in the repo (pi-server -> ../src) and
 // in the container (/app/pi-server -> /app/src).
@@ -26,6 +28,11 @@ const KanbanDatabase = require('../src/database/operations');
 const { buildSummaryMarkdown } = require('../src/main/vaultSummary');
 
 const PORT = parseInt(process.env.KANBAN_API_PORT || '8300', 10);
+// The built React board, served as static files from the same origin as the
+// API so the browser board needs no CORS and no separate host. In the
+// container the multi-stage build drops it at /app/web; unset/absent just means
+// "API only" (e.g. local dev), which is fine.
+const WEB_DIR = process.env.KANBAN_WEB_DIR || path.join(__dirname, '..', 'web');
 // Explicit path to the DB copy. In the container this is the bind-mounted
 // volume (see docker-compose); unset falls back to operations.js's own default
 // (<cwd>/data/kanban.db), which is what local runs use.
@@ -61,14 +68,6 @@ function intParam(value, name) {
 }
 
 // --- reads ------------------------------------------------------------------
-
-app.get('/', (_req, res) => {
-  res.json({
-    service: 'kanban-pi-api',
-    note: 'Data API for the Kanban board. No board UI here — see the Electron app / the UI-port card.',
-    endpoints: ['/health', '/stats', '/projects', '/cards/:id', '/export/json', '/export/summary'],
-  });
-});
 
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
@@ -195,6 +194,20 @@ app.get('/export/json', h((_req, res) => res.json(db.exportForVault())));
 app.get('/export/summary', h((_req, res) => {
   res.type('text/markdown').send(buildSummaryMarkdown(db.exportForVault()));
 }));
+
+// Every project as importable JSON (backs the board's "export all" download).
+app.get('/export/all-projects', h((_req, res) => {
+  res.json(db.getAllProjects().map((p) => db.exportProjectToJson(p.id)));
+}));
+
+// --- static board (served last so API routes above always win) --------------
+
+if (fs.existsSync(WEB_DIR)) {
+  app.use(express.static(WEB_DIR));
+  console.log(`serving board UI from ${WEB_DIR}`);
+} else {
+  console.log(`no web build at ${WEB_DIR} — running API only`);
+}
 
 // --- boot -------------------------------------------------------------------
 

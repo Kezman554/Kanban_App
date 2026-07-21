@@ -326,3 +326,53 @@ Known gaps / followups
 ----------------------
 - Not yet built/run on the Pi (that half lives in the AlfredHomeHub deploy).
 - No UI — the browser-tab board is the separate UI-port card.
+
+Session Progress - 2026-07-21 (UI port to browser board)
+=========================================================
+
+Goal: Serve the board as a browser tab off the Pi (laptop + phone), pointed
+at the card-N API. A rewire, not a rebuild: the React/Vite UI is unchanged;
+only the Electron data bridge is replaced.
+
+1. Browser bridge (src/renderer/electron-web-shim.js) - NEW
+---------------------------------------------------------
+- Recreates window.electron over fetch to the Pi API, so the renderer's ~55
+  data call sites are untouched. Each method returns exactly what the Electron
+  IPC handler returned (unwraps the API's JSON envelope, e.g. {updated:true}
+  -> bare true; 404 -> null for getProject/getCard).
+- Loaded first in src/renderer/main.jsx, guarded by `!window.electron` so it is
+  a no-op under Electron (preload still wins there).
+- Native features handled (no dead buttons; each degrades with a visible
+  message): open/save JSON -> file upload / download (work); set directory ->
+  manual prompt; open-in-explorer, read-project-files, AI prompt gen + API key,
+  sync-to-vault, clear-all-data, temp-file/Claude launch, terminal -> disabled
+  with a message. Full list in AlfredHomeHub DEPLOY.md.
+
+2. Web build (vite.web.config.js + pi-server/web-build.package.json[+lock])
+---------------------------------------------------------------------------
+- A React-only vite build (no electron plugins, no electron/node-pty/
+  better-sqlite3 deps) -> dist-web. Lean lockfile committed for reproducible
+  Pi builds. Verified locally: 60 modules, builds clean.
+
+3. Server serves the board (pi-server/server.js)
+------------------------------------------------
+- express.static(WEB_DIR) mounted after the API routes, so 8300 serves the
+  board at / and the API at /stats etc. from one origin (no CORS). Dropped the
+  old JSON banner at /. Added GET /export/all-projects (backs the board's
+  "export all" download).
+
+4. Multi-stage Dockerfile
+-------------------------
+- Stage 1 builds the browser board (lean deps); stage 2 is the API server +
+  the built UI copied to /app/web. better-sqlite3 still rebuilt for ARM64 Node.
+
+Verified on the laptop (against a copy of the live DB): same-origin serving
+(/ = SPA, assets, API coexist); the shim driven headless against the live API
+-> getAllProjects/getProject work, updateCardStatus returns bare true AND
+persists (the phone->laptop path), getCard(missing) -> null.
+
+Known gaps / followups
+----------------------
+- The Electron app is now dev-only/read-only once the Pi DB is authoritative.
+- Feature gaps are intentional (see DEPLOY.md table) - the desktop dev app
+  remains for AI prompt gen, local file reads, and open-in-explorer.
