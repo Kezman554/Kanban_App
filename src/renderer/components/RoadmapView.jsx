@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import CardDetail from './CardDetail';
+import { copyText } from '../utils/clipboard.js';
 import {
   buildCardStatusByLetter,
   isCardBlocked as isCardBlockedShared,
@@ -207,7 +208,7 @@ const RoadmapView = ({ projectId }) => {
                   <button
                     onClick={async () => {
                       try {
-                        await navigator.clipboard.writeText(project.directory_path);
+                        await copyText(project.directory_path);
                         setPathCopied(true);
                         setTimeout(() => setPathCopied(false), 2000);
                       } catch (err) {

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { generatePrompt } from '../services/promptGenerator.js';
+import { copyText } from '../utils/clipboard.js';
 import { useTerminalSessions } from '../contexts/TerminalSessionContext.jsx';
 
 const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusChange, onCardUpdated, onCardDeleted, project }) => {
@@ -174,7 +175,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     const textToCopy = card.prompt_guide || '';
 
     try {
-      await navigator.clipboard.writeText(textToCopy);
+      await copyText(textToCopy);
       setCopySuccess(true);
       setTimeout(() => setCopySuccess(false), 2000);
     } catch (error) {
@@ -187,7 +188,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     if (!textToCopy) return;
 
     try {
-      await navigator.clipboard.writeText(textToCopy);
+      await copyText(textToCopy);
       setPromptGuideCopySuccess(true);
       setTimeout(() => setPromptGuideCopySuccess(false), 2000);
     } catch (error) {
@@ -294,7 +295,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     if (!textToCopy) return;
 
     try {
-      await navigator.clipboard.writeText(textToCopy);
+      await copyText(textToCopy);
       setCommitMessageCopySuccess(true);
       setTimeout(() => setCommitMessageCopySuccess(false), 2000);
     } catch (error) {
@@ -336,7 +337,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
     // Copy prompt to clipboard
     try {
-      await navigator.clipboard.writeText(prompt);
+      await copyText(prompt);
       setSessionNotification('Prompt copied to clipboard - paste into your terminal');
       setTimeout(() => setSessionNotification(null), 5000);
     } catch (error) {

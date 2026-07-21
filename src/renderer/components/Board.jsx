@@ -8,6 +8,7 @@ import {
   closestCenter,
   useDroppable,
 } from '@dnd-kit/core';
+import { copyText } from '../utils/clipboard.js';
 import Card from './Card';
 import CardStack from './CardStack';
 import CompletedStack from './CompletedStack';
@@ -322,7 +323,7 @@ const Board = ({ projectId }) => {
     const text = lines.join('\n');
 
     try {
-      await navigator.clipboard.writeText(text);
+      await copyText(text);
       setExportCopied(true);
       setTimeout(() => setExportCopied(false), 3000);
     } catch (err) {
@@ -923,7 +924,7 @@ const Board = ({ projectId }) => {
                 <button
                   onClick={async () => {
                     try {
-                      await navigator.clipboard.writeText(project.directory_path);
+                      await copyText(project.directory_path);
                       setPathCopied(true);
                       setTimeout(() => setPathCopied(false), 2000);
                     } catch (err) {
