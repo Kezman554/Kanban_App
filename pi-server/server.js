@@ -26,6 +26,7 @@ const fs = require('fs');
 // in the container (/app/pi-server -> /app/src).
 const KanbanDatabase = require('../src/database/operations');
 const { buildSummaryMarkdown } = require('../src/main/vaultSummary');
+const { runVaultExport } = require('./vaultExport');
 
 const PORT = parseInt(process.env.KANBAN_API_PORT || '8300', 10);
 // The built React board, served as static files from the same origin as the
@@ -199,6 +200,30 @@ app.get('/export/summary', h((_req, res) => {
 app.get('/export/all-projects', h((_req, res) => {
   res.json(db.getAllProjects().map((p) => db.exportProjectToJson(p.id)));
 }));
+
+// On-demand vault export (the "Sync to Vault" button, and the nightly cron via
+// scripts/kanban-export.sh): regenerate the export files from the authoritative
+// DB, commit as Alfred, push. The write happens here on the Pi — the browser
+// only triggers it, so the Pi stays the single writer of the vault.
+//
+// In-process guard: one export at a time. A second concurrent request gets 409
+// immediately rather than queueing behind the git lock, so a double-click (or a
+// click overlapping the cron) reports "already running" instead of hanging. The
+// shared flock inside runVaultExport is the cross-process guard.
+let exportRunning = false;
+app.post('/export/run', async (_req, res) => {
+  if (exportRunning) {
+    return res.status(409).json({ error: 'a vault export is already running' });
+  }
+  exportRunning = true;
+  try {
+    res.json(await runVaultExport(db));
+  } catch (err) {
+    res.status(502).json({ error: err.message });
+  } finally {
+    exportRunning = false;
+  }
+});
 
 // --- static board (served last so API routes above always win) --------------
 

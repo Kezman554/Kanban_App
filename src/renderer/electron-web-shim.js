@@ -164,10 +164,11 @@ if (typeof window !== 'undefined' && !window.electron) {
       unavailable(`Opening a folder on the laptop isn't available from the browser board.\n\nPath: ${dir || '(none)'}`);
       return Promise.resolve({ success: false });
     },
-    exportToVault: () => {
-      unavailable('The Pi exports the board to the vault automatically (nightly, and on demand via scripts/kanban-export.sh). A manual push from the browser is intentionally not wired.');
-      return Promise.resolve({ success: false });
-    },
+    // Triggers the Pi to regenerate + commit + push the vault export. The write
+    // happens on the Pi (POST /export/run) — the browser only triggers it, so
+    // the Pi stays the single writer. Returns the API's result object (throws on
+    // failure, so the caller can surface it).
+    exportToVault: () => req('POST', '/export/run'),
     importProjectFromFile: () =>
       Promise.reject(new Error('Importing by laptop file path is desktop-only; use the file picker (Import) instead.')),
 

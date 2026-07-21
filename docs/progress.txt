@@ -376,3 +376,39 @@ Known gaps / followups
 - The Electron app is now dev-only/read-only once the Pi DB is authoritative.
 - Feature gaps are intentional (see DEPLOY.md table) - the desktop dev app
   remains for AI prompt gen, local file reads, and open-in-explorer.
+
+Session Progress - 2026-07-21 (Sync to Vault button)
+====================================================
+
+Goal: Finish the port's one loose end - re-enable "Sync to Vault" in the
+browser board so it actually exports, instead of the informational popup.
+
+- pi-server/vaultExport.js + vault-commit.sh: on-demand export. vaultExport.js
+  reuses exportForVault + buildSummaryMarkdown (same data as the read
+  endpoints), writes temp files, then runs vault-commit.sh under
+  `flock <vault>/.git/alfred-write.lock` (the SAME lock vault-sync + the vault
+  API use). vault-commit.sh does the git half: pull --ff-only, install files,
+  commit as Alfred, push, reset-on-failure; echoes COMMITTED / NOCHANGE. Async
+  (execFile) so the git push never blocks the event loop.
+- server.js: POST /export/run -> runVaultExport. In-process busy flag returns
+  409 on an overlapping call (double-click / click-during-cron); the shared
+  flock is the cross-process guard. 502 on git/push failure, 200 with
+  {status, cards, projects, message} on success.
+- Dockerfile: + git + openssh-client; copy vaultExport.js + vault-commit.sh;
+  run as USER node so HOME=/home/node and the ro ~/.ssh mount is found.
+- electron-web-shim.js: exportToVault() now POSTs /export/run (was an
+  informational popup), returning the result / throwing on failure.
+- Board.jsx: handleSyncToVault shows phases - running ("Syncing..."), done
+  ("Synced!" + a green "Exported N cards..." line), error (red button + red
+  message). No more silent console-only failures; button disabled while running.
+
+Verified on the laptop: web build compiles; vault-commit.sh against a fake
+vault -> COMMITTED / NOCHANGE / COMMITTED, authored Alfred, pushed; the
+endpoint returns a clean 502 (not a crash) when flock is absent; the shim
+posts to /export/run. Full success path (flock + git push over SSH from the
+container) verified live on the Pi.
+
+Known gaps / followups
+----------------------
+- The container now has vault rw + ~/.ssh ro (like vault-api) to push the
+  export. The browser never gets creds - it only triggers the Pi.

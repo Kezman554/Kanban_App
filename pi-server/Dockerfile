@@ -23,11 +23,13 @@ RUN npx vite build --config vite.web.config.js
 # --- Stage 2: the API server + the built board -----------------------------
 FROM node:22-bookworm-slim
 
-# better-sqlite3 is (re)built here for the container's Node ABI — the copy in
-# the repo's node_modules is compiled against Electron's ABI. npm fetches an
-# arm64 prebuild when one exists; the toolchain below is the from-source fallback.
+# python3/make/g++: from-source fallback for better-sqlite3 (rebuilt here for the
+#   container's Node ABI; the repo's copy is Electron-ABI).
+# git/openssh-client: the /export/run endpoint commits + pushes the vault export
+#   over SSH (the "Sync to Vault" button and the nightly cron). util-linux
+#   (flock) is already present in the base image.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends python3 make g++ \
+    && apt-get install -y --no-install-recommends python3 make g++ git openssh-client \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
@@ -41,13 +43,16 @@ RUN npm install --omit=dev --no-audit --no-fund
 # The wrapped data layer, copied unmodified from the repo.
 COPY src/database/schema.js src/database/operations.js ./src/database/
 COPY src/main/vaultSummary.js ./src/main/
-COPY pi-server/server.js ./pi-server/
+COPY pi-server/server.js pi-server/vaultExport.js pi-server/vault-commit.sh ./pi-server/
 
 # The built board from stage 1 — served as static files by server.js at /app/web.
 COPY --from=web /build/dist-web ./web
 
-# Run as UID 1000 (kezman554 on the Pi) so the bind-mounted DB dir is writable.
-USER 1000
+# Run as the image's `node` user (UID 1000 = kezman554 on the Pi): the
+# bind-mounted DB dir and vault (both owned by 1000) are writable, and the ro
+# ~/.ssh mount lands at /home/node/.ssh where git finds the deploy key. Using
+# the NAME (not the bare UID) so HOME=/home/node is set from /etc/passwd.
+USER node
 
 EXPOSE 8300
 
