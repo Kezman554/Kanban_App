@@ -1,0 +1,14 @@
+{
+  "name": "kanban-pi-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "HTTP API wrapping the Kanban data layer (src/database/operations.js) for the Alfred Home Hub Pi. Read + write vocabulary over the board's SQLite DB, plus a vault export. No UI — the Electron app stays the board's UI until the separate UI-port card.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.6.2",
+    "express": "^4.21.2"
+  }
+}

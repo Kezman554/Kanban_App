@@ -273,3 +273,56 @@ Known gaps / followups
 ----------------------
 - Not yet eyeballed in the running app (Roadmap should now show AE
   blocked with "Waiting on external: Alfred Home Hub L, T").
+
+Session Progress - 2026-07-21
+=============================
+
+Goal: Stand up an HTTP API over the board's data layer so it can run as a
+containerised service on the Alfred Home Hub Pi (Card N, rescoped). No board
+UI and no DB migration — the Electron app stays the authoritative board; the
+Pi serves a copy. This is the foundation the writable DailySync tile and the
+future browser-tab board both depend on.
+
+New: pi-server/ (self-contained, wraps src/database/operations.js in place)
+-----------------------------------------------------------------------------
+- pi-server/server.js — Express API over KanbanDatabase. operations.js and
+  schema.js are NOT modified or copied; the server requires them by relative
+  path (../src/database), so the Electron app and the API share one data layer
+  and can't drift. vaultSummary.js is reused for /export/summary.
+- Route surface (read + the write vocabulary the DailySync tile needs):
+    GET  /health /stats /projects /projects/:id (+/workable /done /next-letter)
+    GET  /cards/:id (+/blocked)  /export/json  /export/summary
+    POST /projects/:id/append  (add cards incl. external_dependencies, and
+         optionally a new phase/subphase)  /projects/import
+         /subphases/:id/cards  /cards/:id/clear-dependencies
+    PATCH /projects/:id  /cards/:id/status|details|notes|prompt
+    DELETE /projects/:id  /cards/:id  /phases/:id
+  Error mapping: null -> 404, "... not found" -> 404, other throws -> 400.
+  /stats sums per-project stats so it can never disagree with /projects.
+- pi-server/package.json — express + better-sqlite3 ONLY (not the Electron
+  app's deps). Installed at the image root so require('better-sqlite3')
+  resolves for schema.js.
+- pi-server/Dockerfile — node:22-bookworm-slim; build context is the repo root
+  (needs src/). npm install rebuilds better-sqlite3 for the container's Node
+  ABI (the vendored node_modules copy is Electron-ABI and won't load under
+  plain Node); arm64 prebuild when available, python3/make/g++ as the
+  from-source fallback. Runs as UID 1000 (kezman554) for the bind-mounted DB.
+- .dockerignore at the repo root keeps the Electron node_modules, dist/,
+  data/ and the live DB out of the build context.
+
+The service definition, DB volume, backup, vault export and the deploy loop
+live in AlfredHomeHub (its compose builds this repo from ../../Kanban_App).
+
+Verified (laptop, against a COPY of data/kanban.db in a container-like layout
+with a fresh Node-ABI better-sqlite3):
+- /stats and /projects return 9 projects / 234 cards / 107 done (live counts;
+  the board has grown since the card was written at 233).
+- POST /projects/:id/append with an external_dependencies card: count 234->235,
+  card reads back intact, external dep resolved correctly (gymsync/A Done).
+- /export/json shape matches the Electron export; /export/summary is
+  byte-format-identical to what the app writes ("9 projects, 107 of 234 done").
+
+Known gaps / followups
+----------------------
+- Not yet built/run on the Pi (that half lives in the AlfredHomeHub deploy).
+- No UI — the browser-tab board is the separate UI-port card.

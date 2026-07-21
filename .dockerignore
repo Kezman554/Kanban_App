@@ -1,0 +1,19 @@
+# Build context for pi-server/Dockerfile is this repo root, but the Dockerfile
+# copies only src/database, src/main/vaultSummary.js and pi-server/. Keep the
+# context tiny — and never ship the live DB or the Electron-ABI node_modules.
+node_modules
+pi-server/node_modules
+dist
+dist-electron
+out
+build
+data
+*.db
+*.sqlite
+.git
+.env
+.env.*
+.vscode
+.idea
+docs
+*.log
