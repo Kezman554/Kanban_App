@@ -134,6 +134,30 @@ class KanbanDatabase {
 
       const projectId = result.lastInsertRowid;
 
+      // The project is new, so nothing can clash with the existing board -
+      // but one payload can still carry the same letter twice, which would
+      // make every dependency on it ambiguous. Checked up front so the
+      // transaction rolls back before any phase is written.
+      const seenLetters = new Map();
+      for (const phase of projectData.phases || []) {
+        for (const subphase of phase.subphases || []) {
+          for (const card of subphase.cards || []) {
+            if (typeof card.session_letter !== 'string' || card.session_letter.trim() === '') {
+              throw new Error(`Card "${card.title || 'untitled'}" is missing a session_letter`);
+            }
+
+            const normalized = card.session_letter.trim().toUpperCase();
+            if (seenLetters.has(normalized)) {
+              throw new Error(
+                `Session letter "${card.session_letter}" is used twice in this project ` +
+                `("${seenLetters.get(normalized)}" and "${card.title}")`
+              );
+            }
+            seenLetters.set(normalized, card.title);
+          }
+        }
+      }
+
       // Insert phases if provided
       if (projectData.phases && Array.isArray(projectData.phases)) {
         const insertPhase = this.db.prepare(`
@@ -478,6 +502,73 @@ class KanbanDatabase {
   }
 
   /**
+   * Find a card in a project whose session letter matches, ignoring case and
+   * surrounding whitespace.
+   *
+   * Letters are PROJECT-scoped, not subphase-scoped: depends_on_cards,
+   * dependency_updates and external_dependencies all resolve a card by letter
+   * across the whole project, so the same letter twice anywhere on a board
+   * makes every one of those references ambiguous.
+   *
+   * @param {number} projectId - Project ID
+   * @param {string} letter - Session letter to look for
+   * @param {number|null} excludeCardId - Card ID to ignore (when re-checking an existing card)
+   * @returns {Object|null} - { id, session_letter, title } of the clashing card, or null
+   */
+  findCardBySessionLetter(projectId, letter, excludeCardId = null) {
+    if (typeof letter !== 'string' || letter.trim() === '') return null;
+
+    return this.db.prepare(`
+      SELECT c.id, c.session_letter, c.title
+      FROM cards c
+      JOIN subphases s ON c.subphase_id = s.id
+      JOIN phases p ON s.phase_id = p.id
+      WHERE p.project_id = ?
+        AND UPPER(TRIM(c.session_letter)) = ?
+        AND (? IS NULL OR c.id != ?)
+    `).get(projectId, letter.trim().toUpperCase(), excludeCardId, excludeCardId) || null;
+  }
+
+  /**
+   * Throw if a session letter is empty or already taken elsewhere in the project.
+   * The backstop behind AddCardDialog's client-side check, covering the paths
+   * that never touch the dialog: project import, append import, and the Pi's
+   * HTTP API.
+   *
+   * @param {number} projectId - Project ID
+   * @param {string} letter - Session letter to validate
+   * @param {number|null} excludeCardId - Card ID to ignore
+   */
+  assertSessionLetterAvailable(projectId, letter, excludeCardId = null) {
+    if (typeof letter !== 'string' || letter.trim() === '') {
+      throw new Error('Card is missing a session_letter');
+    }
+
+    const clash = this.findCardBySessionLetter(projectId, letter, excludeCardId);
+    if (clash) {
+      throw new Error(
+        `Session letter "${clash.session_letter}" is already used by card "${clash.title}"`
+      );
+    }
+  }
+
+  /**
+   * The project a subphase belongs to.
+   * @param {number} subphaseId - Subphase ID
+   * @returns {number|null} - Project ID, or null if the subphase doesn't exist
+   */
+  getProjectIdForSubphase(subphaseId) {
+    const row = this.db.prepare(`
+      SELECT p.project_id AS projectId
+      FROM subphases s
+      JOIN phases p ON s.phase_id = p.id
+      WHERE s.id = ?
+    `).get(subphaseId);
+
+    return row ? row.projectId : null;
+  }
+
+  /**
    * Create a new card in a subphase
    * @param {number} subphaseId - Subphase ID
    * @param {Object} cardData - Card data
@@ -485,6 +576,14 @@ class KanbanDatabase {
    */
   createCard(subphaseId, cardData) {
     try {
+      const projectId = this.getProjectIdForSubphase(subphaseId);
+      if (projectId === null) {
+        throw new Error(`Subphase ${subphaseId} not found`);
+      }
+
+      // Backstop behind the dialog's own check - also covers the Pi's HTTP API
+      this.assertSessionLetterAvailable(projectId, cardData.session_letter);
+
       const sql = `
         INSERT INTO cards (
           subphase_id, session_letter, title, description, success_criteria,
@@ -1108,23 +1207,23 @@ class KanbanDatabase {
         targetSubphaseId = data.add_to_subphase;
       }
 
-      // Get all existing session letters in the project
-      const existingLetters = this.db.prepare(`
-        SELECT c.session_letter
-        FROM cards c
-        JOIN subphases s ON c.subphase_id = s.id
-        JOIN phases p ON s.phase_id = p.id
-        WHERE p.project_id = ?
-      `).all(projectId).map(row => row.session_letter);
-
-      const existingLetterSet = new Set(existingLetters);
-
-      // Check for duplicate session letters
+      // Reject letters already on the board, and repeats within this batch.
+      // Checked against the DB rather than a pre-read set so the letters an
+      // append generator picked from a stale export can't slip through.
       if (data.new_cards && Array.isArray(data.new_cards)) {
+        const batchLetters = new Map();
+
         for (const card of data.new_cards) {
-          if (existingLetterSet.has(card.session_letter)) {
-            throw new Error(`Duplicate session letter "${card.session_letter}" already exists in project`);
+          this.assertSessionLetterAvailable(projectId, card.session_letter);
+
+          const normalized = card.session_letter.trim().toUpperCase();
+          if (batchLetters.has(normalized)) {
+            throw new Error(
+              `Session letter "${card.session_letter}" is used twice in this import ` +
+              `("${batchLetters.get(normalized)}" and "${card.title}")`
+            );
           }
+          batchLetters.set(normalized, card.title);
         }
       }
 

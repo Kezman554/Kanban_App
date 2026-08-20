@@ -455,3 +455,62 @@ Known gaps / followups
   need to be guaranteed unique.
 - CardDetail's edit path does not let you change a letter, so no equivalent
   check was needed there.
+
+Session Progress - 2026-08-20 (Session letter uniqueness at the data layer)
+===========================================================================
+
+Goal: Prompt 1's duplicate check lived only in AddCardDialog. Close the gap at
+the data layer so every path is covered. This stopped being tidiness today:
+the kanban-append2 skill now assigns session letters itself and imports them,
+from an export that may be minutes stale - so the import path is the likely
+source of a collision, not a theoretical one.
+
+1. operations.js: three new helpers next to the card ops -
+   findCardBySessionLetter(projectId, letter, excludeCardId) matches
+   case-insensitively and trimmed (UPPER(TRIM(...))), returning the clashing
+   row; assertSessionLetterAvailable(...) throws the standard message naming
+   it; getProjectIdForSubphase(subphaseId) resolves the project, since
+   createCard only receives a subphase.
+2. createCard now asserts before inserting. That is the path the dialog uses
+   over IPC AND the Pi's POST /subphases/:id/cards, so the HTTP API is covered
+   by the same check. Empty/whitespace letters rejected too.
+3. appendCards already had a duplicate check, but it was case-sensitive, did
+   not name the conflicting card, and did not catch a letter repeated twice
+   WITHIN one batch. Replaced with assertSessionLetterAvailable per card plus
+   a batch-local Map, so "C" and "c" both collide and an intra-batch repeat is
+   named ("First F" and "Second F").
+4. createProject (board import) had NO check at all - a single project JSON
+   with the same letter twice landed silently. Now validated up front, before
+   any phase is written, so the transaction rolls back cleanly.
+5. AddCardDialog's client-side check deliberately left in place - it gives
+   immediate feedback; this is the backstop, not a replacement.
+
+New src/database/session-letter-uniqueness.test.js (20 checks), run the same
+way as the other suites:
+  $env:ELECTRON_RUN_AS_NODE=1; & .\node_modules\.bin\electron.cmd \
+    src\database\session-letter-uniqueness.test.js
+Covers createCard (same subphase, different phase, lowercase, padded, empty),
+append (board clash, stale-export mid-batch, intra-batch repeat, rollback),
+and project import (intra-payload duplicate, no project left behind, same
+letter in a DIFFERENT project still allowed). 20/20. append-import.test.js
+(17) and vault-export.test.js (12) still pass.
+
+Also exercised through the real IPC path against DocuSync in the running app:
+appending "C" -> rejected naming Session C; "t" -> rejected naming Session T
+(the dialog's own check is case-sensitive and would have MISSED this one); a
+batch of one good card + a reused "E" -> whole batch rolled back, card count
+unchanged at 25; a genuinely new letter still appends. Test card removed.
+
+Known gaps / followups
+----------------------
+- Letters are compared case-insensitively but still STORED as given. Since
+  depends_on_cards, dependency_updates and external_dependencies all match
+  with SQL "=" (case-sensitive in SQLite), a lowercase letter that is not a
+  duplicate still stores lowercase and would not resolve against an uppercase
+  reference. Pre-existing, not made worse; normalising letters to uppercase on
+  write is the real fix.
+- Still no DB-level UNIQUE constraint - the guard is in the data layer, so a
+  direct sqlite3 write bypasses it.
+- updateCardDetails does not expose session_letter, so no check was needed
+  there; if letter editing is ever added to CardDetail, it should call
+  assertSessionLetterAvailable with excludeCardId set.
