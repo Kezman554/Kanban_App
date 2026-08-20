@@ -733,3 +733,60 @@ Known gaps / followups
 - No duplicate check within a card's own external_dependencies: the same
   project+letter can be added twice. Harmless (both resolve identically) but
   untidy.
+
+Session Progress - 2026-08-20 (Card letter picker for external dependencies)
+============================================================================
+
+Goal: In the external-dependencies editor the project was a picker but the
+letter was free text, so a typo saved happily and rendered as the SAME
+unresolved state as a link whose target project has not been imported yet.
+Two different situations that looked identical.
+
+1. CardDetail.jsx: selecting a project now loads that project's cards
+   (getProject -> flatten phases/subphases) into projectCardsBySlug, cached
+   per slug, and the letter becomes a <select> of real cards showing
+   "LETTER - Title" with "(Done)" marked, ordered the same way the board
+   orders letters (shorter base first, then alphabetical, then numeric
+   suffix, so C < C2 and A < AA).
+2. Free text is kept as a deliberate fallback via an "Other / not created
+   yet..." option at the end of the list, plus a "Pick from list" button to
+   go back. Changing the project clears the letter, since the old letter
+   belonged to the old project.
+3. A stored letter that is NOT among the target project's cards drops that
+   row to free text automatically when the editor opens, so an existing
+   forward reference stays visible and editable instead of silently
+   disappearing from a picker that has no such option.
+4. The read-only list now distinguishes FOUR states instead of two colours:
+   green "Resolved"; amber <status> for a live blocker; SLATE + dashed border
+   "project not imported yet" with 'Waiting for "slug" to be imported.'; and
+   RED "no such card" with 'X has no card Y - check the letter.' The last two
+   are the pair that used to be indistinguishable - a missing card inside a
+   project that IS imported is almost always a typo, whereas a missing
+   project is a legitimate forward reference.
+5. `manual` is a UI-only row flag and is stripped before the save call rather
+   than relying on normalizeExternalDependencies to drop it.
+
+Verified in the running app on DocuSync card E: picking Alfred Home Hub
+populated 29 real card options (A - Session A: Initialize Project (Done) ...
+T9 ...) plus the Other option; picking "P - Session P: Stage 2 - Voice
+Pipeline" saved and rendered as an amber Not Started blocker. Then put all
+four states on one card at once - hub/P (amber live), hub/ZZ9 (red, "Alfred
+Home Hub has no card ZZ9 - check the letter."), not-yet-imported/A (slate
+dashed, "Waiting for..."), hub/A (green Resolved) - and confirmed they are
+visually distinct. Reopening the editor showed the auto-fallback working:
+the hub/P and hub/A rows rendered two selects, while the ZZ9 and
+not-yet-imported rows rendered a free-text input still holding their letters.
+Test links cleared; card E back to []; letter audit CLEAN.
+
+All suites still green: vault-export 51, append-import 17,
+session-letter-uniqueness 34.
+
+Known gaps / followups
+----------------------
+- The picker lists every card in the target project including Done ones
+  (marked "(Done)"), which is right for recording a dependency that is
+  already satisfied.
+- Still no duplicate check within a card's own external_dependencies - the
+  same project+letter can be added twice. Harmless, both resolve identically.
+- projectCardsBySlug is cached for the life of the modal, so a project edited
+  in another window mid-edit would show a stale card list until reopened.

@@ -26,6 +26,8 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const [extDepsSaveSuccess, setExtDepsSaveSuccess] = useState(false);
   const [extDepsSaveError, setExtDepsSaveError] = useState(null);
   const [availableProjects, setAvailableProjects] = useState([]);
+  // slug -> array of that project's cards, or 'loading'. Populates the letter picker.
+  const [projectCardsBySlug, setProjectCardsBySlug] = useState({});
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
   const [notesSaveSuccess, setNotesSaveSuccess] = useState(false);
@@ -84,6 +86,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setEditedExtDeps([]);
     setExtDepsSaveSuccess(false);
     setExtDepsSaveError(null);
+    setProjectCardsBySlug({});
     setShowDeleteConfirm(false);
     setIsDeleting(false);
     setDeleteError(null);
@@ -143,6 +146,19 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const isTBC = card.resource === 'tbc';
   const hasPromptGuide = card.prompt_guide && card.prompt_guide.trim() !== '';
   const hasExternalDeps = Array.isArray(card.external_dependencies) && card.external_dependencies.length > 0;
+
+  // Same ordering the board uses: shorter base first (A < AA), then
+  // alphabetical, then numeric suffix (C < C2)
+  function compareLetters(a, b) {
+    const parse = (x) => {
+      const m = String(x || '').match(/^([A-Z]+)(\d*)$/);
+      return m ? { base: m[1], num: m[2] ? parseInt(m[2], 10) : 0 } : { base: String(x || ''), num: 0 };
+    };
+    const pa = parse(a), pb = parse(b);
+    if (pa.base.length !== pb.base.length) return pa.base.length - pb.base.length;
+    if (pa.base !== pb.base) return pa.base.localeCompare(pb.base);
+    return pa.num - pb.num;
+  }
 
   // Resource type labels
   const resourceLabels = {
@@ -303,20 +319,58 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   // Cross-project dependency editing. The project picker is populated from the
   // database rather than free text: a mistyped slug passes validation and then
   // silently links to nothing.
+  // Load the target project's cards so the letter can be picked rather than typed.
+  const loadCardsForProject = async (slug, projects) => {
+    if (!slug) return;
+    const list = projects || availableProjects;
+    const target = list.find(pr => pr.slug === slug);
+    if (!target) return;
+
+    setProjectCardsBySlug(prev => (prev[slug] ? prev : { ...prev, [slug]: 'loading' }));
+    try {
+      const full = await window.electron.getProject(target.id);
+      const cards = [];
+      for (const phase of full.phases || []) {
+        for (const sub of phase.subphases || []) {
+          for (const c of sub.cards || []) {
+            cards.push({ session_letter: c.session_letter, title: c.title, status: c.status });
+          }
+        }
+      }
+      cards.sort((a, b) => compareLetters(a.session_letter, b.session_letter));
+      setProjectCardsBySlug(prev => ({ ...prev, [slug]: cards }));
+
+      // A stored letter that isn't in the target project drops to free text so it
+      // stays visible and editable - it may legitimately not exist yet.
+      const known = new Set(cards.map(c => c.session_letter));
+      setEditedExtDeps(prev => prev.map(dep => (
+        dep.project_slug === slug && dep.card_letter && !known.has(dep.card_letter)
+          ? { ...dep, manual: true }
+          : dep
+      )));
+    } catch (error) {
+      console.error('Failed to load cards for project:', error);
+      setProjectCardsBySlug(prev => ({ ...prev, [slug]: [] }));
+    }
+  };
+
   const handleEditExtDeps = async () => {
     setExtDepsSaveError(null);
-    setEditedExtDeps(
-      (card.external_dependencies || []).map(dep => ({
-        project_slug: dep.project_slug || '',
-        card_letter: dep.card_letter || '',
-        description: dep.description || '',
-      }))
-    );
+    const rows = (card.external_dependencies || []).map(dep => ({
+      project_slug: dep.project_slug || '',
+      card_letter: dep.card_letter || '',
+      description: dep.description || '',
+      manual: false,
+    }));
+    setEditedExtDeps(rows);
     setIsEditingExtDeps(true);
 
     try {
       const projects = await window.electron.getAllProjects();
       setAvailableProjects(projects || []);
+      // Prefetch cards for the projects already referenced
+      const slugs = [...new Set(rows.map(r => r.project_slug).filter(Boolean))];
+      await Promise.all(slugs.map(slug => loadCardsForProject(slug, projects || [])));
     } catch (error) {
       console.error('Failed to load projects:', error);
       setExtDepsSaveError('Could not load the project list');
@@ -335,8 +389,22 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     )));
   };
 
+  const handleExtDepProjectChange = (index, slug) => {
+    // The old letter belongs to the old project, so clear it
+    setEditedExtDeps(prev => prev.map((dep, i) => (
+      i === index ? { ...dep, project_slug: slug, card_letter: '', manual: false } : dep
+    )));
+    loadCardsForProject(slug);
+  };
+
+  const handleToggleManualLetter = (index, manual) => {
+    setEditedExtDeps(prev => prev.map((dep, i) => (
+      i === index ? { ...dep, manual, card_letter: manual ? dep.card_letter : '' } : dep
+    )));
+  };
+
   const handleAddExtDep = () => {
-    setEditedExtDeps(prev => [...prev, { project_slug: '', card_letter: '', description: '' }]);
+    setEditedExtDeps(prev => [...prev, { project_slug: '', card_letter: '', description: '', manual: false }]);
   };
 
   const handleRemoveExtDep = (index) => {
@@ -361,9 +429,15 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         }
       }
 
-      // normalizeExternalDependencies in the data layer does the rest:
-      // trims, uppercases card_letter, and strips computed fields
-      await window.electron.updateCardExternalDependencies(card.id, editedExtDeps);
+      // normalizeExternalDependencies in the data layer does the rest: trims,
+      // uppercases card_letter, and strips computed fields. `manual` is a
+      // UI-only flag, dropped here rather than relying on the normaliser.
+      const toSave = editedExtDeps.map(dep => ({
+        project_slug: dep.project_slug,
+        card_letter: dep.card_letter,
+        description: dep.description,
+      }));
+      await window.electron.updateCardExternalDependencies(card.id, toSave);
       setIsEditingExtDeps(false);
       setEditedExtDeps([]);
       setExtDepsSaveSuccess(true);
@@ -839,45 +913,101 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     No external dependencies - add one below
                   </p>
                 )}
-                {editedExtDeps.map((dep, idx) => (
-                  <div key={idx} className="p-3 bg-dark-bg border border-blue-500/60 rounded-lg space-y-2">
-                    <div className="flex items-center gap-2">
-                      <select
-                        value={dep.project_slug}
-                        onChange={(e) => handleExtDepChange(idx, 'project_slug', e.target.value)}
-                        className="flex-1 min-w-0 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
-                      >
-                        <option value="">Select project...</option>
-                        {availableProjects
-                          .filter(p => !project || p.id !== project.id)
-                          .map(p => (
-                            <option key={p.id} value={p.slug}>{p.name}</option>
-                          ))}
-                      </select>
+                {editedExtDeps.map((dep, idx) => {
+                  const targetCards = dep.project_slug ? projectCardsBySlug[dep.project_slug] : null;
+                  const cardsLoading = targetCards === 'loading';
+                  const cardsReady = Array.isArray(targetCards);
+                  const usePicker = cardsReady && targetCards.length > 0 && !dep.manual;
+
+                  return (
+                    <div key={idx} className="p-3 bg-dark-bg border border-blue-500/60 rounded-lg space-y-2">
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={dep.project_slug}
+                          onChange={(e) => handleExtDepProjectChange(idx, e.target.value)}
+                          className="flex-1 min-w-0 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
+                        >
+                          <option value="">Select project...</option>
+                          {availableProjects
+                            .filter(pr => !project || pr.id !== project.id)
+                            .map(pr => (
+                              <option key={pr.id} value={pr.slug}>{pr.name}</option>
+                            ))}
+                        </select>
+                        <button
+                          onClick={() => handleRemoveExtDep(idx)}
+                          className="px-2 py-1 rounded text-xs font-medium bg-red-900/40 border border-red-700 text-red-300 hover:bg-red-900/70 transition-colors flex-shrink-0"
+                          title="Remove this dependency"
+                        >
+                          Remove
+                        </button>
+                      </div>
+
+                      {/* Letter: picked from the target project's real cards where
+                          possible, free text only as a deliberate fallback */}
+                      {!dep.project_slug ? (
+                        <p className="text-xs text-dark-text-secondary italic">
+                          Choose a project to pick its card
+                        </p>
+                      ) : cardsLoading ? (
+                        <p className="text-xs text-dark-text-secondary italic">Loading cards...</p>
+                      ) : usePicker ? (
+                        <div className="flex items-center gap-2">
+                          <select
+                            value={dep.card_letter}
+                            onChange={(e) => {
+                              if (e.target.value === '__manual__') {
+                                handleToggleManualLetter(idx, true);
+                              } else {
+                                handleExtDepChange(idx, 'card_letter', e.target.value);
+                              }
+                            }}
+                            className="flex-1 min-w-0 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="">Select card...</option>
+                            {targetCards.map(c => (
+                              <option key={c.session_letter} value={c.session_letter}>
+                                {c.session_letter} - {c.title}{c.status === 'Done' ? ' (Done)' : ''}
+                              </option>
+                            ))}
+                            <option value="__manual__">Other / not created yet...</option>
+                          </select>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={dep.card_letter}
+                            onChange={(e) => handleExtDepChange(idx, 'card_letter', e.target.value.toUpperCase())}
+                            className="w-28 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text font-bold uppercase focus:outline-none focus:border-blue-500"
+                            placeholder="Letter"
+                          />
+                          <span className="text-xs text-dark-text-secondary">
+                            {cardsReady && targetCards.length === 0
+                              ? 'That project has no cards yet'
+                              : 'Typing a letter that does not exist yet'}
+                          </span>
+                          {cardsReady && targetCards.length > 0 && (
+                            <button
+                              onClick={() => handleToggleManualLetter(idx, false)}
+                              className="text-xs px-2 py-1 rounded font-medium bg-dark-surface border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                            >
+                              Pick from list
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                       <input
                         type="text"
-                        value={dep.card_letter}
-                        onChange={(e) => handleExtDepChange(idx, 'card_letter', e.target.value.toUpperCase())}
-                        className="w-24 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text font-bold uppercase focus:outline-none focus:border-blue-500"
-                        placeholder="Letter"
+                        value={dep.description}
+                        onChange={(e) => handleExtDepChange(idx, 'description', e.target.value)}
+                        className="w-full px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
+                        placeholder="Why this card depends on it (optional)"
                       />
-                      <button
-                        onClick={() => handleRemoveExtDep(idx)}
-                        className="px-2 py-1 rounded text-xs font-medium bg-red-900/40 border border-red-700 text-red-300 hover:bg-red-900/70 transition-colors flex-shrink-0"
-                        title="Remove this dependency"
-                      >
-                        Remove
-                      </button>
                     </div>
-                    <input
-                      type="text"
-                      value={dep.description}
-                      onChange={(e) => handleExtDepChange(idx, 'description', e.target.value)}
-                      className="w-full px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
-                      placeholder="Why this card depends on it (optional)"
-                    />
-                  </div>
-                ))}
+                  );
+                })}
                 <button
                   onClick={handleAddExtDep}
                   className="text-xs px-3 py-1.5 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
@@ -887,31 +1017,65 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               </div>
             ) : hasExternalDeps ? (
               <div className="space-y-2">
-                {card.external_dependencies.map((dep, idx) => (
-                  <div
-                    key={idx}
-                    className={`text-sm px-3 py-2 rounded border ${
-                      dep.resolved
-                        ? 'bg-green-900/20 border-green-700/60'
-                        : 'bg-amber-900/20 border-amber-700/60'
-                    }`}
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-dark-text">
-                        {dep.project_name || dep.project_slug}
-                        <span className="text-dark-text-secondary"> · Session {dep.card_letter}</span>
-                      </span>
-                      <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${
-                        dep.resolved ? 'bg-green-700 text-green-100' : 'bg-amber-700 text-amber-100'
-                      }`}>
-                        {dep.resolved ? 'Resolved' : (dep.project_name ? (dep.status || 'card not found') : 'project not imported')}
-                      </span>
+                {card.external_dependencies.map((dep, idx) => {
+                  // Four distinct states. The two unresolved-and-not-blocking ones
+                  // must NOT look alike: a project that has not been imported yet is
+                  // a legitimate forward reference, whereas a missing card inside a
+                  // project that IS imported is almost always a mistyped letter.
+                  const projectMissing = !dep.project_name;
+                  const cardMissing = !projectMissing && !dep.status;
+
+                  const tone = dep.resolved
+                    ? {
+                        box: 'bg-green-900/20 border-green-700/60',
+                        badge: 'bg-green-700 text-green-100',
+                        label: 'Resolved',
+                      }
+                    : projectMissing
+                      ? {
+                          box: 'bg-slate-800/40 border-slate-600 border-dashed',
+                          badge: 'bg-slate-600 text-slate-100',
+                          label: 'project not imported yet',
+                        }
+                      : cardMissing
+                        ? {
+                            box: 'bg-red-900/25 border-red-600',
+                            badge: 'bg-red-700 text-red-100',
+                            label: 'no such card',
+                          }
+                        : {
+                            box: 'bg-amber-900/20 border-amber-700/60',
+                            badge: 'bg-amber-700 text-amber-100',
+                            label: dep.status,
+                          };
+
+                  return (
+                    <div key={idx} className={`text-sm px-3 py-2 rounded border ${tone.box}`}>
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-medium text-dark-text">
+                          {dep.project_name || dep.project_slug}
+                          <span className="text-dark-text-secondary"> · Session {dep.card_letter}</span>
+                        </span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${tone.badge}`}>
+                          {tone.label}
+                        </span>
+                      </div>
+                      {cardMissing && (
+                        <p className="text-red-300 mt-1 text-xs">
+                          {dep.project_name} has no card {dep.card_letter} - check the letter.
+                        </p>
+                      )}
+                      {projectMissing && (
+                        <p className="text-slate-400 mt-1 text-xs">
+                          Waiting for "{dep.project_slug}" to be imported.
+                        </p>
+                      )}
+                      {dep.description && (
+                        <p className="text-dark-text-secondary mt-1">{dep.description}</p>
+                      )}
                     </div>
-                    {dep.description && (
-                      <p className="text-dark-text-secondary mt-1">{dep.description}</p>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             ) : (
               <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
