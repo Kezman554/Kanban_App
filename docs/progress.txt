@@ -790,3 +790,54 @@ Known gaps / followups
   same project+letter can be added twice. Harmless, both resolve identically.
 - projectCardsBySlug is cached for the life of the modal, so a project edited
   in another window mid-edit would show a stale card list until reopened.
+
+Session Progress - 2026-08-20 (Choose the destination when adding a card)
+=========================================================================
+
+Goal: Add Card always attached to the subphase whose + button was clicked.
+Completed phases are hidden from the board by design, so a card belonging to
+finished work had to be dumped in an unrelated surviving phase.
+
+1. AddCardDialog.jsx: new Destination <select>, grouped with <optgroup> by
+   phase so both the phase name and the subphase name are visible. Lists
+   EVERY phase and subphase, including the ones the board hides.
+2. Subphases the board is hiding are labelled in the list: "- all done
+   (hidden from board)" when every card is Done, "- empty" when there are no
+   cards, nothing otherwise. A hint line under the picker says completed
+   phases can still be chosen here.
+3. The destination is held as `selectedSubphaseId` defaulting to NULL, with
+   `targetSubphaseId = selectedSubphaseId ?? subphaseId`. Deliberately an
+   override rather than seeding state from the prop: seeding would need an
+   effect, and on open that effect would race the letter fetch and fire it
+   twice (once with the stale subphase). With the null default the very first
+   render already has the right target.
+4. getNextSessionLetter is subphase-scoped, so the fetch effect keys on
+   targetSubphaseId - changing destination re-suggests the letter. The field
+   stays editable, so the prompt-1 override still applies.
+5. onSave(targetSubphaseId, cardData). Board.handleCreateCard already took a
+   subphaseId argument, so the only Board change was passing
+   phases={project?.phases || []} - project.phases is the unfiltered list;
+   boardDisplayData.activePhases is the filtered view used for rendering.
+
+Verified in the running app against GymSync, which has two fully completed
+phases. Board showed phases 2,4,5,6,7 (1 and 3 hidden); the picker listed all
+7 with 1.1 Setup, 3.1 Builder and 3.2 marked "all done (hidden from board)".
+Opened from 4.1 3D Rig -> default destination was 4.1 with suggested letter
+W3. Switching to "1.1 Setup" re-fetched the letter as B2 (subphase-scoped -
+1.1 holds A and B). Saved: the card landed in phase 116 / subphase 203, and
+Phase 1: Foundation duly reappeared on the board. Default path re-checked
+separately: opened from 7.1 Deferred, picker untouched, card landed in
+subphase 214 as T2 - existing behaviour unchanged. Both test cards deleted,
+GymSync back to both phases fully done, letter audit CLEAN.
+
+Suites unchanged and green: vault-export 51, append-import 17,
+session-letter-uniqueness 34.
+
+Known gaps / followups
+----------------------
+- The picker lists subphases for every phase in the project; on a very large
+  board that select gets long. Grouping keeps it readable but a search/filter
+  would help if projects grow.
+- Adding a card to a completed phase makes that phase reappear on the board,
+  which is correct but can surprise - the phase was hidden only because
+  everything in it was done.

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existingCards }) => {
+const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existingCards, phases = [] }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [successCriteria, setSuccessCriteria] = useState('');
@@ -10,17 +10,25 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
   const [promptGuide, setPromptGuide] = useState('');
   const [gitCommitMessage, setGitCommitMessage] = useState('');
   const [nextLetter, setNextLetter] = useState('');
+  // null means "use the subphase the Add button was clicked from". Kept as an
+  // override rather than seeded from the prop so the default needs no effect
+  // to apply and cannot race the letter fetch on open.
+  const [selectedSubphaseId, setSelectedSubphaseId] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const dialogRef = useRef(null);
   const errorRef = useRef(null);
 
-  // Fetch next session letter when dialog opens
+  // Where the card will actually land
+  const targetSubphaseId = selectedSubphaseId !== null ? selectedSubphaseId : subphaseId;
+
+  // Fetch the suggested session letter for the CHOSEN subphase - getNextSessionLetter
+  // is subphase-scoped, so changing the destination has to re-suggest
   useEffect(() => {
-    if (isOpen && projectId && subphaseId) {
+    if (isOpen && projectId && targetSubphaseId) {
       fetchNextLetter();
     }
-  }, [isOpen, projectId, subphaseId]);
+  }, [isOpen, projectId, targetSubphaseId]);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -34,6 +42,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
       setPromptGuide('');
       setGitCommitMessage('');
       setNextLetter('');
+      setSelectedSubphaseId(null);
       setError(null);
     }
   }, [isOpen]);
@@ -81,7 +90,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
 
   const fetchNextLetter = async () => {
     try {
-      const letter = await window.electron.getNextSessionLetter(projectId, subphaseId);
+      const letter = await window.electron.getNextSessionLetter(projectId, targetSubphaseId);
       setNextLetter(letter);
     } catch (err) {
       console.error('Failed to get next session letter:', err);
@@ -138,7 +147,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
         git_commit_message: gitCommitMessage.trim() || null,
       };
 
-      await onSave(subphaseId, cardData);
+      await onSave(targetSubphaseId, cardData);
       onClose();
     } catch (err) {
       console.error('Failed to create card:', err);
@@ -194,6 +203,44 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-dark">
+            {/* Destination - defaults to the subphase the button was clicked from.
+                Lists EVERY subphase, including those the board hides because all
+                their cards are done, so work can be filed where it belongs. */}
+            {phases.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-dark-text mb-1">
+                  Destination
+                </label>
+                <select
+                  value={targetSubphaseId || ''}
+                  onChange={(e) => setSelectedSubphaseId(Number(e.target.value))}
+                  className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text focus:outline-none focus:border-blue-500"
+                >
+                  {phases.map(phase => (
+                    <optgroup key={phase.id} label={phase.name}>
+                      {(phase.subphases || []).map(sub => {
+                        const cards = sub.cards || [];
+                        const allDone = cards.length > 0 && cards.every(c => c.status === 'Done');
+                        const suffix = cards.length === 0
+                          ? ' - empty'
+                          : allDone
+                            ? ' - all done (hidden from board)'
+                            : '';
+                        return (
+                          <option key={sub.id} value={sub.id}>
+                            {sub.name}{suffix}
+                          </option>
+                        );
+                      })}
+                    </optgroup>
+                  ))}
+                </select>
+                <p className="text-xs text-dark-text-secondary mt-1">
+                  Completed phases are hidden on the board but can still be chosen here
+                </p>
+              </div>
+            )}
+
             {/* Session Letter */}
             <div>
               <label className="block text-sm font-medium text-dark-text mb-1">

@@ -1330,6 +1330,7 @@ const Board = ({ projectId }) => {
         subphaseId={addCardSubphaseId}
         projectId={projectId}
         existingCards={getAllProjectCards()}
+        phases={project?.phases || []}
       />
 
       {/* Append Cards Dialog */}
