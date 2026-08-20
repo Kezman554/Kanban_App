@@ -16,6 +16,49 @@ class KanbanDatabase {
   }
 
   // ============================================================================
+  // SESSION LETTER NORMALISATION
+  // ============================================================================
+
+  /**
+   * Canonical storage form for a session letter: trimmed and uppercased.
+   *
+   * Normalising on WRITE (rather than matching case-insensitively on read) is
+   * what keeps references resolvable: depends_on_cards and
+   * external_dependencies.card_letter are matched with SQL "=", which is
+   * case-sensitive in SQLite, so a letter stored lowercase would never resolve
+   * against an uppercase reference and its card would look like it had no
+   * dependents.
+   *
+   * Non-strings are passed through untouched so existing validation (which
+   * reports a missing or invalid letter) still sees the original value.
+   *
+   * @param {*} letter - Raw session letter
+   * @returns {*} - Trimmed uppercase letter, or the input unchanged if not a string
+   */
+  normalizeSessionLetter(letter) {
+    return typeof letter === 'string' ? letter.trim().toUpperCase() : letter;
+  }
+
+  /**
+   * Canonical storage form for a depends_on_cards array: every letter
+   * normalised, blanks dropped, duplicates collapsed.
+   *
+   * @param {*} deps - Raw depends_on_cards value from import JSON
+   * @returns {Array} - Array of normalised session letters
+   */
+  normalizeDependsOnCards(deps) {
+    if (!Array.isArray(deps)) return [];
+
+    const seen = new Set();
+    for (const dep of deps) {
+      const letter = this.normalizeSessionLetter(dep);
+      if (typeof letter === 'string' && letter !== '') seen.add(letter);
+    }
+
+    return [...seen];
+  }
+
+  // ============================================================================
   // EXTERNAL (CROSS-PROJECT) DEPENDENCY HELPERS
   // ============================================================================
 
@@ -50,7 +93,9 @@ class KanbanDatabase {
 
       return {
         project_slug: typeof slug === 'string' ? slug.trim() : slug,
-        card_letter: typeof letter === 'string' ? letter.trim() : letter,
+        // Uppercased to match how session_letter is stored, so the "=" lookup
+        // in resolveExternalDependencies actually finds the referenced card
+        card_letter: this.normalizeSessionLetter(letter),
         description: (entry && entry.description) || '',
       };
     });
@@ -208,13 +253,13 @@ class KanbanDatabase {
                 subphase.cards.forEach((card) => {
                   insertCard.run(
                     subphaseId,
-                    card.session_letter,
+                    this.normalizeSessionLetter(card.session_letter),
                     card.title,
                     card.description || null,
                     card.success_criteria || null,
                     card.resource || 'claude_sub',
                     card.status || 'Not Started',
-                    JSON.stringify(card.depends_on_cards || []),
+                    JSON.stringify(this.normalizeDependsOnCards(card.depends_on_cards)),
                     JSON.stringify(this.normalizeExternalDependencies(card.external_dependencies)),
                     card.is_placeholder ? 1 : 0,
                     card.complexity || 'medium',
@@ -595,13 +640,13 @@ class KanbanDatabase {
 
       const result = this.db.prepare(sql).run(
         subphaseId,
-        cardData.session_letter,
+        this.normalizeSessionLetter(cardData.session_letter),
         cardData.title,
         cardData.description || null,
         cardData.success_criteria || null,
         cardData.resource || 'claude_sub',
         'Not Started',
-        JSON.stringify(cardData.depends_on_cards || []),
+        JSON.stringify(this.normalizeDependsOnCards(cardData.depends_on_cards)),
         JSON.stringify(this.normalizeExternalDependencies(cardData.external_dependencies)),
         cardData.is_placeholder ? 1 : 0,
         cardData.complexity || 'medium',
@@ -1241,13 +1286,13 @@ class KanbanDatabase {
         for (const card of data.new_cards) {
           insertCard.run(
             targetSubphaseId,
-            card.session_letter,
+            this.normalizeSessionLetter(card.session_letter),
             card.title,
             card.description || null,
             card.success_criteria || null,
             card.resource || 'claude_sub',
             card.status || 'Not Started',
-            JSON.stringify(card.depends_on_cards || []),
+            JSON.stringify(this.normalizeDependsOnCards(card.depends_on_cards)),
             JSON.stringify(this.normalizeExternalDependencies(card.external_dependencies)),
             card.is_placeholder ? 1 : 0,
             card.complexity || 'medium',
@@ -1266,8 +1311,9 @@ class KanbanDatabase {
       // Process dependency updates
       if (data.dependency_updates && Array.isArray(data.dependency_updates)) {
         for (const update of data.dependency_updates) {
-          // Find the card by session_letter in this project
-          const targetLetter = update.card || update.session_letter;
+          // Find the card by session_letter in this project. Normalised so a
+          // lowercase reference in the import still finds the stored card.
+          const targetLetter = this.normalizeSessionLetter(update.card || update.session_letter);
           const targetCard = this.db.prepare(`
             SELECT c.id, c.session_letter, c.status, c.depends_on_cards
             FROM cards c
@@ -1288,8 +1334,12 @@ class KanbanDatabase {
 
           // Append new dependencies to existing ones
           // Support both add_dependency (single string) and add_dependencies (array)
-          const currentDeps = JSON.parse(targetCard.depends_on_cards);
-          const newDeps = [].concat(update.add_dependencies || update.add_dependency || []);
+          // Both sides normalised so a lowercase reference merges with, rather
+          // than duplicates, the letter already stored
+          const currentDeps = this.normalizeDependsOnCards(JSON.parse(targetCard.depends_on_cards));
+          const newDeps = this.normalizeDependsOnCards(
+            [].concat(update.add_dependencies || update.add_dependency || [])
+          );
           const mergedDeps = [...new Set([...currentDeps, ...newDeps])];
 
           this.db.prepare(`

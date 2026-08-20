@@ -233,6 +233,117 @@ function runTests() {
       !db.getAllProjects().some(p => p.slug === 'dup-project')
     );
 
+    // ------------------------------------------------------------------
+    // Normalisation on write: letters STORED uppercase, references too
+    // ------------------------------------------------------------------
+    // createCard with a lowercase, padded letter
+    const lowerId = db.createCard(subphase11.id, {
+      session_letter: '  g  ',
+      title: 'Session G: Lowercase On Write',
+      depends_on_cards: [],
+    });
+    const storedG = db.getCard(lowerId);
+    check(
+      'createCard stores a lowercase letter uppercased and trimmed',
+      storedG.session_letter === 'G',
+      `stored ${JSON.stringify(storedG.session_letter)}`
+    );
+
+    // A lowercase dependency reference must resolve against the uppercase card
+    const depId = db.createCard(subphase11.id, {
+      session_letter: 'h',
+      title: 'Session H: Depends On Lowercase g',
+      depends_on_cards: ['g'],
+    });
+    const storedH = db.getCard(depId);
+    check(
+      'depends_on_cards letters are stored uppercased',
+      JSON.stringify(storedH.depends_on_cards) === '["G"]',
+      `stored ${JSON.stringify(storedH.depends_on_cards)}`
+    );
+
+    // The real payoff: blocking has to actually see the reference
+    let workableNow = db.getWorkableCards(projectId).map(c => c.session_letter);
+    check(
+      'H is blocked by its lowercase-written dependency on G',
+      !workableNow.includes('H'),
+      `workable: ${workableNow.join(',')}`
+    );
+    check('G itself is workable', workableNow.includes('G'), `workable: ${workableNow.join(',')}`);
+
+    db.updateCardStatus(storedG.id, 'Done');
+    workableNow = db.getWorkableCards(projectId).map(c => c.session_letter);
+    check(
+      'Completing G releases H (lowercase reference resolved)',
+      workableNow.includes('H'),
+      `workable: ${workableNow.join(',')}`
+    );
+
+    // Append import written entirely in lowercase
+    const lowerAppend = db.appendCards(projectId, {
+      add_to_phase: phase1.id,
+      add_to_subphase: subphase11.id,
+      new_cards: [
+        { session_letter: 'i', title: 'Session I: lower', depends_on_cards: [] },
+        { session_letter: 'j', title: 'Session J: lower', depends_on_cards: ['i'] },
+      ],
+    });
+    check('Lowercase append batch inserts', lowerAppend.cardsAdded === 2);
+
+    const afterLower = db.getProject(projectId).phases[0].subphases[0].cards;
+    const cardI = afterLower.find(c => c.session_letter === 'I');
+    const cardJ = afterLower.find(c => c.session_letter === 'J');
+    check('Appended lowercase letters stored uppercase', !!cardI && !!cardJ);
+    check(
+      'Appended lowercase depends_on_cards stored uppercase',
+      cardJ && JSON.stringify(cardJ.depends_on_cards) === '["I"]',
+      cardJ && JSON.stringify(cardJ.depends_on_cards)
+    );
+
+    let workableLower = db.getWorkableCards(projectId).map(c => c.session_letter);
+    check('J blocked by same-batch lowercase dep on I', !workableLower.includes('J'));
+    db.updateCardStatus(cardI.id, 'Done');
+    workableLower = db.getWorkableCards(projectId).map(c => c.session_letter);
+    check('Completing I releases J', workableLower.includes('J'));
+
+    // A lowercase letter must still collide with the uppercase card it becomes
+    const lowerClash = throws(() =>
+      db.createCard(subphase11.id, { session_letter: 'g', title: 'Second G' })
+    );
+    check('Lowercase letter still rejected as a duplicate after normalisation', lowerClash !== null);
+
+    // external_dependencies.card_letter normalised the same way
+    const extProjectId = db.importProjectFromJson({
+      name: 'Ext Target',
+      slug: 'ext-target',
+      phases: [
+        { name: 'P1', subphases: [{ name: 'S1', cards: [{ session_letter: 'q', title: 'Ext Q' }] }] },
+      ],
+    });
+    const extCard = db.getProject(extProjectId).phases[0].subphases[0].cards[0];
+    check('Project import stores lowercase letter uppercased', extCard.session_letter === 'Q');
+
+    const refId = db.createCard(subphase11.id, {
+      session_letter: 'k',
+      title: 'Refs ext lowercase',
+      depends_on_cards: [],
+      external_dependencies: [
+        { project_slug: 'ext-target', card_letter: 'q', description: 'needs Q' },
+      ],
+    });
+    const refCard = db.getCard(refId);
+    check(
+      'external_dependencies.card_letter stored uppercased',
+      refCard.external_dependencies[0].card_letter === 'Q',
+      JSON.stringify(refCard.external_dependencies[0])
+    );
+    check(
+      'Lowercase external reference RESOLVES against the uppercase card',
+      refCard.external_dependencies[0].project_name === 'Ext Target' &&
+        refCard.external_dependencies[0].status === 'Not Started',
+      JSON.stringify(refCard.external_dependencies[0])
+    );
+
     // Same letter in a DIFFERENT project is fine - letters are project-scoped
     const otherId = db.importProjectFromJson({
       name: 'Other Project',

@@ -514,3 +514,57 @@ Known gaps / followups
 - updateCardDetails does not expose session_letter, so no check was needed
   there; if letter editing is ever added to CardDetail, it should call
   assertSessionLetterAvailable with excludeCardId set.
+
+Session Progress - 2026-08-20 (Normalise session letters on write)
+==================================================================
+
+Goal: Letters were compared case-insensitively but stored as given. Since
+depends_on_cards and external_dependencies.card_letter are matched with SQL
+"=" (case-sensitive in SQLite), a letter stored lowercase would never resolve
+against an uppercase reference - the card would look like it had no
+dependents and a blocked card would render as workable. Fixed on write, not
+on read, so stored data is canonical.
+
+1. operations.js: two normalisers at the top of the class -
+   normalizeSessionLetter(letter) (trim + uppercase, non-strings passed
+   through so the existing missing-letter validation still sees the original)
+   and normalizeDependsOnCards(deps) (normalises each letter, drops blanks,
+   collapses duplicates).
+2. Applied at every write path: createCard, appendCards (new_cards), and
+   createProject all now store the normalised letter and normalised
+   depends_on_cards.
+3. normalizeExternalDependencies already trimmed card_letter; it now
+   uppercases via the same helper, so the "=" lookup in
+   resolveExternalDependencies actually finds the referenced card.
+4. appendCards dependency_updates: the target lookup normalises the incoming
+   letter (so {card: "c"} finds C), and the merge normalises BOTH the stored
+   and incoming arrays, so a lowercase reference merges with rather than
+   duplicates the letter already there.
+
+No migration needed - CHECKED rather than assumed, with a read-only audit
+script over every card's session_letter, depends_on_cards and external
+card_letter: laptop 235 cards CLEAN, Pi 267 cards CLEAN (run inside the
+container against /data/kanban.db). Nothing to rewrite.
+
+session-letter-uniqueness.test.js grew from 20 to 34 checks: lowercase and
+padded letters stored uppercase via all three write paths; lowercase
+depends_on_cards stored uppercase; a lowercase reference actually BLOCKS and
+then releases when its dependency completes; lowercase external card_letter
+stored uppercase and resolving against the referenced card; and a lowercase
+letter still rejected as a duplicate after normalisation. 34/34.
+append-import.test.js (17) and vault-export.test.js (12) still pass.
+
+Verified end to end in the running app against DocuSync: appended a JSON with
+session letters "z8" / " z9 " and depends_on_cards ["z8"] - stored as Z8/Z9
+with ["Z8"], both cards stacked in the 1.1 cell (stack badge 2), Z9 blocked
+by Z8 while Z8 was Not Started, and marking Z8 Done released Z9. Zero
+lowercase rows left behind. Test cards deleted, DocuSync back to 25, re-audit
+CLEAN.
+
+Known gaps / followups
+----------------------
+- Still no DB-level UNIQUE constraint or CHECK on case - the guard is in the
+  data layer, so a direct sqlite3 write can still bypass it.
+- Reads were deliberately left case-sensitive (normalise on write, not read),
+  so this depends on all writes going through operations.js. That holds for
+  the app, the append import and the Pi API, which share this file.
