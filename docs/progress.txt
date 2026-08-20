@@ -412,3 +412,46 @@ Known gaps / followups
 ----------------------
 - The container now has vault rw + ~/.ssh ro (like vault-api) to push the
   export. The browser never gets creds - it only triggers the Pi.
+
+Session Progress - 2026-08-20 (Editable session letter on Add Card)
+===================================================================
+
+Goal: The Add Card dialog fetched a session letter and showed it as read-only
+text ("This will be Session X"). Make it editable so a card can be given a
+chosen letter, without letting a duplicate onto the board.
+
+1. AddCardDialog.jsx: the read-only header line is now a "Session Letter"
+   text input bound to the same nextLetter state. It is still pre-filled from
+   getNextSessionLetter, so leaving it alone reproduces the old behaviour
+   exactly. Header now carries the rule instead ("Session letters are unique
+   across the whole project").
+2. Input uppercases as you type; the submit path does trim() + toUpperCase()
+   again, so " z9 " is stored as "Z9".
+3. Duplicate check runs against existingCards, which Board.jsx already passes
+   as getAllProjectCards() - the whole project, not just the subphase. That
+   is the right scope: depends_on_cards matches on letter project-wide, so a
+   repeat anywhere would make a dependency ambiguous. The error names the
+   clashing card: 'Session letter C is already used by "Session C: PDF
+   Loading & Viewing".'
+4. Empty letter is rejected: Create Card is disabled while the field is blank
+   (same treatment Title already had), with a guard in handleSubmit as
+   backstop.
+5. Error banner sits at the bottom of a scrolling form, so it could land off
+   screen; added a ref + scrollIntoView on the error so a rejection is
+   actually seen.
+
+Verified by driving the real Electron app over CDP (--remote-debugging-port,
+better-sqlite3 is Electron-built so the DB was read through window.electron,
+not node). Against DocuSync: suggested letter G2 saved untouched; hand-typed
+" z9 " saved as Z9; "c" and "t" both rejected naming the existing card, with
+the dialog staying open; blank letter left Create Card disabled. Both test
+cards were deleted afterwards - DocuSync is back to its original 25 cards.
+
+Known gaps / followups
+----------------------
+- Validation is client-side only. createCard in operations.js still has no
+  uniqueness constraint on session_letter, so an import or a direct API POST
+  can still introduce a duplicate. Worth a DB-level check if letters ever
+  need to be guaranteed unique.
+- CardDetail's edit path does not let you change a letter, so no equivalent
+  check was needed there.

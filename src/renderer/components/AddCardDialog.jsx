@@ -13,6 +13,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const dialogRef = useRef(null);
+  const errorRef = useRef(null);
 
   // Fetch next session letter when dialog opens
   useEffect(() => {
@@ -32,6 +33,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
       setDependencies([]);
       setPromptGuide('');
       setGitCommitMessage('');
+      setNextLetter('');
       setError(null);
     }
   }, [isOpen]);
@@ -70,6 +72,13 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
     };
   }, [isOpen, onClose]);
 
+  // The form scrolls, so an error at the bottom can land off screen - bring it into view
+  useEffect(() => {
+    if (error && errorRef.current) {
+      errorRef.current.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    }
+  }, [error]);
+
   const fetchNextLetter = async () => {
     try {
       const letter = await window.electron.getNextSessionLetter(projectId, subphaseId);
@@ -98,12 +107,27 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
       return;
     }
 
+    const sessionLetter = nextLetter.trim().toUpperCase();
+
+    if (!sessionLetter) {
+      setError('Session letter is required');
+      return;
+    }
+
+    const conflict = (existingCards || []).find(
+      card => (card.session_letter || '').toUpperCase() === sessionLetter
+    );
+    if (conflict) {
+      setError(`Session letter ${sessionLetter} is already used by "${conflict.title}". Letters must be unique across the whole project.`);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
 
     try {
       const cardData = {
-        session_letter: nextLetter,
+        session_letter: sessionLetter,
         title: title.trim(),
         description: description.trim() || null,
         success_criteria: successCriteria.trim() || null,
@@ -157,7 +181,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
             <div>
               <h2 className="text-xl font-bold text-dark-text">Add New Card</h2>
               <p className="text-sm text-dark-text-secondary mt-1">
-                This will be Session <span className="font-bold text-blue-400">{nextLetter || '...'}</span>
+                Session letters are unique across the whole project
               </p>
             </div>
             <button
@@ -170,6 +194,23 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
 
           {/* Form */}
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-dark">
+            {/* Session Letter */}
+            <div>
+              <label className="block text-sm font-medium text-dark-text mb-1">
+                Session Letter <span className="text-red-400">*</span>
+              </label>
+              <input
+                type="text"
+                value={nextLetter}
+                onChange={(e) => setNextLetter(e.target.value.toUpperCase())}
+                className="w-32 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text font-bold uppercase focus:outline-none focus:border-blue-500"
+                placeholder="A"
+              />
+              <p className="text-xs text-dark-text-secondary mt-1">
+                Suggested automatically - edit if you want a different letter
+              </p>
+            </div>
+
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-dark-text mb-1">
@@ -314,7 +355,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
 
             {/* Error Message */}
             {error && (
-              <div className="p-3 bg-red-900/30 border border-red-700 rounded-lg">
+              <div ref={errorRef} className="p-3 bg-red-900/30 border border-red-700 rounded-lg">
                 <p className="text-sm text-red-300">{error}</p>
               </div>
             )}
@@ -332,7 +373,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isLoading || !title.trim()}
+              disabled={isLoading || !title.trim() || !nextLetter.trim()}
               className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Creating...' : 'Create Card'}
