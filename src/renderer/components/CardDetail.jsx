@@ -21,6 +21,11 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const [editedFieldValue, setEditedFieldValue] = useState('');
   const [fieldSaveSuccess, setFieldSaveSuccess] = useState(null);
   const [fieldSaveError, setFieldSaveError] = useState(null);
+  const [isEditingExtDeps, setIsEditingExtDeps] = useState(false);
+  const [editedExtDeps, setEditedExtDeps] = useState([]);
+  const [extDepsSaveSuccess, setExtDepsSaveSuccess] = useState(false);
+  const [extDepsSaveError, setExtDepsSaveError] = useState(null);
+  const [availableProjects, setAvailableProjects] = useState([]);
   const [isEditingNotes, setIsEditingNotes] = useState(false);
   const [editedNotes, setEditedNotes] = useState('');
   const [notesSaveSuccess, setNotesSaveSuccess] = useState(false);
@@ -75,6 +80,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setEditedNotes('');
     setNotesSaveSuccess(false);
     setNotesSaveError(null);
+    setIsEditingExtDeps(false);
+    setEditedExtDeps([]);
+    setExtDepsSaveSuccess(false);
+    setExtDepsSaveError(null);
     setShowDeleteConfirm(false);
     setIsDeleting(false);
     setDeleteError(null);
@@ -133,6 +142,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const isManual = card.resource === 'none';
   const isTBC = card.resource === 'tbc';
   const hasPromptGuide = card.prompt_guide && card.prompt_guide.trim() !== '';
+  const hasExternalDeps = Array.isArray(card.external_dependencies) && card.external_dependencies.length > 0;
 
   // Resource type labels
   const resourceLabels = {
@@ -287,6 +297,84 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     } catch (error) {
       console.error('Failed to save notes:', error);
       setNotesSaveError(error.message || 'Failed to save');
+    }
+  };
+
+  // Cross-project dependency editing. The project picker is populated from the
+  // database rather than free text: a mistyped slug passes validation and then
+  // silently links to nothing.
+  const handleEditExtDeps = async () => {
+    setExtDepsSaveError(null);
+    setEditedExtDeps(
+      (card.external_dependencies || []).map(dep => ({
+        project_slug: dep.project_slug || '',
+        card_letter: dep.card_letter || '',
+        description: dep.description || '',
+      }))
+    );
+    setIsEditingExtDeps(true);
+
+    try {
+      const projects = await window.electron.getAllProjects();
+      setAvailableProjects(projects || []);
+    } catch (error) {
+      console.error('Failed to load projects:', error);
+      setExtDepsSaveError('Could not load the project list');
+    }
+  };
+
+  const handleCancelEditExtDeps = () => {
+    setIsEditingExtDeps(false);
+    setEditedExtDeps([]);
+    setExtDepsSaveError(null);
+  };
+
+  const handleExtDepChange = (index, field, value) => {
+    setEditedExtDeps(prev => prev.map((dep, i) => (
+      i === index ? { ...dep, [field]: value } : dep
+    )));
+  };
+
+  const handleAddExtDep = () => {
+    setEditedExtDeps(prev => [...prev, { project_slug: '', card_letter: '', description: '' }]);
+  };
+
+  const handleRemoveExtDep = (index) => {
+    setEditedExtDeps(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSaveExtDeps = async () => {
+    try {
+      setExtDepsSaveError(null);
+
+      // Catch blanks here so the user sees which row is wrong, rather than the
+      // data layer's positional "external_dependencies[2]..." message
+      for (let i = 0; i < editedExtDeps.length; i++) {
+        const dep = editedExtDeps[i];
+        if (!dep.project_slug) {
+          setExtDepsSaveError(`Dependency ${i + 1}: choose a project`);
+          return;
+        }
+        if (!String(dep.card_letter).trim()) {
+          setExtDepsSaveError(`Dependency ${i + 1}: enter a session letter`);
+          return;
+        }
+      }
+
+      // normalizeExternalDependencies in the data layer does the rest:
+      // trims, uppercases card_letter, and strips computed fields
+      await window.electron.updateCardExternalDependencies(card.id, editedExtDeps);
+      setIsEditingExtDeps(false);
+      setEditedExtDeps([]);
+      setExtDepsSaveSuccess(true);
+      setTimeout(() => setExtDepsSaveSuccess(false), 2000);
+
+      if (onCardUpdated) {
+        await onCardUpdated(card.id);
+      }
+    } catch (error) {
+      console.error('Failed to save external dependencies:', error);
+      setExtDepsSaveError(error.message || 'Failed to save');
     }
   };
 
@@ -697,12 +785,107 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             </div>
           )}
 
-          {/* External (cross-project) Dependencies */}
-          {card.external_dependencies && card.external_dependencies.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-dark-text-secondary mb-2 flex items-center gap-1">
-                <span>🔗</span> External Dependencies
-              </h3>
+          {/* External (cross-project) Dependencies - always rendered so a first
+              link can be added; editing follows the same pattern as Notes */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-dark-text-secondary flex items-center gap-1">
+                  <span>🔗</span> External Dependencies
+                </h3>
+                {extDepsSaveSuccess && (
+                  <span className="text-xs text-green-400">Saved!</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {isEditingExtDeps ? (
+                  <>
+                    <button
+                      onClick={handleCancelEditExtDeps}
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveExtDeps}
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                    >
+                      Save
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleEditExtDeps}
+                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                    title={hasExternalDeps ? "Edit external dependencies" : "Add an external dependency"}
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span>{hasExternalDeps ? 'Edit' : 'Add'}</span>
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {extDepsSaveError && (
+              <div className="mb-2 text-xs text-red-400">{extDepsSaveError}</div>
+            )}
+
+            {isEditingExtDeps ? (
+              <div className="space-y-2">
+                {editedExtDeps.length === 0 && (
+                  <p className="text-sm text-dark-text-secondary italic px-3 py-2 bg-dark-bg border border-dark-border rounded-lg">
+                    No external dependencies - add one below
+                  </p>
+                )}
+                {editedExtDeps.map((dep, idx) => (
+                  <div key={idx} className="p-3 bg-dark-bg border border-blue-500/60 rounded-lg space-y-2">
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={dep.project_slug}
+                        onChange={(e) => handleExtDepChange(idx, 'project_slug', e.target.value)}
+                        className="flex-1 min-w-0 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
+                      >
+                        <option value="">Select project...</option>
+                        {availableProjects
+                          .filter(p => !project || p.id !== project.id)
+                          .map(p => (
+                            <option key={p.id} value={p.slug}>{p.name}</option>
+                          ))}
+                      </select>
+                      <input
+                        type="text"
+                        value={dep.card_letter}
+                        onChange={(e) => handleExtDepChange(idx, 'card_letter', e.target.value.toUpperCase())}
+                        className="w-24 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text font-bold uppercase focus:outline-none focus:border-blue-500"
+                        placeholder="Letter"
+                      />
+                      <button
+                        onClick={() => handleRemoveExtDep(idx)}
+                        className="px-2 py-1 rounded text-xs font-medium bg-red-900/40 border border-red-700 text-red-300 hover:bg-red-900/70 transition-colors flex-shrink-0"
+                        title="Remove this dependency"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      value={dep.description}
+                      onChange={(e) => handleExtDepChange(idx, 'description', e.target.value)}
+                      className="w-full px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
+                      placeholder="Why this card depends on it (optional)"
+                    />
+                  </div>
+                ))}
+                <button
+                  onClick={handleAddExtDep}
+                  className="text-xs px-3 py-1.5 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                >
+                  + Add dependency
+                </button>
+              </div>
+            ) : hasExternalDeps ? (
               <div className="space-y-2">
                 {card.external_dependencies.map((dep, idx) => (
                   <div
@@ -730,8 +913,12 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   </div>
                 ))}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
+                <p className="text-sm text-dark-text-secondary italic">No external dependencies</p>
+              </div>
+            )}
+          </div>
 
           {/* Claude Code Prompt (prompt_guide) - only for non-manual cards */}
           {(hasPromptGuide || isEditingPromptGuide) && !isManual && (

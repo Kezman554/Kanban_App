@@ -676,3 +676,60 @@ Known gaps / followups
   the export is ever served over the wire.
 - vaultSummary.js does not render any of the new fields; the summary markdown
   is unchanged by design.
+
+Session Progress - 2026-08-20 (Edit cross-project links in the card modal)
+==========================================================================
+
+Goal: external_dependencies could only arrive via import - the JSON that
+creates a board or appends cards. No way to add, amend or remove one on an
+existing card. Added that to the card detail modal.
+
+1. operations.js: new updateCardExternalDependencies(id, entries), written in
+   the same style as updateCardNotes (single UPDATE, returns changes > 0). It
+   delegates ALL validation/normalisation to the existing
+   normalizeExternalDependencies - no new validator - so entries are trimmed,
+   card_letter is uppercased, and computed fields are stripped. It
+   deliberately does NOT check the referenced project/card exists: an
+   unresolved link is legal by design (the target may not be imported yet),
+   which is why the UI restricts the picker instead.
+2. Wired through all four surfaces so the Pi board works too:
+   main.js (db:updateCardExternalDependencies), preload.js, the browser shim,
+   and a new PATCH /cards/:id/external-dependencies route in pi-server.
+3. CardDetail.jsx: the External Dependencies block is now always rendered
+   (previously hidden when the card had none, so a first link was
+   unreachable). Edit mode follows the Notes pattern exactly - Edit/Add button
+   in the header, Cancel/Save, "Saved!" flash, inline error line. Each row is
+   project picker + letter + description + Remove, with "+ Add dependency"
+   below.
+4. The project picker is a <select> populated from getAllProjects(), with the
+   current project filtered out. Requirement was explicit: free text lets a
+   mistyped slug validate fine and then link to nothing.
+
+vault-export.test.js grew 41 -> 51: add (lowercase letter stored uppercase,
+read back resolved with project_name/status), the added link actually gating
+the card (drops out of getWorkableCards, blocked_by names "Other Project X"),
+amend (repoint to a Done card -> resolved true), remove (empty array, gate
+gone), and validation still coming from the shared normaliser (empty slug and
+empty letter both rejected, card left unchanged). append-import (17) and
+session-letter-uniqueness (34) still pass.
+
+Verified in the running app against DocuSync card E (Session E: Page Model &
+Rotation): the section now shows "No external dependencies" with an Add
+button where it previously rendered nothing; the picker listed the 8 other
+real projects by name and excluded DocuSync itself; typed letter "p" saved as
+"P" via the shared normaliser; the card then showed an amber
+"Alfred Home Hub - Session P / Not Started" row, and on the board subphase 1.3
+flipped from showing E on top to "3 blocked cards" - E had NO internal
+blockers, so that was purely the new link. Removing it through the same UI put
+E back on top of 1.3 with isBlocked false. Test link removed; letter audit
+still CLEAN.
+
+Known gaps / followups
+----------------------
+- The letter field is free text (only the PROJECT is a picker). A letter that
+  does not exist in the target project stores fine and shows "card not found",
+  which is the documented unresolved state - but a picker of that project's
+  letters would be friendlier.
+- No duplicate check within a card's own external_dependencies: the same
+  project+letter can be added twice. Harmless (both resolve identically) but
+  untidy.

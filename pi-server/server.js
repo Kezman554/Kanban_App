@@ -167,6 +167,14 @@ app.patch('/cards/:id/notes', h((req, res) => {
   res.json({ updated: db.updateCardNotes(intParam(req.params.id, 'card id'), notes) });
 }));
 
+app.patch('/cards/:id/external-dependencies', h((req, res) => {
+  const entries = req.body && req.body.external_dependencies;
+  if (!Array.isArray(entries)) throw new Error('body.external_dependencies (array) is required');
+  res.json({
+    updated: db.updateCardExternalDependencies(intParam(req.params.id, 'card id'), entries),
+  });
+}));
+
 app.patch('/cards/:id/prompt', h((req, res) => {
   res.json({ updated: db.updateCardPrompt(intParam(req.params.id, 'card id'), req.body || {}) });
 }));

@@ -363,6 +363,87 @@ function runTests() {
     );
 
     // ------------------------------------------------------------------
+    // updateCardExternalDependencies: add / amend / remove on an existing card
+    // ------------------------------------------------------------------
+    const liveMain = db.getProject(mainId);
+    const targetCard = liveMain.phases[0].subphases[0].cards.find(c => c.session_letter === 'C');
+
+    check('Card C starts with no external dependencies', targetCard.external_dependencies.length === 0);
+
+    // ADD - lowercase letter to prove normalizeExternalDependencies is reused
+    db.updateCardExternalDependencies(targetCard.id, [
+      { project_slug: 'other-project', card_letter: 'x', description: 'added from the card detail' },
+    ]);
+    let reread = db.getCard(targetCard.id);
+    check(
+      'Added link is stored and read back resolved',
+      reread.external_dependencies.length === 1 &&
+        reread.external_dependencies[0].card_letter === 'X' &&
+        reread.external_dependencies[0].project_name === 'Other Project' &&
+        reread.external_dependencies[0].resolved === false &&
+        reread.external_dependencies[0].status === 'Not Started',
+      JSON.stringify(reread.external_dependencies)
+    );
+
+    // The link must actually gate the card
+    check(
+      'Card C is now blocked by the added external link',
+      !db.getWorkableCards(mainId).some(c => c.session_letter === 'C')
+    );
+    const blockedNow = db.exportForVault().projects
+      .find(p => p.slug === 'main-project').blocked_cards.find(c => c.session_letter === 'C');
+    check(
+      'blocked_by names the external blocker',
+      blockedNow && blockedNow.blocked_by.includes('Other Project X'),
+      blockedNow && blockedNow.blocked_by
+    );
+
+    // AMEND - repoint at a different card and reword
+    db.updateCardExternalDependencies(targetCard.id, [
+      { project_slug: 'other-project', card_letter: 'Z', description: 'repointed at Z' },
+    ]);
+    reread = db.getCard(targetCard.id);
+    check(
+      'Amended link repoints and resolves against the Done card Z',
+      reread.external_dependencies.length === 1 &&
+        reread.external_dependencies[0].card_letter === 'Z' &&
+        reread.external_dependencies[0].description === 'repointed at Z' &&
+        reread.external_dependencies[0].resolved === true,
+      JSON.stringify(reread.external_dependencies)
+    );
+
+    // REMOVE - empty array clears the links
+    db.updateCardExternalDependencies(targetCard.id, []);
+    reread = db.getCard(targetCard.id);
+    check('Removing leaves an empty array', reread.external_dependencies.length === 0);
+    check(
+      'Card C is workable again once the link is removed',
+      db.getWorkableCards(mainId).some(c => c.session_letter === 'C') ||
+        // C also depends on B internally; only assert the external gate is gone
+        !db.getBlockedReason(targetCard.id).includes('Other Project')
+    );
+
+    // Validation comes from the shared normaliser, not a new code path
+    let extThrew = null;
+    try {
+      db.updateCardExternalDependencies(targetCard.id, [{ project_slug: '', card_letter: 'A' }]);
+    } catch (e) {
+      extThrew = e.message;
+    }
+    check('Empty project_slug is rejected by the shared validator', extThrew !== null, 'no error');
+    let letterThrew = null;
+    try {
+      db.updateCardExternalDependencies(targetCard.id, [{ project_slug: 'other-project', card_letter: '  ' }]);
+    } catch (e) {
+      letterThrew = e.message;
+    }
+    check('Empty card_letter is rejected by the shared validator', letterThrew !== null, 'no error');
+    check(
+      'A rejected update leaves the card unchanged',
+      db.getCard(targetCard.id).external_dependencies.length === 0
+    );
+
+    // ------------------------------------------------------------------
     // Summary markdown Blocked line
     // ------------------------------------------------------------------
     const summary = buildSummaryMarkdown(data);

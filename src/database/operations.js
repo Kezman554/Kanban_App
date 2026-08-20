@@ -899,6 +899,34 @@ class KanbanDatabase {
   }
 
   /**
+   * Replace a card's cross-project dependencies.
+   *
+   * Entries are validated and normalised by normalizeExternalDependencies -
+   * the same path the importers use - so a malformed entry throws instead of
+   * being stored, and card_letter lands uppercased to match how session
+   * letters are stored.
+   *
+   * Deliberately does NOT check that the referenced project or card exists:
+   * an unresolved link is legal by design (see resolveExternalDependencies -
+   * the target may not be imported yet). The card detail UI restricts the
+   * picker to real projects so a typo cannot reach here in normal use.
+   *
+   * @param {number} id - Card ID
+   * @param {Array} entries - [{ project_slug, card_letter, description }]
+   * @returns {boolean} - Success status
+   */
+  updateCardExternalDependencies(id, entries) {
+    try {
+      const normalized = this.normalizeExternalDependencies(entries);
+      const sql = `UPDATE cards SET external_dependencies = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+      const result = this.db.prepare(sql).run(JSON.stringify(normalized), id);
+      return result.changes > 0;
+    } catch (error) {
+      throw new Error(`Failed to update card external dependencies: ${error.message}`);
+    }
+  }
+
+  /**
    * Update card core details (title, description, success criteria)
    * @param {number} id - Card ID
    * @param {Object} details - Object with title, description, success_criteria

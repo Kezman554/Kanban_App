@@ -179,6 +179,15 @@ ipcMain.handle('db:updateCardPrompt', async (event, cardId, promptData) => {
   }
 })
 
+ipcMain.handle('db:updateCardExternalDependencies', async (event, cardId, entries) => {
+  try {
+    return db.updateCardExternalDependencies(cardId, entries)
+  } catch (error) {
+    console.error('Error updating card external dependencies:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:updateCardDetails', async (event, cardId, details) => {
   try {
     return db.updateCardDetails(cardId, details)

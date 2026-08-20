@@ -128,6 +128,9 @@ if (typeof window !== 'undefined' && !window.electron) {
       req('PATCH', `/cards/${enc(id)}/notes`, { notes }).then((r) => r.updated),
     updateCardDetails: (id, details) =>
       req('PATCH', `/cards/${enc(id)}/details`, details).then((r) => r.updated),
+    updateCardExternalDependencies: (id, entries) =>
+      req('PATCH', `/cards/${enc(id)}/external-dependencies`, { external_dependencies: entries })
+        .then((r) => r.updated),
     clearCardDependencies: (id) =>
       req('POST', `/cards/${enc(id)}/clear-dependencies`).then((r) => r.updated),
     deleteCard: (id) => req('DELETE', `/cards/${enc(id)}`), // { deletedLetter }
