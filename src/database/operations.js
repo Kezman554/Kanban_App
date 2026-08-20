@@ -738,6 +738,42 @@ class KanbanDatabase {
   }
 
   /**
+   * The highest session letter in a project - the value getNextSessionLetter
+   * continues from.
+   *
+   * Ordered exactly as getNextSessionLetter orders: shorter base first
+   * (A < AA), then alphabetically, then by numeric suffix (C < C2 < C3). This
+   * is the same value the app's "Export for Claude" text shows as
+   * "Last session letter".
+   *
+   * @param {number} projectId - Project ID
+   * @returns {string|null} - The highest session letter, or null if the project has no cards
+   */
+  getLastSessionLetter(projectId) {
+    const letters = this.db.prepare(`
+      SELECT c.session_letter
+      FROM cards c
+      JOIN subphases s ON c.subphase_id = s.id
+      JOIN phases p ON s.phase_id = p.id
+      WHERE p.project_id = ?
+    `).all(projectId).map(row => row.session_letter).filter(Boolean);
+
+    if (letters.length === 0) return null;
+
+    const sorted = letters.slice().sort((a, b) => {
+      const aBase = this._getBaseLetter(a);
+      const bBase = this._getBaseLetter(b);
+      if (aBase !== bBase) {
+        if (aBase.length !== bBase.length) return aBase.length - bBase.length;
+        return aBase.localeCompare(bBase);
+      }
+      return this._getSuffix(a) - this._getSuffix(b);
+    });
+
+    return sorted[sorted.length - 1];
+  }
+
+  /**
    * Extract base letter from a session letter (C2 → C, AA3 → AA, M → M)
    * @private
    */
@@ -1463,12 +1499,17 @@ class KanbanDatabase {
         const workableCards = this.getWorkableCards(project.id);
 
         // Build roadmap: phases -> subphases -> card counts by status
+        // ids are the primary keys an append import targets with
+        // add_to_phase / add_to_subphase - the same ids the app's
+        // "Export for Claude" text lists under PHASES
         const roadmap = (fullProject.phases || []).map(phase => ({
+          id: phase.id,
           phase: phase.name,
           short_name: phase.short_name,
           subphases: (phase.subphases || []).map(sub => {
             const cards = sub.cards || [];
             return {
+              id: sub.id,
               name: sub.name,
               short_name: sub.short_name,
               not_started: cards.filter(c => c.status === 'Not Started').length,
@@ -1563,6 +1604,22 @@ class KanbanDatabase {
           }
         }
 
+        // Done cards: deliberately absent from the three "what's next" arrays,
+        // but needed to reconstruct a board rather than just answer what to do
+        // next. Same card shape as every other array, plus completed_at.
+        const doneCards = [];
+        for (const phase of fullProject.phases || []) {
+          for (const sub of phase.subphases || []) {
+            for (const c of sub.cards || []) {
+              if (c.status !== 'Done') continue;
+              doneCards.push({
+                ...shapeCard({ ...c, phase_name: phase.name, subphase_name: sub.name }),
+                completed_at: c.completed_at || null,
+              });
+            }
+          }
+        }
+
         // Get in-progress cards
         const inProgressCards = this.db.prepare(`
           SELECT c.*, s.name as subphase_name, p.name as phase_name
@@ -1581,11 +1638,13 @@ class KanbanDatabase {
           slug: project.slug,
           short_name: project.short_name || null,
           description: project.description,
+          last_session_letter: this.getLastSessionLetter(project.id),
           stats: project.stats,
           roadmap,
           in_progress_cards: inProgressCards,
           unblocked_cards: unblockedCards,
           blocked_cards: blockedCards,
+          done_cards: doneCards,
         };
       });
 

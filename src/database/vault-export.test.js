@@ -48,6 +48,19 @@ const mainProject = {
                 { project_slug: 'other-project', card_letter: 'Z', description: 'needed Z' },
               ],
             },
+            // G is DONE and carries external links - one satisfied (Z), one
+            // still open (X). Guards the trap that done cards come from a
+            // different source and could carry a raw JSON string.
+            {
+              session_letter: 'G',
+              title: 'Session G',
+              status: 'Done',
+              depends_on_cards: [],
+              external_dependencies: [
+                { project_slug: 'other-project', card_letter: 'Z', description: 'used Z' },
+                { project_slug: 'other-project', card_letter: 'X', description: 'also wanted X' },
+              ],
+            },
             // F carries a still-live link while In Progress
             {
               session_letter: 'F',
@@ -212,6 +225,141 @@ function runTests() {
     check(
       'blocked_by still present on every blocked card',
       main.blocked_cards.every(c => typeof c.blocked_by === 'string' && c.blocked_by.length > 0)
+    );
+
+    // ------------------------------------------------------------------
+    // Board-reconstruction fields: roadmap ids, done_cards, last_session_letter
+    // ------------------------------------------------------------------
+    const mainFull = db.getProject(mainId);
+
+    // Phase ids must be the real primary keys - the ones "Export for Claude"
+    // lists and an append import targets with add_to_phase
+    const exportedPhaseIds = main.roadmap.map(r => r.id);
+    const actualPhaseIds = mainFull.phases.map(p => p.id);
+    check(
+      'roadmap carries real phase ids',
+      JSON.stringify(exportedPhaseIds) === JSON.stringify(actualPhaseIds),
+      `export ${JSON.stringify(exportedPhaseIds)} vs db ${JSON.stringify(actualPhaseIds)}`
+    );
+
+    const exportedSubIds = main.roadmap.flatMap(r => r.subphases.map(s2 => s2.id));
+    const actualSubIds = mainFull.phases.flatMap(p => (p.subphases || []).map(s2 => s2.id));
+    check(
+      'roadmap carries real subphase ids',
+      JSON.stringify(exportedSubIds) === JSON.stringify(actualSubIds),
+      `export ${JSON.stringify(exportedSubIds)} vs db ${JSON.stringify(actualSubIds)}`
+    );
+    check(
+      'phase and subphase ids are integers',
+      exportedPhaseIds.every(Number.isInteger) && exportedSubIds.every(Number.isInteger)
+    );
+
+    // Existing roadmap keys untouched - an external reader breaks on renames
+    check(
+      'roadmap keeps its existing keys',
+      main.roadmap.every(r => 'phase' in r && 'short_name' in r && 'subphases' in r) &&
+        main.roadmap.every(r => r.subphases.every(s2 =>
+          'name' in s2 && 'short_name' in s2 &&
+          'not_started' in s2 && 'in_progress' in s2 && 'done' in s2))
+    );
+
+    // done_cards
+    check('Export has done_cards array', Array.isArray(main.done_cards));
+    const doneLetters = main.done_cards.map(c => c.session_letter).sort();
+    check(
+      'done_cards contains exactly the Done cards (A, G)',
+      JSON.stringify(doneLetters) === '["A","G"]',
+      `got ${JSON.stringify(doneLetters)}`
+    );
+    const doneA = main.done_cards.find(c => c.session_letter === 'A');
+    check(
+      'done card uses the same shape as other exported cards',
+      doneA && doneA.title === 'Session A' && doneA.phase === 'Phase 1' &&
+        doneA.subphase === 'Subphase 1.1' && Array.isArray(doneA.depends_on_cards) &&
+        'description' in doneA && 'success_criteria' in doneA &&
+        Array.isArray(doneA.external_dependencies),
+      doneA && JSON.stringify(Object.keys(doneA))
+    );
+    check('done card carries completed_at', doneA && 'completed_at' in doneA);
+
+    // done_cards must go through the same shapeCard/externalDepsFor path as the
+    // other three arrays - a raw JSON string here would look right until read
+    const doneG = main.done_cards.find(c => c.session_letter === 'G');
+    check('Done card with external links is exported', !!doneG);
+    check(
+      'done card external_dependencies is an ARRAY, not a raw JSON string',
+      doneG && Array.isArray(doneG.external_dependencies) &&
+        typeof doneG.external_dependencies !== 'string',
+      doneG && `${typeof doneG.external_dependencies}: ${JSON.stringify(doneG.external_dependencies)}`
+    );
+    check(
+      'done card external entries are resolved objects with the enriched fields',
+      doneG && doneG.external_dependencies.length === 2 &&
+        doneG.external_dependencies.every(d =>
+          typeof d === 'object' && d !== null &&
+          'resolved' in d && 'status' in d && 'project_name' in d &&
+          'project_slug' in d && 'card_letter' in d && 'description' in d),
+      doneG && JSON.stringify(doneG.external_dependencies)
+    );
+    const doneZ = doneG && doneG.external_dependencies.find(d => d.card_letter === 'Z');
+    const doneX = doneG && doneG.external_dependencies.find(d => d.card_letter === 'X');
+    check(
+      'done card satisfied link resolved true / status Done',
+      doneZ && doneZ.resolved === true && doneZ.status === 'Done' &&
+        doneZ.project_name === 'Other Project',
+      JSON.stringify(doneZ)
+    );
+    check(
+      'done card still-open link resolved false / status Not Started',
+      doneX && doneX.resolved === false && doneX.status === 'Not Started',
+      JSON.stringify(doneX)
+    );
+
+    // completed_at is populated once a card is marked Done through the app
+    const cardB = mainFull.phases[0].subphases[0].cards.find(c => c.session_letter === 'B');
+    db.updateCardStatus(cardB.id, 'Done');
+    const afterDone = db.exportForVault().projects.find(p => p.slug === 'main-project');
+    const newlyDone = afterDone.done_cards.find(c => c.session_letter === 'B');
+    check(
+      'newly completed card appears in done_cards with a completed_at timestamp',
+      newlyDone && typeof newlyDone.completed_at === 'string' && newlyDone.completed_at.length > 0,
+      newlyDone && JSON.stringify(newlyDone.completed_at)
+    );
+    check(
+      'newly completed card left unblocked_cards',
+      !afterDone.unblocked_cards.some(c => c.session_letter === 'B')
+    );
+
+    // last_session_letter - the value getNextSessionLetter continues from
+    check(
+      'last_session_letter is the highest letter on the board',
+      main.last_session_letter === 'G',
+      `got ${JSON.stringify(main.last_session_letter)}`
+    );
+    check(
+      'getLastSessionLetter matches the exported value',
+      db.getLastSessionLetter(mainId) === main.last_session_letter
+    );
+
+    // Ordering must match getNextSessionLetter: C < C2, and A < AA
+    const orderProbe = db.createProject({
+      name: 'Order Probe', slug: 'order-probe',
+      phases: [{ name: 'P', subphases: [{ name: 'S', cards: [
+        { session_letter: 'A', title: 'a' },
+        { session_letter: 'C', title: 'c' },
+        { session_letter: 'C2', title: 'c2' },
+      ] }] }],
+    });
+    check(
+      'last_session_letter orders numeric suffixes after the bare letter',
+      db.getLastSessionLetter(orderProbe) === 'C2',
+      `got ${db.getLastSessionLetter(orderProbe)}`
+    );
+
+    const emptyProbe = db.createProject({ name: 'Empty Probe', slug: 'empty-probe', phases: [] });
+    check(
+      'last_session_letter is null for a project with no cards',
+      db.getLastSessionLetter(emptyProbe) === null
     );
 
     // ------------------------------------------------------------------

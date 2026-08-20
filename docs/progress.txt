@@ -620,3 +620,59 @@ Known gaps / followups
   touches - worth revisiting if the vault ever needs completed-card records.
 - vaultSummary.js still renders only blocked_by; it does not surface resolved
   external links. Data is there now if the summary ever wants it.
+
+Session Progress - 2026-08-20 (Vault export: ids, done_cards, last letter)
+==========================================================================
+
+Goal: The vault export answers "what is next?" but cannot reconstruct a
+board. Add the three things the app's "Export for Claude" text already has.
+Purely additive - the export has an external reader that breaks on renames,
+so no existing key or shape changed.
+
+1. roadmap entries now carry `id` (phase primary key) and each subphase entry
+   carries `id` too - the same ids "Export for Claude" lists under PHASES and
+   the ids an append import targets with add_to_phase / add_to_subphase. All
+   pre-existing roadmap keys (phase, short_name, name, the three counts) are
+   untouched.
+2. New done_cards array per project, built from the SAME shapeCard path as
+   the other three arrays plus completed_at. Done cards are sourced from
+   getProject (which resolves external_dependencies into enriched entries) and
+   pushed through shapeCard/externalDepsFor, so their external links are
+   resolved OBJECTS - not the raw JSON string that a separate query would have
+   handed over. That failure mode looks correct until something reads it, so
+   it is now asserted directly rather than by Array.isArray on a card that has
+   no links.
+3. New last_session_letter per project, via a new getLastSessionLetter(
+   projectId) that reuses _getBaseLetter/_getSuffix so it orders exactly as
+   getNextSessionLetter does: shorter base first (A < AA), then alphabetical,
+   then numeric suffix (C < C2). null when a project has no cards.
+
+vault-export.test.js grew from 12 to 41 checks. New coverage: roadmap phase
+and subphase ids equal the real primary keys and are integers; existing
+roadmap keys still present; done_cards holds exactly the Done cards in the
+standard shape with completed_at; a Done card carrying external links exports
+them as resolved objects (array not string, with resolved/status/project_name)
+with a satisfied link true/Done and an open one false/Not Started; a card
+marked Done moves into done_cards with a timestamp and leaves unblocked_cards;
+last_session_letter matches getLastSessionLetter, orders C2 after C, and is
+null for an empty project. append-import (17) and session-letter-uniqueness
+(34) still pass.
+
+Verified against REAL data. Clicked "Export for Claude" in the running app for
+DocuSync and diffed its text against exportForVault on the same DB: phase ids
+[123,124,125,126,127] MATCH, phase names MATCH, subphase ids [215..226] MATCH,
+"Last session letter: Y" == last_session_letter "Y". (Parser note for future
+sessions: that clipboard text is CRLF and JS "." does not match \r, so
+$-anchored regexes need \r stripping first.) Also exported a scratchpad COPY
+of the Pi board: 152 done_cards, the 3 that carry external links
+(alfred-dashboard O, wake-up-alarm AE and AF) all resolved objects, 0
+malformed; last_session_letter came back sane on the awkward real ones -
+T10, AF2, W2, R5, AJ. Copy discarded; live board never written to.
+
+Known gaps / followups
+----------------------
+- done_cards makes the export considerably bigger (152 done cards on the Pi
+  board vs 115 actionable ones). Fine for a vault file, worth remembering if
+  the export is ever served over the wire.
+- vaultSummary.js does not render any of the new fields; the summary markdown
+  is unchanged by design.
