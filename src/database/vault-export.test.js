@@ -37,6 +37,27 @@ const mainProject = {
                 { project_slug: 'other-project', card_letter: 'Y', description: 'needs Y' },
               ],
             },
+            // E's cross-project link is already SATISFIED (Z is Done), so E is
+            // workable - the case where the link used to vanish from the export
+            {
+              session_letter: 'E',
+              title: 'Session E',
+              status: 'Not Started',
+              depends_on_cards: [],
+              external_dependencies: [
+                { project_slug: 'other-project', card_letter: 'Z', description: 'needed Z' },
+              ],
+            },
+            // F carries a still-live link while In Progress
+            {
+              session_letter: 'F',
+              title: 'Session F',
+              status: 'In Progress',
+              depends_on_cards: [],
+              external_dependencies: [
+                { project_slug: 'other-project', card_letter: 'X', description: 'still needs X' },
+              ],
+            },
           ],
         },
       ],
@@ -61,6 +82,7 @@ const otherProject = {
           cards: [
             { session_letter: 'X', title: 'Session X', status: 'Not Started', depends_on_cards: [] },
             { session_letter: 'Y', title: 'Session Y', status: 'Not Started', depends_on_cards: [] },
+            { session_letter: 'Z', title: 'Session Z', status: 'Done', depends_on_cards: [] },
           ],
         },
       ],
@@ -124,6 +146,72 @@ function runTests() {
       'Blocked card has same base fields as unblocked cards',
       cardC.title === 'Session C' && cardC.phase === 'Phase 1' &&
         cardC.subphase === 'Subphase 1.1' && Array.isArray(cardC.depends_on_cards)
+    );
+
+    // ------------------------------------------------------------------
+    // external_dependencies on EVERY exported card, not just blocked ones
+    // ------------------------------------------------------------------
+    const allExported = [
+      ...main.unblocked_cards,
+      ...main.in_progress_cards,
+      ...main.blocked_cards,
+    ];
+    check(
+      'Every exported card carries an external_dependencies array',
+      allExported.length > 0 && allExported.every(c => Array.isArray(c.external_dependencies)),
+      allExported.map(c => `${c.session_letter}:${typeof c.external_dependencies}`).join(' ')
+    );
+
+    const cardsWithout = allExported.filter(c => c.external_dependencies.length === 0);
+    check(
+      'Cards with no external deps default to an empty array',
+      cardsWithout.length > 0 && cardsWithout.every(c => JSON.stringify(c.external_dependencies) === '[]')
+    );
+
+    // The regression itself: a SATISFIED link must survive into unblocked_cards
+    const cardE = main.unblocked_cards.find(c => c.session_letter === 'E');
+    check('Card with a satisfied external dep is unblocked', !!cardE);
+    check(
+      'Satisfied cross-project link is still present in the export',
+      cardE && cardE.external_dependencies.length === 1,
+      cardE && JSON.stringify(cardE.external_dependencies)
+    );
+    check(
+      'Satisfied link keeps resolved true and status Done',
+      cardE && cardE.external_dependencies[0].resolved === true &&
+        cardE.external_dependencies[0].status === 'Done',
+      cardE && JSON.stringify(cardE.external_dependencies[0])
+    );
+    check(
+      'Satisfied link keeps its identifying fields',
+      cardE && cardE.external_dependencies[0].card_letter === 'Z' &&
+        cardE.external_dependencies[0].project_slug === 'other-project' &&
+        cardE.external_dependencies[0].project_name === 'Other Project' &&
+        cardE.external_dependencies[0].description === 'needed Z',
+      cardE && JSON.stringify(cardE.external_dependencies[0])
+    );
+
+    // In-progress cards come from a raw SELECT, so they need resolving too
+    const cardF = main.in_progress_cards.find(c => c.session_letter === 'F');
+    check('In-progress card is exported', !!cardF);
+    check(
+      'In-progress card carries its external dep, resolved false while X is open',
+      cardF && cardF.external_dependencies.length === 1 &&
+        cardF.external_dependencies[0].resolved === false &&
+        cardF.external_dependencies[0].status === 'Not Started',
+      cardF && JSON.stringify(cardF.external_dependencies)
+    );
+
+    // blocked_by stays a blocked-card-only summary
+    check(
+      'blocked_by is NOT added to unblocked or in-progress cards',
+      [...main.unblocked_cards, ...main.in_progress_cards].every(c => !('blocked_by' in c)),
+      [...main.unblocked_cards, ...main.in_progress_cards]
+        .filter(c => 'blocked_by' in c).map(c => c.session_letter).join(',')
+    );
+    check(
+      'blocked_by still present on every blocked card',
+      main.blocked_cards.every(c => typeof c.blocked_by === 'string' && c.blocked_by.length > 0)
     );
 
     // ------------------------------------------------------------------

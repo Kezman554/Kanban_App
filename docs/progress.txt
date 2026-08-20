@@ -568,3 +568,55 @@ Known gaps / followups
 - Reads were deliberately left case-sensitive (normalise on write, not read),
   so this depends on all writes going through operations.js. That holds for
   the app, the append import and the Pi API, which share this file.
+
+Session Progress - 2026-08-20 (external_dependencies on every exported card)
+============================================================================
+
+Goal: exportForVault() attached external_dependencies only to blockedCards.
+Unblocked and in-progress cards were shaped without the field, so a
+cross-project link DISAPPEARED from the export the moment it was satisfied -
+exactly when a consumer wants to see it as a completed link rather than as
+nothing at all.
+
+1. operations.js: external_dependencies moved into shapeCard, so all three
+   arrays (unblocked_cards, in_progress_cards, blocked_cards) carry it,
+   defaulting to []. blockedCards no longer re-attaches it - shapeCard covers
+   it - and blocked_by is untouched, still a blocked-card-only summary.
+2. The three arrays come from DIFFERENT sources and needed reconciling:
+   getProject (used for blocked cards) resolves external_dependencies into
+   enriched entries, but getWorkableCards and the in-progress query both
+   SELECT c.* and leave the raw JSON string. A new externalDepsFor() helper in
+   exportForVault passes arrays through and parses+resolves raw strings, so
+   every exported card carries the same resolved shape. Without it the two
+   other arrays would have emitted a JSON STRING with no resolved/status.
+3. Entries keep resolved/status/project_name - resolved links are deliberately
+   NOT filtered out, so a consumer can tell a satisfied link from a live one.
+
+vault-export.test.js grew from 12 to 22 checks: every exported card has an
+external_dependencies array; cards with none default to []; a card whose
+cross-project dep is already Done is unblocked AND still carries the link with
+resolved true / status Done / project_name / description intact; an
+in-progress card carries its still-live link with resolved false (the case
+that would have been a raw string); blocked_by absent from unblocked and
+in-progress cards but present on every blocked card. 22/22.
+append-import (17) and session-letter-uniqueness (34) still pass.
+
+Verified against REAL data, read-only: exported the laptop board (127 cards,
+0 missing the field) and a scratchpad COPY of the Pi board (115 cards, 0
+missing; the two live links, alfred-dashboard I and J -> alfred-home-hub P,
+both correctly unresolved). Then, on the copy only, marked hub P Done and
+re-exported: dashboard I moved blocked -> unblocked_cards and KEPT its link
+with resolved true, status Done - the regression this fixes. J stayed blocked
+by internal card I, with blocked_by "card I" and its external link still
+listed as resolved true, which is the intended split between a blocking
+summary and a dependency record. Copy discarded; the live board was never
+written to.
+
+Known gaps / followups
+----------------------
+- Done cards are not exported at all (exportForVault emits only Not Started +
+  In Progress), so a satisfied link on a Done card still does not appear
+  anywhere. That is the export's existing scope, not something this change
+  touches - worth revisiting if the vault ever needs completed-card records.
+- vaultSummary.js still renders only blocked_by; it does not surface resolved
+  external links. Data is there now if the summary ever wants it.

@@ -1478,6 +1478,27 @@ class KanbanDatabase {
           })
         }));
 
+        // The three card sources arrive differently: getProject resolves
+        // external_dependencies into enriched entries, while getWorkableCards
+        // and the in-progress query below both SELECT c.* and leave the raw
+        // JSON string. Normalise both to resolved entries so every exported
+        // card carries the same shape.
+        const externalDepsFor = (value) => {
+          if (Array.isArray(value)) return value; // already resolved by getProject
+          let parsed = [];
+          try {
+            parsed = JSON.parse(value || '[]');
+          } catch (err) {
+            parsed = [];
+          }
+          return this.resolveExternalDependencies(parsed);
+        };
+
+        // Every exported card carries external_dependencies, not just blocked
+        // ones: a cross-project link is a dependency record and must survive
+        // being satisfied. Entries keep their resolved/status so a consumer can
+        // tell a completed link from a live one - resolved entries are NOT
+        // filtered out. (blocked_by stays a blocked-card-only summary.)
         const shapeCard = (card) => ({
           session_letter: card.session_letter,
           title: card.title,
@@ -1487,6 +1508,7 @@ class KanbanDatabase {
           complexity: card.complexity,
           resource: card.resource,
           depends_on_cards: card.depends_on_cards,
+          external_dependencies: externalDepsFor(card.external_dependencies),
           success_criteria: card.success_criteria,
           notes: card.notes || '',
         });
@@ -1535,7 +1557,6 @@ class KanbanDatabase {
 
               blockedCards.push({
                 ...shapeCard({ ...c, phase_name: phase.name, subphase_name: sub.name }),
-                external_dependencies: c.external_dependencies || [],
                 blocked_by: blockedByParts.join('; '),
               });
             }
