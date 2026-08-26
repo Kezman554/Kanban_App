@@ -841,3 +841,67 @@ Known gaps / followups
 - Adding a card to a completed phase makes that phase reappear on the board,
   which is correct but can surprise - the phase was hidden only because
   everything in it was done.
+
+
+Session Progress - 2026-08-26 (Multi-destination append imports)
+================================================================
+
+Goal: appendCards resolved exactly one target subphase per file, so a batch of
+cards belonging in two subphases had to be split into two files and imported
+twice.
+
+1. New optional top-level `batches` array in the append JSON. Each entry
+   carries its own placement (add_to_phase + add_to_subphase, add_to_phase +
+   new_subphase, or new_phase + new_subphase) and its own new_cards. The three
+   legal placement combinations and their rules are unchanged - they now apply
+   per batch, in resolveAppendTarget().
+2. The single-destination format still works untouched: normaliseAppendBatches()
+   turns it into a one-entry batches array, so there is one code path and the
+   old behaviour is its degenerate case. A file that carries `batches`
+   alongside top-level new_cards / placement fields throws rather than
+   honouring one of them silently.
+3. Session-letter uniqueness spans the whole file. The letter pass now runs
+   over every batch BEFORE any card is inserted - otherwise a letter repeated
+   in batch 3 would be caught as a board clash and the error would name only
+   one of the two cards. dependency_updates stays a single top-level array,
+   applied after every batch has landed, so an update may reference a letter
+   any batch added.
+4. Everything remains inside the one existing this.db.transaction: a failure in
+   batch 3 rolls back the phases and subphases batches 1 and 2 created, not
+   just their cards. Covered by a test that counts phases/subphases/cards
+   before and after a deliberately failing third batch.
+5. findUnrecognisedImportKeys walks each batch's cards and prefixes messages
+   (`Batch 2, card "R": unrecognised field ...`); unknown keys on a batch object
+   itself warn the same way. Single-destination files keep the old unprefixed
+   wording.
+6. Return shape gained createdPhases / createdSubphases arrays. createdPhase and
+   createdSubphase stay populated only when exactly one of each was created, so
+   the dialog's existing "Created phase X" message stays true.
+7. AppendCardsDialog.jsx: validate() runs placement checks per batch and names
+   the batch in its errors, duplicate-letter checks span all batches (naming
+   both batches), the preview groups cards under their destination with a
+   "N cards across M destinations" footer, and the success message reads the
+   new arrays. A dependency_updates target that is a letter this same file adds
+   is no longer flagged as missing - it used to be an error even though the
+   import handled it fine.
+
+Pi route confirmed, not assumed: POST /projects/:id/append passes req.body
+straight to appendCards and res.json()s the return value, so `batches` needs no
+server change; express is not installed locally (container-only), so the route
+was verified by reading it and by driving the identical call - JSON parsed from
+file, appendCards, JSON-serialised result.
+
+End-to-end check: one file with three batches into a seeded project - two
+existing subphases (Backend, Frontend) plus a third created by the file (Docs)
+- imported in one pass. 4 cards added, all in the right places, plus a
+dependency_update on existing card A referencing card E which batch 3 created.
+
+Suites green: append-import 45 (was 17, +28 for batches), session-letter-
+uniqueness 34. Renderer builds clean.
+
+Known gaps / followups
+----------------------
+- The dialog previews each batch in file order; there is no grouping by phase,
+  so two batches targeting the same phase read as two separate blocks.
+- Nothing yet generates multi-destination files: the kanban-append2 skill still
+  emits the single-destination shape.

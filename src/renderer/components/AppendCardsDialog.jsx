@@ -1,5 +1,47 @@
 import React, { useState, useMemo } from 'react';
 
+const BATCH_PLACEMENT_KEYS = ['add_to_phase', 'add_to_subphase', 'new_phase', 'new_subphase'];
+
+// One created thing reads: phase "X". Several read: phases "X", "Y".
+const describeCreated = (created, singular, plural) => {
+  const items = created || [];
+  if (items.length === 0) return '';
+  const names = items.map(item => `"${item.name}"`).join(', ');
+  return ` ${items.length === 1 ? singular : plural} ${names}`;
+};
+
+/**
+ * Split an append file into its batches. A single-destination file becomes a
+ * one-entry list so validation and the preview have one shape to handle, and
+ * mixing the two forms is reported rather than silently resolved.
+ */
+const splitAppendBatches = (data) => {
+  if (!data || typeof data !== 'object') return { batches: [], batched: false, error: null };
+
+  const hasBatches = data.batches !== undefined && data.batches !== null;
+  if (!hasBatches) {
+    const { batches, dependency_updates, ...batch } = data;
+    return { batches: [batch], batched: false, error: null };
+  }
+
+  const conflicting = BATCH_PLACEMENT_KEYS.concat('new_cards')
+    .filter(key => data[key] !== undefined && data[key] !== null);
+  if (conflicting.length > 0) {
+    return {
+      batches: [], batched: true,
+      error: `Provide either "batches" or top-level placement fields, not both (found alongside "batches": ${conflicting.join(', ')})`,
+    };
+  }
+  if (!Array.isArray(data.batches) || data.batches.length === 0) {
+    return { batches: [], batched: true, error: '"batches" must be a non-empty array' };
+  }
+  if (data.batches.some(batch => !batch || typeof batch !== 'object' || Array.isArray(batch))) {
+    return { batches: [], batched: true, error: 'Every entry in "batches" must be an object' };
+  }
+
+  return { batches: data.batches, batched: true, error: null };
+};
+
 const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileData, setFileData] = useState(null);
@@ -36,96 +78,118 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
     const errors = [];
     const warnings = [];
 
-    // Check new_cards exists
-    if (!data.new_cards || !Array.isArray(data.new_cards) || data.new_cards.length === 0) {
-      errors.push('JSON must contain a non-empty "new_cards" array');
+    const { batches, batched, error: splitError } = splitAppendBatches(data);
+    if (splitError) {
+      errors.push(splitError);
       return { errors, warnings };
     }
 
-    const hasNewPhase = data.new_phase && typeof data.new_phase === 'object';
-    const hasNewSubphase = data.new_subphase && typeof data.new_subphase === 'object';
-    const hasAddToPhase = data.add_to_phase !== undefined && data.add_to_phase !== null;
-    const hasAddToSubphase = data.add_to_subphase !== undefined && data.add_to_subphase !== null;
+    batches.forEach((batch, index) => {
+      // Messages name their batch, so "Phase ID 4 not found" is traceable
+      // back to one placement when the file has several
+      const label = batched ? `Batch ${index + 1}: ` : '';
 
-    // Validate the combination of targeting fields
-    if (hasNewPhase && hasAddToPhase) {
-      errors.push('Provide either "add_to_phase" (existing) or "new_phase" (new), not both');
-    } else if (hasNewPhase) {
-      // Creating a new phase requires a new subphase too
-      if (!hasNewSubphase) {
-        errors.push('"new_phase" requires "new_subphase" (a phase cannot be created without a subphase)');
-      }
-      if (!data.new_phase.name) {
-        errors.push('"new_phase" is missing a name');
-      }
-      if (hasNewSubphase && !data.new_subphase.name) {
-        errors.push('"new_subphase" is missing a name');
-      }
-    } else if (hasNewSubphase) {
-      // New subphase under an existing phase
-      if (!hasAddToPhase) {
-        errors.push('"new_subphase" without "new_phase" requires a valid "add_to_phase" ID');
-      } else if (!projectLookups.phases[data.add_to_phase]) {
-        errors.push(`Phase ID ${data.add_to_phase} not found in project`);
-      }
-      if (!data.new_subphase.name) {
-        errors.push('"new_subphase" is missing a name');
-      }
-    } else {
-      // Existing phase + existing subphase (original behavior)
-      if (!hasAddToPhase) {
-        errors.push('Missing "add_to_phase" field');
-      } else if (!projectLookups.phases[data.add_to_phase]) {
-        errors.push(`Phase ID ${data.add_to_phase} not found in project`);
+      if (!batch.new_cards || !Array.isArray(batch.new_cards) || batch.new_cards.length === 0) {
+        errors.push(`${label}${batched ? 'must contain' : 'JSON must contain'} a non-empty "new_cards" array`);
+        return;
       }
 
-      if (!hasAddToSubphase) {
-        errors.push('Missing "add_to_subphase" field');
-      } else if (!projectLookups.subphases[data.add_to_subphase]) {
-        errors.push(`Subphase ID ${data.add_to_subphase} not found in project`);
+      const hasNewPhase = batch.new_phase && typeof batch.new_phase === 'object';
+      const hasNewSubphase = batch.new_subphase && typeof batch.new_subphase === 'object';
+      const hasAddToPhase = batch.add_to_phase !== undefined && batch.add_to_phase !== null;
+      const hasAddToSubphase = batch.add_to_subphase !== undefined && batch.add_to_subphase !== null;
+
+      // Validate the combination of targeting fields
+      if (hasNewPhase && hasAddToPhase) {
+        errors.push(`${label}Provide either "add_to_phase" (existing) or "new_phase" (new), not both`);
+      } else if (hasNewPhase) {
+        // Creating a new phase requires a new subphase too
+        if (!hasNewSubphase) {
+          errors.push(`${label}"new_phase" requires "new_subphase" (a phase cannot be created without a subphase)`);
+        }
+        if (!batch.new_phase.name) {
+          errors.push(`${label}"new_phase" is missing a name`);
+        }
+        if (hasNewSubphase && !batch.new_subphase.name) {
+          errors.push(`${label}"new_subphase" is missing a name`);
+        }
+      } else if (hasNewSubphase) {
+        // New subphase under an existing phase
+        if (!hasAddToPhase) {
+          errors.push(`${label}"new_subphase" without "new_phase" requires a valid "add_to_phase" ID`);
+        } else if (!projectLookups.phases[batch.add_to_phase]) {
+          errors.push(`${label}Phase ID ${batch.add_to_phase} not found in project`);
+        }
+        if (!batch.new_subphase.name) {
+          errors.push(`${label}"new_subphase" is missing a name`);
+        }
       } else {
-        // Verify subphase belongs to the specified phase
-        const sub = projectLookups.subphases[data.add_to_subphase];
-        if (hasAddToPhase && sub) {
-          const phase = projectLookups.phases[data.add_to_phase];
-          if (phase) {
-            const belongsToPhase = (phase.subphases || []).some(s => s.id === data.add_to_subphase);
-            if (!belongsToPhase) {
-              errors.push(`Subphase ${data.add_to_subphase} does not belong to phase ${data.add_to_phase}`);
+        // Existing phase + existing subphase (original behavior)
+        if (!hasAddToPhase) {
+          errors.push(`${label}Missing "add_to_phase" field`);
+        } else if (!projectLookups.phases[batch.add_to_phase]) {
+          errors.push(`${label}Phase ID ${batch.add_to_phase} not found in project`);
+        }
+
+        if (!hasAddToSubphase) {
+          errors.push(`${label}Missing "add_to_subphase" field`);
+        } else if (!projectLookups.subphases[batch.add_to_subphase]) {
+          errors.push(`${label}Subphase ID ${batch.add_to_subphase} not found in project`);
+        } else {
+          // Verify subphase belongs to the specified phase
+          const sub = projectLookups.subphases[batch.add_to_subphase];
+          if (hasAddToPhase && sub) {
+            const phase = projectLookups.phases[batch.add_to_phase];
+            if (phase) {
+              const belongsToPhase = (phase.subphases || []).some(s => s.id === batch.add_to_subphase);
+              if (!belongsToPhase) {
+                errors.push(`${label}Subphase ${batch.add_to_subphase} does not belong to phase ${batch.add_to_phase}`);
+              }
             }
           }
         }
       }
-    }
 
-    // Check for duplicate session letters
-    for (const card of data.new_cards) {
-      if (!card.session_letter) {
-        errors.push(`Card "${card.title || 'untitled'}" is missing session_letter`);
-      } else if (projectLookups.cardLetters.has(card.session_letter)) {
-        errors.push(`Session letter "${card.session_letter}" already exists in project`);
-      }
-      if (!card.title) {
-        errors.push(`Card with letter "${card.session_letter || '?'}" is missing title`);
-      }
-    }
-
-    // Check for duplicates within the new cards themselves
-    const newLetters = new Set();
-    for (const card of data.new_cards) {
-      if (card.session_letter) {
-        if (newLetters.has(card.session_letter)) {
-          errors.push(`Duplicate session letter "${card.session_letter}" in new_cards`);
+      for (const card of batch.new_cards) {
+        if (!card.session_letter) {
+          errors.push(`${label}Card "${card.title || 'untitled'}" is missing session_letter`);
+        } else if (projectLookups.cardLetters.has(card.session_letter)) {
+          errors.push(`${label}Session letter "${card.session_letter}" already exists in project`);
         }
-        newLetters.add(card.session_letter);
+        if (!card.title) {
+          errors.push(`${label}Card with letter "${card.session_letter || '?'}" is missing title`);
+        }
       }
-    }
+    });
+
+    // Duplicate letters are a whole-file problem, not a per-batch one: the same
+    // letter in batch 1 and batch 3 is just as much a clash
+    const seenLetters = new Map();
+    batches.forEach((batch, index) => {
+      if (!Array.isArray(batch.new_cards)) return;
+      for (const card of batch.new_cards) {
+        if (!card || !card.session_letter) continue;
+        if (seenLetters.has(card.session_letter)) {
+          const first = seenLetters.get(card.session_letter);
+          errors.push(
+            batched
+              ? `Duplicate session letter "${card.session_letter}" (batch ${first} and batch ${index + 1})`
+              : `Duplicate session letter "${card.session_letter}" in new_cards`
+          );
+        } else {
+          seenLetters.set(card.session_letter, index + 1);
+        }
+      }
+    });
 
     // Warn about unrecognised keys so generated fields are never silently dropped
     // (mirrors findUnrecognisedImportKeys in src/database/operations.js)
     const knownTopLevelKeys = new Set([
       'add_to_phase', 'add_to_subphase', 'new_phase', 'new_subphase',
-      'new_cards', 'dependency_updates',
+      'new_cards', 'dependency_updates', 'batches',
+    ]);
+    const knownBatchKeys = new Set([
+      'add_to_phase', 'add_to_subphase', 'new_phase', 'new_subphase', 'new_cards',
     ]);
     const knownCardKeys = new Set([
       'session_letter', 'title', 'description', 'success_criteria',
@@ -139,22 +203,43 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
         warnings.push(`Unrecognised field "${key}" will be ignored`);
       }
     }
-    for (const card of data.new_cards) {
-      if (!card || typeof card !== 'object') continue;
-      for (const key of Object.keys(card)) {
-        if (!knownCardKeys.has(key)) {
-          warnings.push(`Card "${card.session_letter || '?'}": unrecognised field "${key}" will be ignored`);
+    batches.forEach((batch, index) => {
+      const prefix = batched ? `Batch ${index + 1}` : null;
+      if (batched) {
+        for (const key of Object.keys(batch)) {
+          if (!knownBatchKeys.has(key)) {
+            warnings.push(`${prefix}: unrecognised field "${key}" will be ignored`);
+          }
         }
       }
-    }
+      if (!Array.isArray(batch.new_cards)) return;
+      for (const card of batch.new_cards) {
+        if (!card || typeof card !== 'object') continue;
+        for (const key of Object.keys(card)) {
+          if (!knownCardKeys.has(key)) {
+            const letter = card.session_letter || '?';
+            warnings.push(
+              prefix
+                ? `${prefix}, card "${letter}": unrecognised field "${key}" will be ignored`
+                : `Card "${letter}": unrecognised field "${key}" will be ignored`
+            );
+          }
+        }
+      }
+    });
 
     // Validate dependency updates
     if (data.dependency_updates && Array.isArray(data.dependency_updates)) {
+      const importedLetters = new Set(seenLetters.keys());
       for (const update of data.dependency_updates) {
         const letter = update.card || update.session_letter;
         const target = projectLookups.cardsByLetter[letter];
         if (!target) {
-          errors.push(`Dependency update target "${letter}" not found in project`);
+          // A letter this file is adding is a legitimate target: updates run
+          // after every batch has been inserted
+          if (!importedLetters.has(letter)) {
+            errors.push(`Dependency update target "${letter}" not found in project`);
+          }
         } else if (target.status === 'Done') {
           warnings.push(`Card "${letter}" is Done - dependency update will be skipped`);
         } else if (target.status === 'In Progress') {
@@ -224,22 +309,33 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
 
   if (!isOpen) return null;
 
-  // Describe where the cards will land, accounting for new phase/subphase creation
-  const targetDescription = (() => {
-    if (!fileData) return null;
-    const newPhase = fileData.new_phase && typeof fileData.new_phase === 'object' ? fileData.new_phase : null;
-    const newSubphase = fileData.new_subphase && typeof fileData.new_subphase === 'object' ? fileData.new_subphase : null;
+  // Group the cards under the destination each batch targets, so what lands
+  // where is visible before the import runs
+  const previewGroups = (() => {
+    if (!fileData) return [];
+    const { batches, error: splitError } = splitAppendBatches(fileData);
+    if (splitError) return [];
 
-    if (newPhase && newSubphase) {
-      return { name: newSubphase.name, note: `new phase "${newPhase.name}"` };
-    }
-    if (newSubphase) {
-      const phase = projectLookups.phases[fileData.add_to_phase];
-      return { name: newSubphase.name, note: phase ? `new subphase in "${phase.name}"` : 'new subphase' };
-    }
-    const existing = fileData.add_to_subphase ? projectLookups.subphases[fileData.add_to_subphase] : null;
-    return existing ? { name: existing.name, note: null } : null;
+    return batches.map((batch) => {
+      const newPhase = batch.new_phase && typeof batch.new_phase === 'object' ? batch.new_phase : null;
+      const newSubphase = batch.new_subphase && typeof batch.new_subphase === 'object' ? batch.new_subphase : null;
+
+      let target = null;
+      if (newPhase && newSubphase) {
+        target = { name: newSubphase.name, note: `new phase "${newPhase.name}"` };
+      } else if (newSubphase) {
+        const phase = projectLookups.phases[batch.add_to_phase];
+        target = { name: newSubphase.name, note: phase ? `new subphase in "${phase.name}"` : 'new subphase' };
+      } else {
+        const existing = batch.add_to_subphase ? projectLookups.subphases[batch.add_to_subphase] : null;
+        target = existing ? { name: existing.name, note: null } : null;
+      }
+
+      return { target, cards: Array.isArray(batch.new_cards) ? batch.new_cards : [] };
+    });
   })();
+
+  const totalPreviewCards = previewGroups.reduce((n, group) => n + group.cards.length, 0);
 
   const canAppend = fileData && validationErrors.length === 0 && !appending && !result;
 
@@ -329,31 +425,42 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
                   Preview
                 </h3>
 
-                {/* Target info */}
-                {targetDescription && (
-                  <p className="text-sm text-dark-text">
-                    Adding <span className="font-bold text-blue-400">{fileData.new_cards.length}</span> card{fileData.new_cards.length !== 1 ? 's' : ''} to{' '}
-                    <span className="font-semibold">{targetDescription.name}</span>
-                    {targetDescription.note && (
-                      <span className="text-green-400"> ({targetDescription.note})</span>
-                    )}
+                {/* One group per destination */}
+                {previewGroups.map((group, gi) => (
+                  <div key={gi} className="space-y-1.5">
+                    <p className="text-sm text-dark-text">
+                      Adding <span className="font-bold text-blue-400">{group.cards.length}</span> card{group.cards.length !== 1 ? 's' : ''} to{' '}
+                      {group.target ? (
+                        <>
+                          <span className="font-semibold">{group.target.name}</span>
+                          {group.target.note && (
+                            <span className="text-green-400"> ({group.target.note})</span>
+                          )}
+                        </>
+                      ) : (
+                        <span className="font-semibold text-red-400">an unknown destination</span>
+                      )}
+                    </p>
+
+                    {group.cards.map((card, i) => (
+                      <div key={i} className="flex items-center gap-2 text-sm pl-3">
+                        <span className="flex-shrink-0 w-8 h-6 rounded bg-dark-surface flex items-center justify-center font-mono text-xs text-blue-400 border border-dark-border">
+                          {card.session_letter}
+                        </span>
+                        <span className="text-dark-text truncate">{card.title}</span>
+                        {card.status && card.status !== 'Not Started' && (
+                          <span className="text-xs text-yellow-400 flex-shrink-0">({card.status})</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ))}
+
+                {previewGroups.length > 1 && (
+                  <p className="text-xs text-dark-text-secondary border-t border-dark-border pt-2">
+                    {totalPreviewCards} card{totalPreviewCards !== 1 ? 's' : ''} across {previewGroups.length} destinations
                   </p>
                 )}
-
-                {/* Card list */}
-                <div className="space-y-1.5">
-                  {fileData.new_cards.map((card, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm">
-                      <span className="flex-shrink-0 w-8 h-6 rounded bg-dark-surface flex items-center justify-center font-mono text-xs text-blue-400 border border-dark-border">
-                        {card.session_letter}
-                      </span>
-                      <span className="text-dark-text truncate">{card.title}</span>
-                      {card.status && card.status !== 'Not Started' && (
-                        <span className="text-xs text-yellow-400 flex-shrink-0">({card.status})</span>
-                      )}
-                    </div>
-                  ))}
-                </div>
 
                 {/* Dependency updates */}
                 {fileData.dependency_updates && fileData.dependency_updates.length > 0 && (
@@ -380,11 +487,11 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
                 <p className="text-sm text-green-400">
                   {result.cardsAdded} card{result.cardsAdded !== 1 ? 's' : ''} added, {result.dependenciesUpdated} dependenc{result.dependenciesUpdated !== 1 ? 'ies' : 'y'} updated
                 </p>
-                {(result.createdPhase || result.createdSubphase) && (
+                {((result.createdPhases || []).length > 0 || (result.createdSubphases || []).length > 0) && (
                   <p className="text-sm text-green-400">
-                    Created{result.createdPhase ? ` phase "${result.createdPhase.name}"` : ''}
-                    {result.createdPhase && result.createdSubphase ? ' and' : ''}
-                    {result.createdSubphase ? ` subphase "${result.createdSubphase.name}"` : ''}
+                    Created{describeCreated(result.createdPhases, 'phase', 'phases')}
+                    {(result.createdPhases || []).length > 0 && (result.createdSubphases || []).length > 0 ? ' and' : ''}
+                    {describeCreated(result.createdSubphases, 'subphase', 'subphases')}
                   </p>
                 )}
                 {result.warnings && result.warnings.length > 0 && (

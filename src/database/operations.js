@@ -1,5 +1,9 @@
 const { initDb } = require('./schema');
 
+// Placement fields a batch (or a single-destination file's top level) may use
+// to say where its cards land.
+const APPEND_PLACEMENT_KEYS = ['add_to_phase', 'add_to_subphase', 'new_phase', 'new_subphase'];
+
 /**
  * Database operations wrapper with error handling and transactions
  */
@@ -1149,6 +1153,47 @@ class KanbanDatabase {
   // ============================================================================
 
   /**
+   * Normalise an append payload into a list of batches.
+   *
+   * A file either uses the single-destination form (placement fields at the
+   * top level) or the multi-destination form (a `batches` array, each entry
+   * carrying its own placement plus new_cards). The single-destination form is
+   * normalised into a one-entry batches array so there is exactly one code
+   * path; mixing the two forms is an error rather than a silent preference.
+   *
+   * @param {Object} data - The append JSON payload
+   * @returns {Array<Object>} - Batches, each { placement fields..., new_cards }
+   */
+  normaliseAppendBatches(data) {
+    if (!data || typeof data !== 'object') return [{}];
+
+    const hasBatches = data.batches !== undefined && data.batches !== null;
+    if (!hasBatches) {
+      const { batches, dependency_updates, ...batch } = data;
+      return [batch];
+    }
+
+    const conflicting = APPEND_PLACEMENT_KEYS.concat('new_cards')
+      .filter(key => data[key] !== undefined && data[key] !== null);
+    if (conflicting.length > 0) {
+      throw new Error(
+        `Provide either "batches" or top-level placement fields, not both ` +
+        `(found alongside "batches": ${conflicting.join(', ')})`
+      );
+    }
+    if (!Array.isArray(data.batches) || data.batches.length === 0) {
+      throw new Error('"batches" must be a non-empty array');
+    }
+    for (const batch of data.batches) {
+      if (!batch || typeof batch !== 'object' || Array.isArray(batch)) {
+        throw new Error('Every entry in "batches" must be an object');
+      }
+    }
+
+    return data.batches;
+  }
+
+  /**
    * Scan an append-import payload for keys the importer does not understand.
    * Unknown keys are never an error (forward compatibility) but must be
    * reported so generated fields are not silently discarded.
@@ -1159,7 +1204,11 @@ class KanbanDatabase {
   findUnrecognisedImportKeys(data) {
     const KNOWN_TOP_LEVEL_KEYS = new Set([
       'add_to_phase', 'add_to_subphase', 'new_phase', 'new_subphase',
-      'new_cards', 'dependency_updates',
+      'new_cards', 'dependency_updates', 'batches',
+    ]);
+    const KNOWN_BATCH_KEYS = new Set([
+      'add_to_phase', 'add_to_subphase', 'new_phase', 'new_subphase',
+      'new_cards',
     ]);
     const KNOWN_CARD_KEYS = new Set([
       'session_letter', 'title', 'description', 'success_criteria',
@@ -1178,31 +1227,179 @@ class KanbanDatabase {
       }
     }
 
-    if (Array.isArray(data.new_cards)) {
-      for (const card of data.new_cards) {
-        if (!card || typeof card !== 'object') continue;
-        for (const key of Object.keys(card)) {
-          if (!KNOWN_CARD_KEYS.has(key)) {
-            warnings.push(`Card "${card.session_letter || '?'}": unrecognised field "${key}" was ignored`);
+    // Multi-destination files get their warnings prefixed with the batch they
+    // came from; single-destination files keep the unprefixed wording.
+    const batched = Array.isArray(data.batches);
+    const batches = batched ? data.batches : [data];
+
+    batches.forEach((batch, index) => {
+      if (!batch || typeof batch !== 'object') return;
+      const prefix = batched ? `Batch ${index + 1}` : null;
+
+      if (batched) {
+        for (const key of Object.keys(batch)) {
+          if (!KNOWN_BATCH_KEYS.has(key)) {
+            warnings.push(`${prefix}: unrecognised field "${key}" was ignored`);
           }
         }
       }
-    }
+
+      if (!Array.isArray(batch.new_cards)) return;
+      for (const card of batch.new_cards) {
+        if (!card || typeof card !== 'object') continue;
+        for (const key of Object.keys(card)) {
+          if (!KNOWN_CARD_KEYS.has(key)) {
+            const letter = card.session_letter || '?';
+            warnings.push(
+              prefix
+                ? `${prefix}, card "${letter}": unrecognised field "${key}" was ignored`
+                : `Card "${letter}": unrecognised field "${key}" was ignored`
+            );
+          }
+        }
+      }
+    });
 
     return warnings;
   }
 
   /**
+   * Resolve one batch's placement to the subphase its cards belong in,
+   * creating a phase and/or subphase when the batch asks for one.
+   *
+   * @param {number} projectId - Project ID being appended to
+   * @param {Object} batch - A single batch (placement fields + new_cards)
+   * @param {string} label - Message prefix naming the batch ('' when unbatched)
+   * @returns {Object} - { targetSubphaseId, createdPhase, createdSubphase }
+   */
+  resolveAppendTarget(projectId, batch, label) {
+    const hasNewPhase = batch.new_phase && typeof batch.new_phase === 'object';
+    const hasNewSubphase = batch.new_subphase && typeof batch.new_subphase === 'object';
+    const hasAddToPhase = batch.add_to_phase !== undefined && batch.add_to_phase !== null;
+    const hasAddToSubphase = batch.add_to_subphase !== undefined && batch.add_to_subphase !== null;
+
+    // Validate the combination of targeting fields
+    if (hasNewPhase && hasAddToPhase) {
+      throw new Error(`${label}Provide either add_to_phase (existing) or new_phase (new), not both`);
+    }
+    if (hasNewPhase && !hasNewSubphase) {
+      throw new Error(`${label}new_phase requires new_subphase (a phase cannot be created without a subphase)`);
+    }
+    if (hasNewSubphase && !hasNewPhase && !hasAddToPhase) {
+      throw new Error(`${label}new_subphase without new_phase requires a valid add_to_phase ID`);
+    }
+    if (!hasNewPhase && !hasNewSubphase && (!hasAddToPhase || !hasAddToSubphase)) {
+      throw new Error(`${label}Must provide add_to_phase + add_to_subphase, new_phase + new_subphase, or add_to_phase + new_subphase`);
+    }
+
+    if (hasNewPhase) {
+      // Create a brand new phase (with the next available display_order) and a subphase under it
+      const phaseOrderRow = this.db.prepare(`
+        SELECT MAX(display_order) AS maxOrder FROM phases WHERE project_id = ?
+      `).get(projectId);
+      const nextPhaseOrder = phaseOrderRow.maxOrder !== null ? phaseOrderRow.maxOrder + 1 : 0;
+
+      const phaseResult = this.db.prepare(`
+        INSERT INTO phases (project_id, name, short_name, description, display_order)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(
+        projectId,
+        batch.new_phase.name,
+        batch.new_phase.short_name || null,
+        batch.new_phase.description || null,
+        nextPhaseOrder
+      );
+      const newPhaseId = phaseResult.lastInsertRowid;
+
+      const subphaseResult = this.db.prepare(`
+        INSERT INTO subphases (phase_id, name, short_name, description, display_order)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(
+        newPhaseId,
+        batch.new_subphase.name,
+        batch.new_subphase.short_name || null,
+        batch.new_subphase.description || null,
+        1
+      );
+
+      return {
+        targetSubphaseId: subphaseResult.lastInsertRowid,
+        createdPhase: { id: newPhaseId, name: batch.new_phase.name },
+        createdSubphase: { id: subphaseResult.lastInsertRowid, name: batch.new_subphase.name },
+      };
+    }
+
+    if (hasNewSubphase) {
+      // Add a new subphase to an existing phase (with the next available display_order in that phase)
+      const phase = this.db.prepare(`
+        SELECT id FROM phases WHERE id = ? AND project_id = ?
+      `).get(batch.add_to_phase, projectId);
+
+      if (!phase) {
+        throw new Error(`${label}Phase ${batch.add_to_phase} not found in project ${projectId}`);
+      }
+
+      const subOrderRow = this.db.prepare(`
+        SELECT MAX(display_order) AS maxOrder FROM subphases WHERE phase_id = ?
+      `).get(batch.add_to_phase);
+      const nextSubOrder = subOrderRow.maxOrder !== null ? subOrderRow.maxOrder + 1 : 0;
+
+      const subphaseResult = this.db.prepare(`
+        INSERT INTO subphases (phase_id, name, short_name, description, display_order)
+        VALUES (?, ?, ?, ?, ?)
+      `).run(
+        batch.add_to_phase,
+        batch.new_subphase.name,
+        batch.new_subphase.short_name || null,
+        batch.new_subphase.description || null,
+        nextSubOrder
+      );
+
+      return {
+        targetSubphaseId: subphaseResult.lastInsertRowid,
+        createdPhase: null,
+        createdSubphase: { id: subphaseResult.lastInsertRowid, name: batch.new_subphase.name },
+      };
+    }
+
+    // Existing phase + existing subphase (original behavior)
+    const phase = this.db.prepare(`
+      SELECT id FROM phases WHERE id = ? AND project_id = ?
+    `).get(batch.add_to_phase, projectId);
+
+    if (!phase) {
+      throw new Error(`${label}Phase ${batch.add_to_phase} not found in project ${projectId}`);
+    }
+
+    const subphase = this.db.prepare(`
+      SELECT id FROM subphases WHERE id = ? AND phase_id = ?
+    `).get(batch.add_to_subphase, batch.add_to_phase);
+
+    if (!subphase) {
+      throw new Error(`${label}Subphase ${batch.add_to_subphase} not found in phase ${batch.add_to_phase}`);
+    }
+
+    return { targetSubphaseId: batch.add_to_subphase, createdPhase: null, createdSubphase: null };
+  }
+
+  /**
    * Append new cards to an existing project from JSON data
    *
-   * The target subphase can be specified three ways:
+   * A file either targets one destination (placement fields at the top level)
+   * or several (a `batches` array, each entry with its own placement and its
+   * own new_cards). Either way a placement names its target subphase in one of
+   * three ways:
    *   1. Existing phase + existing subphase: add_to_phase (int) + add_to_subphase (int)
    *   2. New phase + new subphase: new_phase (object) + new_subphase (object)
    *   3. Existing phase + new subphase: add_to_phase (int) + new_subphase (object)
    *
+   * Session letters must be unique across the whole file, and
+   * dependency_updates stays top-level, applied once every batch is inserted,
+   * so an update may reference a letter added by any batch.
+   *
    * @param {number} projectId - Project ID to append to
-   * @param {Object} data - { add_to_phase, add_to_subphase, new_phase, new_subphase, new_cards, dependency_updates }
-   * @returns {Object} - { cardsAdded, dependenciesUpdated, warnings, createdPhase, createdSubphase }
+   * @param {Object} data - { add_to_phase, add_to_subphase, new_phase, new_subphase, new_cards, batches, dependency_updates }
+   * @returns {Object} - { cardsAdded, dependenciesUpdated, warnings, createdPhase, createdSubphase, createdPhases, createdSubphases }
    */
   appendCards(projectId, data) {
     const transaction = this.db.transaction((projectId, data) => {
@@ -1213,130 +1410,34 @@ class KanbanDatabase {
       // Report unrecognised keys instead of silently discarding them
       warnings.push(...this.findUnrecognisedImportKeys(data));
 
-      const hasNewPhase = data.new_phase && typeof data.new_phase === 'object';
-      const hasNewSubphase = data.new_subphase && typeof data.new_subphase === 'object';
-      const hasAddToPhase = data.add_to_phase !== undefined && data.add_to_phase !== null;
-      const hasAddToSubphase = data.add_to_subphase !== undefined && data.add_to_subphase !== null;
+      const batches = this.normaliseAppendBatches(data);
+      const batched = Array.isArray(data && data.batches);
+      const createdPhases = [];
+      const createdSubphases = [];
 
-      // Validate the combination of targeting fields
-      if (hasNewPhase && hasAddToPhase) {
-        throw new Error('Provide either add_to_phase (existing) or new_phase (new), not both');
-      }
-      if (hasNewPhase && !hasNewSubphase) {
-        throw new Error('new_phase requires new_subphase (a phase cannot be created without a subphase)');
-      }
-      if (hasNewSubphase && !hasNewPhase && !hasAddToPhase) {
-        throw new Error('new_subphase without new_phase requires a valid add_to_phase ID');
-      }
-      if (!hasNewPhase && !hasNewSubphase && (!hasAddToPhase || !hasAddToSubphase)) {
-        throw new Error('Must provide add_to_phase + add_to_subphase, new_phase + new_subphase, or add_to_phase + new_subphase');
-      }
-
-      let targetSubphaseId;
-      let createdPhase = null;
-      let createdSubphase = null;
-
-      if (hasNewPhase) {
-        // Create a brand new phase (with the next available display_order) and a subphase under it
-        const phaseOrderRow = this.db.prepare(`
-          SELECT MAX(display_order) AS maxOrder FROM phases WHERE project_id = ?
-        `).get(projectId);
-        const nextPhaseOrder = phaseOrderRow.maxOrder !== null ? phaseOrderRow.maxOrder + 1 : 0;
-
-        const phaseResult = this.db.prepare(`
-          INSERT INTO phases (project_id, name, short_name, description, display_order)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(
-          projectId,
-          data.new_phase.name,
-          data.new_phase.short_name || null,
-          data.new_phase.description || null,
-          nextPhaseOrder
-        );
-        const newPhaseId = phaseResult.lastInsertRowid;
-
-        const subphaseResult = this.db.prepare(`
-          INSERT INTO subphases (phase_id, name, short_name, description, display_order)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(
-          newPhaseId,
-          data.new_subphase.name,
-          data.new_subphase.short_name || null,
-          data.new_subphase.description || null,
-          1
-        );
-        targetSubphaseId = subphaseResult.lastInsertRowid;
-        createdPhase = { id: newPhaseId, name: data.new_phase.name };
-        createdSubphase = { id: targetSubphaseId, name: data.new_subphase.name };
-      } else if (hasNewSubphase) {
-        // Add a new subphase to an existing phase (with the next available display_order in that phase)
-        const phase = this.db.prepare(`
-          SELECT id FROM phases WHERE id = ? AND project_id = ?
-        `).get(data.add_to_phase, projectId);
-
-        if (!phase) {
-          throw new Error(`Phase ${data.add_to_phase} not found in project ${projectId}`);
-        }
-
-        const subOrderRow = this.db.prepare(`
-          SELECT MAX(display_order) AS maxOrder FROM subphases WHERE phase_id = ?
-        `).get(data.add_to_phase);
-        const nextSubOrder = subOrderRow.maxOrder !== null ? subOrderRow.maxOrder + 1 : 0;
-
-        const subphaseResult = this.db.prepare(`
-          INSERT INTO subphases (phase_id, name, short_name, description, display_order)
-          VALUES (?, ?, ?, ?, ?)
-        `).run(
-          data.add_to_phase,
-          data.new_subphase.name,
-          data.new_subphase.short_name || null,
-          data.new_subphase.description || null,
-          nextSubOrder
-        );
-        targetSubphaseId = subphaseResult.lastInsertRowid;
-        createdSubphase = { id: targetSubphaseId, name: data.new_subphase.name };
-      } else {
-        // Existing phase + existing subphase (original behavior)
-        const phase = this.db.prepare(`
-          SELECT id FROM phases WHERE id = ? AND project_id = ?
-        `).get(data.add_to_phase, projectId);
-
-        if (!phase) {
-          throw new Error(`Phase ${data.add_to_phase} not found in project ${projectId}`);
-        }
-
-        const subphase = this.db.prepare(`
-          SELECT id FROM subphases WHERE id = ? AND phase_id = ?
-        `).get(data.add_to_subphase, data.add_to_phase);
-
-        if (!subphase) {
-          throw new Error(`Subphase ${data.add_to_subphase} not found in phase ${data.add_to_phase}`);
-        }
-
-        targetSubphaseId = data.add_to_subphase;
-      }
-
-      // Reject letters already on the board, and repeats within this batch.
-      // Checked against the DB rather than a pre-read set so the letters an
-      // append generator picked from a stale export can't slip through.
-      if (data.new_cards && Array.isArray(data.new_cards)) {
-        const batchLetters = new Map();
-
-        for (const card of data.new_cards) {
+      // Letters must be unique across the whole file, and this runs before any
+      // card is inserted: once batch 1's cards are on the board, a repeat in
+      // batch 3 would be caught as a board clash and the error would name only
+      // one of the two cards.
+      const fileLetters = new Map();
+      for (const batch of batches) {
+        if (!batch || !Array.isArray(batch.new_cards)) continue;
+        for (const card of batch.new_cards) {
+          // Checked against the DB rather than a pre-read set so the letters an
+          // append generator picked from a stale export can't slip through.
           this.assertSessionLetterAvailable(projectId, card.session_letter);
 
           const normalized = card.session_letter.trim().toUpperCase();
-          if (batchLetters.has(normalized)) {
+          if (fileLetters.has(normalized)) {
             throw new Error(
               `Session letter "${card.session_letter}" is used twice in this import ` +
-              `("${batchLetters.get(normalized)}" and "${card.title}")`
+              `("${fileLetters.get(normalized)}" and "${card.title}")`
             );
           }
-          batchLetters.set(normalized, card.title);
+          fileLetters.set(normalized, card.title);
         }
       }
 
-      // Insert new cards
       const insertCard = this.db.prepare(`
         INSERT INTO cards (
           subphase_id, session_letter, title, description, success_criteria,
@@ -1346,8 +1447,18 @@ class KanbanDatabase {
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
 
-      if (data.new_cards && Array.isArray(data.new_cards)) {
-        for (const card of data.new_cards) {
+      batches.forEach((batch, index) => {
+        const label = batched ? `Batch ${index + 1}: ` : '';
+
+        const { targetSubphaseId, createdPhase, createdSubphase } =
+          this.resolveAppendTarget(projectId, batch, label);
+        if (createdPhase) createdPhases.push(createdPhase);
+        if (createdSubphase) createdSubphases.push(createdSubphase);
+
+        if (!batch.new_cards || !Array.isArray(batch.new_cards)) return;
+
+        // Insert new cards (letters were validated across the whole file above)
+        for (const card of batch.new_cards) {
           insertCard.run(
             targetSubphaseId,
             this.normalizeSessionLetter(card.session_letter),
@@ -1370,9 +1481,10 @@ class KanbanDatabase {
           );
           cardsAdded++;
         }
-      }
+      });
 
-      // Process dependency updates
+      // Process dependency updates once every batch has landed, so an update
+      // may reference a letter added by any batch
       if (data.dependency_updates && Array.isArray(data.dependency_updates)) {
         for (const update of data.dependency_updates) {
           // Find the card by session_letter in this project. Normalised so a
@@ -1414,7 +1526,17 @@ class KanbanDatabase {
         }
       }
 
-      return { cardsAdded, dependenciesUpdated, warnings, createdPhase, createdSubphase };
+      return {
+        cardsAdded,
+        dependenciesUpdated,
+        warnings,
+        // The singular fields stay populated only when exactly one of each was
+        // created, so an existing caller's "Created phase X" wording stays true
+        createdPhase: createdPhases.length === 1 ? createdPhases[0] : null,
+        createdSubphase: createdSubphases.length === 1 ? createdSubphases[0] : null,
+        createdPhases,
+        createdSubphases,
+      };
     });
 
     try {
