@@ -972,3 +972,58 @@ Known gaps / followups
   the running app yet.
 - AppendCardsDialog's preview does not predict a cycle; it surfaces only as
   the import error.
+
+Session Progress - 2026-10-10 (Append import: check new cards' own dependencies)
+================================================================================
+
+Goal: close the gap logged in the previous entry. dependency_updates was
+guarded against loops, but a new card's own depends_on_cards was not - and
+that is the more common route, since kanban-append2 writes depends_on_cards
+directly onto new cards and only uses dependency_updates for existing ones.
+
+1. New assertAppendDependenciesSound(projectId, batches, batched,
+   dependency_updates), called from appendCards straight after the
+   whole-file letter pass and BEFORE any insert. It builds the board as it
+   will be after the import: existing project cards + every new card in
+   every batch + every dependency_updates edge (skipping updates the write
+   phase would skip: missing target, or target not Not Started).
+2. Checks, all whole-file, all cancel the import (nothing lands):
+   - a new card depending on itself;
+   - NEW REJECTION: a new card naming a letter that is neither on the board
+     nor anywhere in the file. Previously imported silently and blocked the
+     card forever ("Waiting on card: Q"). A file that used to import can now
+     fail here;
+   - a dependency_updates self-reference;
+   - any new edge (new-card or dependency_updates) that closes a loop,
+     including the composite new C -> existing D + update D -> C.
+3. One cycle walk: findDependencyLoop was split out of
+   assertNoDependencyCycle and both the card editor and the importer use it.
+   The in-write per-update check added earlier today is gone - the
+   pre-insert check covers it, against the complete graph.
+4. Messages use prompt 6's prefixes and name the path, each card's title and
+   where it came from, plus any loop edge that came from dependency_updates:
+     Batch 1, card "P": depending on R would create a dependency loop
+     P -> R -> P. Cards: P "New P" (new, batch 1); R "New R" (new, batch 2)
+     card "C": depending on D would create a dependency loop C -> D -> C.
+     Cards: C "New C" (new in this file); D "Existing D" (on the board).
+     Added by dependency_updates: D -> C
+
+Tests: append-import 55 (was 45). New checks: same-batch loop, cross-batch
+loop that only exists in combination, self-reference, the composite
+new-card + dependency_updates loop, an unknown letter, each refused with
+nothing landing; and the normal case (new cards depending on each other
+within and across batches, on a Done board card, plus a legal update) still
+imports. depends-on-cards 24 (one expected path updated: the two-update
+pair now reports B -> F -> B, since the whole file is checked at once),
+vault-export 51, session-letter-uniqueness 34, operations 17.
+
+No board re-audit: the live board was already confirmed clean from the
+Pi-generated 4-dev-hub/kanban-export.json in alfred-vault (319 cards, 11
+projects, 0 cycles / self-refs / dangling letters).
+
+Known gaps / followups
+----------------------
+- dependency_updates add_dependencies naming a letter that exists nowhere is
+  still accepted (only new_cards got the new rejection, as specified).
+- AppendCardsDialog's preview does not predict any of these; they surface as
+  the import error on Import.

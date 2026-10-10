@@ -1032,6 +1032,26 @@ class KanbanDatabase {
       throw new Error(`Card ${fromLetter} cannot depend on itself`);
     }
 
+    const loop = this.findDependencyLoop(graph, fromLetter, toLetter);
+    if (loop) {
+      throw new Error(
+        `Card ${fromLetter} cannot depend on ${toLetter}: that would create a ` +
+        `dependency loop ${loop.join(' -> ')}`
+      );
+    }
+  }
+
+  /**
+   * The one cycle walk, shared by the card editor and the append importer.
+   * Returns the loop that the edge fromLetter -> toLetter closes, as a letter
+   * path starting and ending at fromLetter (["C", "D", "C"]), or null.
+   *
+   * @param {Map} graph - letter -> { deps: string[] }
+   * @param {string} fromLetter - The card gaining the dependency
+   * @param {string} toLetter - The card it would depend on
+   * @returns {string[]|null}
+   */
+  findDependencyLoop(graph, fromLetter, toLetter) {
     // Depth-first search from toLetter looking for fromLetter
     const visited = new Set();
     const walk = (letter, path) => {
@@ -1048,10 +1068,99 @@ class KanbanDatabase {
     };
 
     const loop = walk(toLetter, [toLetter]);
-    if (loop) {
+    return loop ? [fromLetter, ...loop] : null;
+  }
+
+  /**
+   * Check an append file's same-board dependencies against the board as it
+   * WOULD be after the import - existing cards, plus every new card in every
+   * batch, plus every dependency_updates edge - before anything is written.
+   * Validating during the write would report against a half-changed board,
+   * and a loop can need all three sources at once (new C -> existing D, plus
+   * a dependency_updates entry making D depend on C).
+   *
+   * Throws on: a new card depending on itself, a new card naming a letter
+   * that is neither on the board nor in the file (getBlockedReason would
+   * block it forever on a card that does not exist), a dependency_updates
+   * self-reference, and any new edge that closes a loop. Existing board edges
+   * are not re-checked.
+   *
+   * @param {number} projectId - Project ID
+   * @param {Array} batches - From normaliseAppendBatches
+   * @param {boolean} batched - Whether the file used `batches` (for message prefixes)
+   * @param {Array} dependencyUpdates - data.dependency_updates
+   */
+  assertAppendDependenciesSound(projectId, batches, batched, dependencyUpdates) {
+    const graph = this.getProjectDependencyGraph(projectId);
+    for (const node of graph.values()) node.origin = 'on the board';
+
+    const newEdges = [];
+    batches.forEach((batch, index) => {
+      if (!batch || !Array.isArray(batch.new_cards)) return;
+      const label = batched ? `Batch ${index + 1}, ` : '';
+      for (const card of batch.new_cards) {
+        const letter = this.normalizeSessionLetter(card.session_letter);
+        const deps = this.normalizeDependsOnCards(card.depends_on_cards);
+        graph.set(letter, {
+          title: card.title,
+          status: card.status || 'Not Started',
+          deps,
+          origin: batched ? `new, batch ${index + 1}` : 'new in this file',
+        });
+        for (const dep of deps) newEdges.push({ from: letter, to: dep, where: `${label}card "${letter}"` });
+      }
+    });
+
+    // Bad references first: a loop through a card that does not exist is
+    // not the problem worth reporting
+    for (const edge of newEdges) {
+      if (edge.from === edge.to) {
+        throw new Error(`${edge.where}: depends on itself`);
+      }
+      if (!graph.has(edge.to)) {
+        throw new Error(
+          `${edge.where}: depends on ${edge.to}, which is neither on the board nor in this file`
+        );
+      }
+    }
+
+    // Mirror the write-phase rules: an update whose target is missing or not
+    // Not Started is skipped there with a warning, so it adds no edge here
+    const updateEdges = new Set();
+    for (const update of Array.isArray(dependencyUpdates) ? dependencyUpdates : []) {
+      const target = this.normalizeSessionLetter(update.card || update.session_letter);
+      const node = graph.get(target);
+      if (!node || node.status !== 'Not Started') continue;
+      const adds = this.normalizeDependsOnCards(
+        [].concat(update.add_dependencies || update.add_dependency || [])
+      );
+      for (const dep of adds) {
+        if (node.deps.includes(dep)) continue;
+        if (dep === target) {
+          throw new Error(`dependency_updates, card "${target}": cannot depend on itself`);
+        }
+        node.deps.push(dep);
+        updateEdges.add(`${target}>${dep}`);
+        newEdges.push({ from: target, to: dep, where: `dependency_updates, card "${target}"` });
+      }
+    }
+
+    for (const edge of newEdges) {
+      const loop = this.findDependencyLoop(graph, edge.from, edge.to);
+      if (!loop) continue;
+
+      const cards = [...new Set(loop)].map(l => {
+        const node = graph.get(l);
+        return `${l} "${node.title}" (${node.origin})`;
+      });
+      const fromUpdates = [];
+      for (let i = 0; i < loop.length - 1; i++) {
+        if (updateEdges.has(`${loop[i]}>${loop[i + 1]}`)) fromUpdates.push(`${loop[i]} -> ${loop[i + 1]}`);
+      }
       throw new Error(
-        `Card ${fromLetter} cannot depend on ${toLetter}: that would create a ` +
-        `dependency loop ${[fromLetter, ...loop].join(' -> ')}`
+        `${edge.where}: depending on ${edge.to} would create a dependency loop ` +
+        `${loop.join(' -> ')}. Cards: ${cards.join('; ')}` +
+        (fromUpdates.length ? `. Added by dependency_updates: ${fromUpdates.join(', ')}` : '')
       );
     }
   }
@@ -1564,6 +1673,10 @@ class KanbanDatabase {
         }
       }
 
+      // Same whole-file scope, and also before any insert: dependencies are
+      // checked against the board as it will be once everything lands
+      this.assertAppendDependenciesSound(projectId, batches, batched, data.dependency_updates);
+
       const insertCard = this.db.prepare(`
         INSERT INTO cards (
           subphase_id, session_letter, title, description, success_criteria,
@@ -1642,19 +1755,9 @@ class KanbanDatabase {
           const newDeps = this.normalizeDependsOnCards(
             [].concat(update.add_dependencies || update.add_dependency || [])
           );
+          // Self-reference and loops were already refused, for the whole file,
+          // by assertAppendDependenciesSound before anything was inserted
           const mergedDeps = [...new Set([...currentDeps, ...newDeps])];
-
-          // Same self-reference and cycle checks as updateCardDependsOnCards.
-          // The graph is re-read per update so an earlier update in this file
-          // counts towards a loop closed by a later one. A loop aborts the
-          // whole import (nothing lands) rather than being skipped with a
-          // warning, because a looped pair can never be worked.
-          const graph = this.getProjectDependencyGraph(projectId);
-          const ownLetter = this.normalizeSessionLetter(targetCard.session_letter);
-          for (const letter of newDeps) {
-            if (currentDeps.includes(letter)) continue;
-            this.assertNoDependencyCycle(graph, ownLetter, letter);
-          }
 
           this.db.prepare(`
             UPDATE cards SET depends_on_cards = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?

@@ -190,7 +190,7 @@ function runTests() {
         { card: 'F', add_dependencies: ['B'] },
       ],
     }));
-    check('Importer refuses a cycle formed by two updates in one file', importPair && importPair.includes('F -> B -> F'), importPair);
+    check('Importer refuses a cycle formed by two updates in one file', importPair && importPair.includes('B -> F -> B'), importPair);
     check('Neither half of the refused pair landed', db.getCard(B.id).depends_on_cards.length === 0);
 
     // A legal update still applies

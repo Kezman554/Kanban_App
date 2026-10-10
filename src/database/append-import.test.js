@@ -466,6 +466,120 @@ function runTests() {
       legacyDupError !== null && legacyDupError.includes('First D') && legacyDupError.includes('Second D'),
       legacyDupError
     );
+
+    // ------------------------------------------------------------------
+    // new_cards' own depends_on_cards: self-reference, unknown letters and
+    // loops, checked across the whole file before anything is inserted
+    // ------------------------------------------------------------------
+    const loopId = db.createProject({
+      name: 'Loop Project',
+      slug: 'loop-project',
+      phases: [{
+        name: 'Phase 1',
+        subphases: [
+          {
+            name: 'Subphase 1.1',
+            cards: [
+              { session_letter: 'A', title: 'Existing A', status: 'Done', depends_on_cards: [] },
+              { session_letter: 'D', title: 'Existing D', status: 'Not Started', depends_on_cards: [] },
+            ],
+          },
+          { name: 'Subphase 1.2', cards: [] },
+        ],
+      }],
+    });
+    const loopPhase = db.getProject(loopId).phases[0];
+    const [loopSub1, loopSub2] = loopPhase.subphases;
+    const loopCount = () => db.getProject(loopId).phases.reduce(
+      (n, ph) => n + ph.subphases.reduce((m, s) => m + s.cards.length, 0), 0
+    );
+    const loopErr = (data) => {
+      try { db.appendCards(loopId, data); return null; } catch (e) { return e.message; }
+    };
+    const single = (new_cards, extra = {}) => ({
+      add_to_phase: loopPhase.id, add_to_subphase: loopSub1.id, new_cards, ...extra,
+    });
+
+    // Two new cards in one batch looping
+    let err = loopErr(single([
+      { session_letter: 'P', title: 'New P', depends_on_cards: ['R'] },
+      { session_letter: 'R', title: 'New R', depends_on_cards: ['P'] },
+    ]));
+    check(
+      'Two new cards in one batch looping are refused, naming the path and both cards',
+      err && err.includes('card "P"') && err.includes('P -> R -> P') &&
+        err.includes('"New P" (new in this file)') && err.includes('"New R" (new in this file)'),
+      err
+    );
+    check('Same-batch loop lands nothing', loopCount() === 2, `cards: ${loopCount()}`);
+
+    // Two new cards in different batches, each fine alone, looping together
+    err = loopErr({
+      batches: [
+        { add_to_phase: loopPhase.id, add_to_subphase: loopSub1.id,
+          new_cards: [{ session_letter: 'P', title: 'New P', depends_on_cards: ['R'] }] },
+        { add_to_phase: loopPhase.id, add_to_subphase: loopSub2.id,
+          new_cards: [{ session_letter: 'R', title: 'New R', depends_on_cards: ['P'] }] },
+      ],
+    });
+    check(
+      'Cross-batch loop is refused, naming each card\'s batch',
+      err && err.includes('Batch 1, card "P"') && err.includes('P -> R -> P') &&
+        err.includes('"New P" (new, batch 1)') && err.includes('"New R" (new, batch 2)'),
+      err
+    );
+    check('Cross-batch loop lands nothing', loopCount() === 2, `cards: ${loopCount()}`);
+
+    // A new card depending on itself (lowercase, to prove normalisation)
+    err = loopErr(single([{ session_letter: 'P', title: 'New P', depends_on_cards: ['p'] }]));
+    check('A new card depending on itself is refused', err && err.includes('card "P": depends on itself'), err);
+
+    // Composite: new C -> existing D, and dependency_updates makes D -> C
+    err = loopErr(single(
+      [{ session_letter: 'C', title: 'New C', depends_on_cards: ['D'] }],
+      { dependency_updates: [{ card: 'D', add_dependency: 'C' }] }
+    ));
+    check(
+      'New card plus a dependency_updates edge closing a loop is refused',
+      err && err.includes('C -> D -> C') && err.includes('"Existing D" (on the board)') &&
+        err.includes('Added by dependency_updates: D -> C'),
+      err
+    );
+    check('Composite loop lands nothing, and D gains no edge',
+      loopCount() === 2 && db.getProject(loopId).phases[0].subphases[0].cards
+        .find(c => c.session_letter === 'D').depends_on_cards.length === 0);
+
+    // A new card naming a letter that exists nowhere
+    err = loopErr(single([{ session_letter: 'P', title: 'New P', depends_on_cards: ['Q'] }]));
+    check(
+      'A new card depending on a letter that exists nowhere is refused',
+      err && err.includes('card "P": depends on Q, which is neither on the board nor in this file'),
+      err
+    );
+    check('Unknown-letter file lands nothing', loopCount() === 2, `cards: ${loopCount()}`);
+
+    // The normal case: new cards depending on each other and on the board
+    const okLoop = db.appendCards(loopId, {
+      batches: [
+        { add_to_phase: loopPhase.id, add_to_subphase: loopSub1.id,
+          new_cards: [
+            { session_letter: 'P', title: 'New P', depends_on_cards: ['A'] },
+            { session_letter: 'R', title: 'New R', depends_on_cards: ['p'] },
+          ] },
+        { add_to_phase: loopPhase.id, add_to_subphase: loopSub2.id,
+          new_cards: [{ session_letter: 'S', title: 'New S', depends_on_cards: ['R', 'D'] }] },
+      ],
+      dependency_updates: [{ card: 'D', add_dependency: 'A' }],
+    });
+    const okCards = {};
+    for (const s of db.getProject(loopId).phases[0].subphases) for (const c of s.cards) okCards[c.session_letter] = c;
+    check(
+      'A file whose new cards depend on each other (within and across batches) imports cleanly',
+      okLoop.cardsAdded === 3 && okLoop.dependenciesUpdated === 1 &&
+        JSON.stringify(okCards.R.depends_on_cards) === '["P"]' &&
+        JSON.stringify(okCards.S.depends_on_cards) === '["R","D"]',
+      JSON.stringify(okLoop)
+    );
   } catch (error) {
     console.log(`❌ FAILED: unexpected error — ${error.stack}`);
     failed++;
