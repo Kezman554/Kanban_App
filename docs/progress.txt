@@ -963,13 +963,13 @@ runs, was NOT scanned: SSH to it was blocked in this session.
 
 Known gaps / followups
 ----------------------
-- Pi board not yet scanned for existing cycles (see above).
-- new_cards' own depends_on_cards in an import are still not cycle-checked:
-  two new cards in one file that depend on each other would still land as a
-  loop. Same fix (run assertNoDependencyCycle after insert); left out because
-  it was outside this prompt's scope.
-- The modal UI was verified by build only; nobody has clicked through it in
-  the running app yet.
+- RESOLVED: Pi board audited clean from the Pi-generated
+  4-dev-hub/kanban-export.json in alfred-vault (319 cards, 11 projects, 0
+  cycles / self-refs / dangling letters) - no SSH needed.
+- RESOLVED in e04ae84: new_cards' own depends_on_cards are now checked.
+- RESOLVED: deployed to the Pi with e04ae84 (smoke test OK, new route and
+  "This Board" panel confirmed in the served bundle); Nick clicked through
+  the modal on the browser board and confirmed it working.
 - AppendCardsDialog's preview does not predict a cycle; it surfaces only as
   the import error.
 
@@ -1023,10 +1023,13 @@ projects, 0 cycles / self-refs / dangling letters).
 
 Known gaps / followups
 ----------------------
-- dependency_updates add_dependencies naming a letter that exists nowhere is
-  still accepted (only new_cards got the new rejection, as specified).
+- RESOLVED in 654196d: dependency_updates naming a letter that exists
+  nowhere (dependency or target) is now refused.
 - AppendCardsDialog's preview does not predict any of these; they surface as
   the import error on Import.
+
+Deployed to the Pi (e04ae84): pulled, kanban-api rebuilt, smoke test OK
+(319 cards, API == DB).
 
 Session Progress - 2026-10-10 (Repo paths as stored settings)
 =============================================================
@@ -1102,6 +1105,12 @@ In Progress targets only warn (Done one even naming a nonexistent letter)
 while the new card and a lowercase-targeted update on a Not Started card
 land. Other suites unchanged and green; both builds clean.
 
+Deployed to the Pi (e9f6345): pulled, kanban-api rebuilt, smoke test OK
+(319 cards, API == DB). Verified live with a no-op POST /projects/27/append
+(no new cards, one update targeting nonexistent "ZZZ9"): refused with the
+new target message, card count unchanged at 319.
+
 Known gaps / followups
 ----------------------
-- Not yet deployed to the Pi (append is served there via POST /append).
+- AppendCardsDialog's preview still does not predict loops or unknown
+  dependency letters; they surface as the import error.
