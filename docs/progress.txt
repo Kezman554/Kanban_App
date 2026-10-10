@@ -1069,3 +1069,39 @@ Known gaps / followups
   enter in the UI.
 - AlfredHomeHub DEPLOY.md's API list does not yet mention /settings or
   /cards/:id/depends-on-cards.
+
+Session Progress - 2026-10-10 (dependency_updates: refuse letters that do not exist)
+====================================================================================
+
+Goal: e04ae84 refused a new card naming a letter that exists nowhere, but
+dependency_updates got no such check; and for a missing TARGET the dialog
+refused while appendCards only warned - so the Pi's POST
+/projects/:id/append (no dialog) reported success on a typo.
+
+1. assertAppendDependenciesSound (the existing pre-insert pass, no new pass):
+   - NEW REJECTION: a dependency_updates target that is neither on the board
+     nor in the file -> `dependency_updates, card "X": target card X is
+     neither on the board nor in this file`.
+   - NEW REJECTION: an added letter that is neither on the board nor in the
+     file -> `dependency_updates, card "D": depends on Q, which is neither on
+     the board nor in this file`.
+   Both cancel the whole import. A file that used to import (with warnings)
+   can now fail.
+2. Targets that exist but are past Not Started (Done, In Progress, or any
+   custom column) are still warn-and-skip. Their letters are not checked:
+   the update is a no-op, so nothing dangling is stored.
+3. The write phase's old "not found, skipping" warning is now unreachable and
+   throws as a backstop instead.
+4. AppendCardsDialog: update targets are uppercased/trimmed before lookup, so
+   a lowercase target is no longer flagged when the data layer would accept
+   it; the skip warning covers any non-Not-Started column.
+
+Tests: append-import 61 (was 55): unknown update dependency refused with
+nothing landing; unknown update target refused with nothing landing; Done and
+In Progress targets only warn (Done one even naming a nonexistent letter)
+while the new card and a lowercase-targeted update on a Not Started card
+land. Other suites unchanged and green; both builds clean.
+
+Known gaps / followups
+----------------------
+- Not yet deployed to the Pi (append is served there via POST /append).
