@@ -905,3 +905,70 @@ Known gaps / followups
   so two batches targeting the same phase read as two separate blocks.
 - Nothing yet generates multi-destination files: the kanban-append2 skill still
   emits the single-destination shape.
+
+Session Progress - 2026-10-10 (Edit same-board dependencies in the card modal)
+==============================================================================
+
+Goal: depends_on_cards could only be set by an import, or wiped all at once by
+the unlock action. Add per-entry add/remove on an existing card, the same job
+prompt 4 did for cross-project links, without letting a cycle in.
+
+1. New updateCardDependsOnCards(id, letters) in operations.js, replace-the-
+   array style like updateCardExternalDependencies. Normalised through
+   normalizeDependsOnCards. A NEWLY added letter must exist in the card's own
+   project (resolved project-scoped, as getBlockedReason does), must not be
+   the card itself, and must not close a cycle. Letters the card already had
+   are exempt, so a dangling or looped entry from an old import can be kept
+   while another entry is removed - otherwise the bad entry would also block
+   fixing it piecemeal. Removal is one UPDATE of the remaining letters, not
+   clear-then-rewrite.
+2. Helpers: getProjectDependencyGraph(projectId) and
+   assertNoDependencyCycle(graph, from, to). The cycle error names the loop,
+   e.g. "Card C cannot depend on D: that would create a dependency loop
+   C -> D -> C".
+3. appendCards dependency_updates now runs the same check per update, against
+   a graph re-read each time, so two updates in one file that only loop
+   together are caught. A loop throws and aborts the whole import (nothing
+   lands) instead of warn-and-skip, because a looped pair can never be worked.
+4. Wired through all five hosts: operations.js, preload.js, main.js
+   (db:updateCardDependsOnCards), electron-web-shim.js and pi-server
+   (PATCH /cards/:id/depends-on-cards { depends_on_cards: [...] }).
+5. CardDetail.jsx: one "Dependencies" panel holding a same-board list ("This
+   Board") above the external editor, which is unchanged. Each entry shows
+   letter, title and the status of the card it points at. Done is green
+   "Done - satisfied", a missing letter is red "no such card". Edit mode
+   gives Remove per entry plus a picker of this project's other cards
+   (letter - title (status)), excluding the card itself and letters already
+   chosen. No free text, deliberately the opposite of the external editor.
+6. clearCardDependencies untouched.
+
+Tests: new depends-on-cards.test.js, 24/24. Covers add -> blocked and out of
+getWorkableCards, remove -> back in, Done dependency satisfied immediately,
+lowercase/whitespace normalised, self-reference / unknown letter / letter only
+in another project refused, two- and three-card cycles refused with the path
+named, project-scoped resolution, keeping a legacy dangling letter, clear
+still wipes, and the importer's self/cycle/two-update-pair refusals with
+nothing landing. append-import 45, vault-export 51, session-letter-uniqueness
+34, operations 17, all green. Renderer builds clean.
+
+append-import.test.js fixture changed: the "legacy single-destination file"
+case had B depend on A in new_cards and then added A -> B through
+dependency_updates. That is the exact loop now refused, and it was accidental
+(the case only tests the legacy format). B's back-edge was removed.
+
+Live board scan (read-only, scratchpad script): laptop data/kanban.db has
+9 projects, 235 cards, 158 with same-board deps, and 0 cycles, 0
+self-references, 0 dangling letters. The Pi board, where the browser build
+runs, was NOT scanned: SSH to it was blocked in this session.
+
+Known gaps / followups
+----------------------
+- Pi board not yet scanned for existing cycles (see above).
+- new_cards' own depends_on_cards in an import are still not cycle-checked:
+  two new cards in one file that depend on each other would still land as a
+  loop. Same fix (run assertNoDependencyCycle after insert); left out because
+  it was outside this prompt's scope.
+- The modal UI was verified by build only; nobody has clicked through it in
+  the running app yet.
+- AppendCardsDialog's preview does not predict a cycle; it surfaces only as
+  the import error.
