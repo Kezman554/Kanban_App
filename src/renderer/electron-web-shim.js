@@ -131,6 +131,9 @@ if (typeof window !== 'undefined' && !window.electron) {
     updateCardExternalDependencies: (id, entries) =>
       req('PATCH', `/cards/${enc(id)}/external-dependencies`, { external_dependencies: entries })
         .then((r) => r.updated),
+    updateCardDependsOnCards: (id, letters) =>
+      req('PATCH', `/cards/${enc(id)}/depends-on-cards`, { depends_on_cards: letters })
+        .then((r) => r.updated),
     clearCardDependencies: (id) =>
       req('POST', `/cards/${enc(id)}/clear-dependencies`).then((r) => r.updated),
     deleteCard: (id) => req('DELETE', `/cards/${enc(id)}`), // { deletedLetter }

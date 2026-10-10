@@ -931,6 +931,132 @@ class KanbanDatabase {
   }
 
   /**
+   * Replace a card's same-board dependencies (depends_on_cards).
+   *
+   * Letters are normalised by normalizeDependsOnCards - the same path the
+   * importers use - so they land trimmed, uppercased and de-duplicated.
+   *
+   * Unlike updateCardExternalDependencies this DOES check the references:
+   * getBlockedReason treats a letter absent from the project as incomplete,
+   * so a typo would block the card forever. A newly added letter must name
+   * another card in this project, must not be the card itself, and must not
+   * close a cycle. Letters the card already had are exempt from the
+   * existence and cycle checks, so a dangling or cyclic entry left by an old
+   * import can still be kept while a different entry is removed.
+   *
+   * Removal is a single write of the remaining letters - clearCardDependencies
+   * stays the separate wipe-everything escape hatch.
+   *
+   * @param {number} id - Card ID
+   * @param {Array} letters - Session letters this card should depend on
+   * @returns {boolean} - Success status
+   */
+  updateCardDependsOnCards(id, letters) {
+    try {
+      if (!Array.isArray(letters)) {
+        throw new Error('depends_on_cards must be an array of session letters');
+      }
+
+      const card = this.db.prepare(`
+        SELECT c.id, c.session_letter, c.depends_on_cards, p.project_id
+        FROM cards c
+        JOIN subphases s ON c.subphase_id = s.id
+        JOIN phases p ON s.phase_id = p.id
+        WHERE c.id = ?
+      `).get(id);
+      if (!card) throw new Error(`Card ${id} not found`);
+
+      const ownLetter = this.normalizeSessionLetter(card.session_letter);
+      const current = new Set(this.normalizeDependsOnCards(JSON.parse(card.depends_on_cards || '[]')));
+      const normalized = this.normalizeDependsOnCards(letters);
+      const graph = this.getProjectDependencyGraph(card.project_id);
+
+      for (const letter of normalized) {
+        if (letter === ownLetter) {
+          throw new Error(`Card ${ownLetter} cannot depend on itself`);
+        }
+        if (current.has(letter)) continue;
+        if (!graph.has(letter)) {
+          throw new Error(`There is no card ${letter} in this project`);
+        }
+        this.assertNoDependencyCycle(graph, ownLetter, letter);
+      }
+
+      const sql = `UPDATE cards SET depends_on_cards = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
+      const result = this.db.prepare(sql).run(JSON.stringify(normalized), id);
+      return result.changes > 0;
+    } catch (error) {
+      throw new Error(`Failed to update card dependencies: ${error.message}`);
+    }
+  }
+
+  /**
+   * Same-board dependency graph for one project, keyed by normalised letter.
+   * Letters are resolved project-scoped, as getBlockedReason does.
+   *
+   * @param {number} projectId - Project ID
+   * @returns {Map<string, {id, title, status, deps: string[]}>}
+   */
+  getProjectDependencyGraph(projectId) {
+    const rows = this.db.prepare(`
+      SELECT c.id, c.session_letter, c.title, c.status, c.depends_on_cards
+      FROM cards c
+      JOIN subphases s ON c.subphase_id = s.id
+      JOIN phases p ON s.phase_id = p.id
+      WHERE p.project_id = ?
+    `).all(projectId);
+
+    const graph = new Map();
+    for (const row of rows) {
+      graph.set(this.normalizeSessionLetter(row.session_letter), {
+        id: row.id,
+        title: row.title,
+        status: row.status,
+        deps: this.normalizeDependsOnCards(JSON.parse(row.depends_on_cards || '[]')),
+      });
+    }
+    return graph;
+  }
+
+  /**
+   * Throw if making `fromLetter` depend on `toLetter` would close a cycle,
+   * i.e. `toLetter` already reaches `fromLetter` through existing
+   * dependencies. The message names the full loop, e.g. "A -> B -> C -> A".
+   *
+   * @param {Map} graph - From getProjectDependencyGraph
+   * @param {string} fromLetter - The card gaining the dependency
+   * @param {string} toLetter - The card it would depend on
+   */
+  assertNoDependencyCycle(graph, fromLetter, toLetter) {
+    if (fromLetter === toLetter) {
+      throw new Error(`Card ${fromLetter} cannot depend on itself`);
+    }
+
+    // Depth-first search from toLetter looking for fromLetter
+    const visited = new Set();
+    const walk = (letter, path) => {
+      if (letter === fromLetter) return path;
+      if (visited.has(letter)) return null;
+      visited.add(letter);
+      const node = graph.get(letter);
+      if (!node) return null;
+      for (const dep of node.deps) {
+        const found = walk(dep, [...path, dep]);
+        if (found) return found;
+      }
+      return null;
+    };
+
+    const loop = walk(toLetter, [toLetter]);
+    if (loop) {
+      throw new Error(
+        `Card ${fromLetter} cannot depend on ${toLetter}: that would create a ` +
+        `dependency loop ${[fromLetter, ...loop].join(' -> ')}`
+      );
+    }
+  }
+
+  /**
    * Update card core details (title, description, success criteria)
    * @param {number} id - Card ID
    * @param {Object} details - Object with title, description, success_criteria
@@ -1517,6 +1643,18 @@ class KanbanDatabase {
             [].concat(update.add_dependencies || update.add_dependency || [])
           );
           const mergedDeps = [...new Set([...currentDeps, ...newDeps])];
+
+          // Same self-reference and cycle checks as updateCardDependsOnCards.
+          // The graph is re-read per update so an earlier update in this file
+          // counts towards a loop closed by a later one. A loop aborts the
+          // whole import (nothing lands) rather than being skipped with a
+          // warning, because a looped pair can never be worked.
+          const graph = this.getProjectDependencyGraph(projectId);
+          const ownLetter = this.normalizeSessionLetter(targetCard.session_letter);
+          for (const letter of newDeps) {
+            if (currentDeps.includes(letter)) continue;
+            this.assertNoDependencyCycle(graph, ownLetter, letter);
+          }
 
           this.db.prepare(`
             UPDATE cards SET depends_on_cards = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?

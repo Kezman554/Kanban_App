@@ -188,6 +188,15 @@ ipcMain.handle('db:updateCardExternalDependencies', async (event, cardId, entrie
   }
 })
 
+ipcMain.handle('db:updateCardDependsOnCards', async (event, cardId, letters) => {
+  try {
+    return db.updateCardDependsOnCards(cardId, letters)
+  } catch (error) {
+    console.error('Error updating card dependencies:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:updateCardDetails', async (event, cardId, details) => {
   try {
     return db.updateCardDetails(cardId, details)

@@ -420,7 +420,9 @@ function runTests() {
       add_to_subphase: legacyPhase.subphases[0].id,
       new_cards: [
         { session_letter: 'A', title: 'Legacy A' },
-        { session_letter: 'B', title: 'Legacy B', depends_on_cards: ['A'] },
+        // B must not depend on A here: the update below adds A -> B, and the
+        // pair would be a cycle the importer now refuses
+        { session_letter: 'B', title: 'Legacy B' },
       ],
       dependency_updates: [{ card: 'A', add_dependencies: ['B'] }],
     });

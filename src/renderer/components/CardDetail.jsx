@@ -25,6 +25,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const [editedExtDeps, setEditedExtDeps] = useState([]);
   const [extDepsSaveSuccess, setExtDepsSaveSuccess] = useState(false);
   const [extDepsSaveError, setExtDepsSaveError] = useState(null);
+  const [isEditingDeps, setIsEditingDeps] = useState(false);
+  const [editedDeps, setEditedDeps] = useState([]);
+  const [depsSaveSuccess, setDepsSaveSuccess] = useState(false);
+  const [depsSaveError, setDepsSaveError] = useState(null);
   const [availableProjects, setAvailableProjects] = useState([]);
   // slug -> array of that project's cards, or 'loading'. Populates the letter picker.
   const [projectCardsBySlug, setProjectCardsBySlug] = useState({});
@@ -82,6 +86,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setEditedNotes('');
     setNotesSaveSuccess(false);
     setNotesSaveError(null);
+    setIsEditingDeps(false);
+    setEditedDeps([]);
+    setDepsSaveSuccess(false);
+    setDepsSaveError(null);
     setIsEditingExtDeps(false);
     setEditedExtDeps([]);
     setExtDepsSaveSuccess(false);
@@ -351,6 +359,58 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     } catch (error) {
       console.error('Failed to load cards for project:', error);
       setProjectCardsBySlug(prev => ({ ...prev, [slug]: [] }));
+    }
+  };
+
+  // Every card on this board, keyed by stored session letter - feeds the
+  // same-board picker and the status shown against each dependency
+  const boardCardsByLetter = new Map();
+  for (const phase of project?.phases || []) {
+    for (const sub of phase.subphases || []) {
+      for (const c of sub.cards || []) boardCardsByLetter.set(c.session_letter, c);
+    }
+  }
+
+  const handleEditDeps = () => {
+    setDepsSaveError(null);
+    setEditedDeps([...(card.depends_on_cards || [])]);
+    setIsEditingDeps(true);
+  };
+
+  const handleCancelEditDeps = () => {
+    setIsEditingDeps(false);
+    setEditedDeps([]);
+    setDepsSaveError(null);
+  };
+
+  const handleAddDep = (letter) => {
+    if (!letter) return;
+    setEditedDeps(prev => (prev.includes(letter) ? prev : [...prev, letter]));
+  };
+
+  const handleRemoveDep = (letter) => {
+    setEditedDeps(prev => prev.filter(l => l !== letter));
+  };
+
+  const handleSaveDeps = async () => {
+    try {
+      setDepsSaveError(null);
+      // Self-reference, unknown letters and cycles are all refused by
+      // updateCardDependsOnCards; its message names the loop
+      await window.electron.updateCardDependsOnCards(card.id, editedDeps);
+      setIsEditingDeps(false);
+      setEditedDeps([]);
+      setDepsSaveSuccess(true);
+      setTimeout(() => setDepsSaveSuccess(false), 2000);
+
+      if (onCardUpdated) {
+        await onCardUpdated(card.id);
+      }
+    } catch (error) {
+      console.error('Failed to save dependencies:', error);
+      // Strip the data layer's "Failed to update card dependencies: " prefix
+      const message = (error.message || 'Failed to save').replace(/^.*Failed to update card dependencies: /, '');
+      setDepsSaveError(message);
     }
   };
 
@@ -842,22 +902,144 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             )}
           </div>
 
-          {/* Dependencies */}
-          {card.depends_on_cards && card.depends_on_cards.length > 0 && (
-            <div>
-              <h3 className="text-sm font-semibold text-dark-text-secondary mb-2">Dependencies</h3>
-              <div className="flex gap-2 flex-wrap">
-                {card.depends_on_cards.map((dep, idx) => (
-                  <span
-                    key={idx}
-                    className="text-sm px-3 py-1 rounded bg-dark-bg text-dark-text border border-dark-border"
+          {/* Dependencies - one panel, two lists: same-board above, external
+              below. The two letter inputs differ on purpose: a same-board
+              letter that does not exist always blocks the card forever, so
+              it is picked from real cards only; an external link may point at
+              a project not imported yet, so that editor keeps a free-text
+              fallback. Do not harmonise them. */}
+          <div className="border border-dark-border rounded-lg p-4 space-y-5">
+          <h3 className="text-sm font-semibold text-dark-text">Dependencies</h3>
+
+          {/* Same-board dependencies - editing follows the same pattern as Notes */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-dark-text-secondary">This Board</h3>
+                {depsSaveSuccess && (
+                  <span className="text-xs text-green-400">Saved!</span>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                {isEditingDeps ? (
+                  <>
+                    <button
+                      onClick={handleCancelEditDeps}
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleSaveDeps}
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                    >
+                      Save
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={handleEditDeps}
+                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                    title={card.depends_on_cards?.length ? 'Edit dependencies on this board' : 'Add a dependency on another card'}
                   >
-                    Session {dep}
-                  </span>
-                ))}
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                    <span>{card.depends_on_cards?.length ? 'Edit' : 'Add'}</span>
+                  </button>
+                )}
               </div>
             </div>
-          )}
+
+            {depsSaveError && (
+              <div className="mb-2 text-xs text-red-400">{depsSaveError}</div>
+            )}
+
+            {(() => {
+              const letters = isEditingDeps ? editedDeps : (card.depends_on_cards || []);
+
+              const rows = letters.map(letter => {
+                const target = boardCardsByLetter.get(letter);
+                // A dependency on a Done card is legal and already satisfied
+                const tone = !target
+                  ? { box: 'bg-red-900/25 border-red-600', badge: 'bg-red-700 text-red-100', label: 'no such card' }
+                  : target.status === 'Done'
+                    ? { box: 'bg-green-900/20 border-green-700/60', badge: 'bg-green-700 text-green-100', label: 'Done - satisfied' }
+                    : { box: 'bg-amber-900/20 border-amber-700/60', badge: 'bg-amber-700 text-amber-100', label: target.status };
+
+                return (
+                  <div key={letter} className={`text-sm px-3 py-2 rounded border ${tone.box}`}>
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="font-medium text-dark-text min-w-0 truncate">
+                        Session {letter}
+                        {target && <span className="text-dark-text-secondary"> · {target.title}</span>}
+                      </span>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${tone.badge}`}>
+                          {tone.label}
+                        </span>
+                        {isEditingDeps && (
+                          <button
+                            onClick={() => handleRemoveDep(letter)}
+                            className="px-2 py-0.5 rounded text-xs font-medium bg-red-900/40 border border-red-700 text-red-300 hover:bg-red-900/70 transition-colors"
+                            title="Remove this dependency"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {!target && (
+                      <p className="text-red-300 mt-1 text-xs">
+                        This board has no card {letter}, so this card stays blocked - remove it.
+                      </p>
+                    )}
+                  </div>
+                );
+              });
+
+              if (!isEditingDeps) {
+                return rows.length > 0 ? (
+                  <div className="space-y-2">{rows}</div>
+                ) : (
+                  <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
+                    <p className="text-sm text-dark-text-secondary italic">No dependencies on this board</p>
+                  </div>
+                );
+              }
+
+              // Picker: this project's other cards, never free text
+              const candidates = [...boardCardsByLetter.values()]
+                .filter(c => c.id !== card.id && !editedDeps.includes(c.session_letter))
+                .sort((a, b) => compareLetters(a.session_letter, b.session_letter));
+
+              return (
+                <div className="space-y-2">
+                  {rows.length === 0 && (
+                    <p className="text-sm text-dark-text-secondary italic px-3 py-2 bg-dark-bg border border-dark-border rounded-lg">
+                      No dependencies on this board - add one below
+                    </p>
+                  )}
+                  {rows}
+                  <select
+                    value=""
+                    onChange={(e) => handleAddDep(e.target.value)}
+                    disabled={candidates.length === 0}
+                    className="w-full px-2 py-1 bg-dark-bg border border-blue-500/60 rounded text-sm text-dark-text focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                  >
+                    <option value="">
+                      {candidates.length === 0 ? 'No other cards to depend on' : '+ Add dependency on...'}
+                    </option>
+                    {candidates.map(c => (
+                      <option key={c.id} value={c.session_letter}>
+                        {c.session_letter} - {c.title} ({c.status})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              );
+            })()}
+          </div>
 
           {/* External (cross-project) Dependencies - always rendered so a first
               link can be added; editing follows the same pattern as Notes */}
@@ -1082,6 +1264,8 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 <p className="text-sm text-dark-text-secondary italic">No external dependencies</p>
               </div>
             )}
+          </div>
+
           </div>
 
           {/* Claude Code Prompt (prompt_guide) - only for non-manual cards */}

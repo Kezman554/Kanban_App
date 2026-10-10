@@ -175,6 +175,14 @@ app.patch('/cards/:id/external-dependencies', h((req, res) => {
   });
 }));
 
+app.patch('/cards/:id/depends-on-cards', h((req, res) => {
+  const letters = req.body && req.body.depends_on_cards;
+  if (!Array.isArray(letters)) throw new Error('body.depends_on_cards (array) is required');
+  res.json({
+    updated: db.updateCardDependsOnCards(intParam(req.params.id, 'card id'), letters),
+  });
+}));
+
 app.patch('/cards/:id/prompt', h((req, res) => {
   res.json({ updated: db.updateCardPrompt(intParam(req.params.id, 'card id'), req.body || {}) });
 }));
