@@ -1027,3 +1027,45 @@ Known gaps / followups
   still accepted (only new_cards got the new rejection, as specified).
 - AppendCardsDialog's preview does not predict any of these; they surface as
   the import error on Import.
+
+Session Progress - 2026-10-10 (Repo paths as stored settings)
+=============================================================
+
+Goal: Settings' "Directory" row was a DETECTED value (main.js projectRoot =
+wherever the process runs) asked to do a CONFIGURED value's job (a path to
+copy into a terminal on the machine being typed at). On the browser board it
+was a placeholder; on the Pi it could only ever be a container path.
+
+1. schema.js: new `settings` table (key TEXT PRIMARY KEY, value TEXT,
+   updated_at), CREATE TABLE IF NOT EXISTS, nothing seeded.
+2. operations.js: getSetting(key) -> string | null; setSetting(key, value)
+   trims, and an empty/whitespace/null value DELETES the row so it reads back
+   as not set rather than "". Wired through all five hosts; pi-server is
+   GET /settings/:key and PUT /settings/:key { value } (unset = 200 with
+   value null, not 404).
+3. SettingsPage.jsx (the section is titled "About" in code): StoredPathRow,
+   used twice - "Repo - laptop (dev)" (repo_path_laptop) and "Repo - Pi
+   (deploy)" (repo_path_pi). Copy button reuses copyText (works on the
+   plain-HTTP board), pencil to edit, Enter saves / Escape cancels. Unset
+   shows amber "Not set" with the input already open and never falls back to
+   the detected path. No path is hardcoded anywhere in source.
+4. The detected row stays, relabelled "Running from" and greyed; the browser
+   board keeps its placeholder there.
+
+Tests: new settings.test.js 14/14 (unset null, trim, independent keys,
+overwrite, survives close/reopen, clear via ""/whitespace/null, validation).
+All other suites unchanged and green. Renderer builds clean.
+
+Deployed (3db18ff) to the Pi. Verified over HTTP: both repo settings read
+null on the live DB; a throwaway key written via PUT survived
+`docker restart kanban-api` and was then cleared (row deleted); the served
+bundle carries both new labels, "Running from", and copyText's execCommand
+fallback.
+
+Known gaps / followups
+----------------------
+- Clipboard behaviour on the board itself needs a human click in a browser;
+  not verifiable from the CLI. The two real values are left for Nick to
+  enter in the UI.
+- AlfredHomeHub DEPLOY.md's API list does not yet mention /settings or
+  /cards/:id/depends-on-cards.
