@@ -230,9 +230,12 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
 
     // Validate dependency updates
     if (data.dependency_updates && Array.isArray(data.dependency_updates)) {
-      const importedLetters = new Set(seenLetters.keys());
+      // Normalised the way appendCards normalises, so a lowercase target is
+      // not flagged here when the data layer would accept it
+      const norm = (l) => (typeof l === 'string' ? l.trim().toUpperCase() : l);
+      const importedLetters = new Set([...seenLetters.keys()].map(norm));
       for (const update of data.dependency_updates) {
-        const letter = update.card || update.session_letter;
+        const letter = norm(update.card || update.session_letter);
         const target = projectLookups.cardsByLetter[letter];
         if (!target) {
           // A letter this file is adding is a legitimate target: updates run
@@ -240,10 +243,10 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
           if (!importedLetters.has(letter)) {
             errors.push(`Dependency update target "${letter}" not found in project`);
           }
-        } else if (target.status === 'Done') {
-          warnings.push(`Card "${letter}" is Done - dependency update will be skipped`);
-        } else if (target.status === 'In Progress') {
-          warnings.push(`Card "${letter}" is In Progress - dependency update will be skipped`);
+        } else if (target.status !== 'Not Started') {
+          // Any column past Not Started, custom ones included - the data
+          // layer skips them all
+          warnings.push(`Card "${letter}" is ${target.status} - dependency update will be skipped`);
         }
       }
     }

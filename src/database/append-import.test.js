@@ -580,6 +580,69 @@ function runTests() {
         JSON.stringify(okCards.S.depends_on_cards) === '["R","D"]',
       JSON.stringify(okLoop)
     );
+
+    // ------------------------------------------------------------------
+    // dependency_updates: unknown dependency letters and unknown targets
+    // refuse the import; Done / In Progress targets still only warn
+    // ------------------------------------------------------------------
+    // Board now: A (Done), D -> A, P -> A, R -> P, S -> R, D
+    const countBefore = loopCount();
+    const dJson = () => JSON.stringify(db.getProject(loopId).phases[0].subphases[0].cards
+      .find(c => c.session_letter === 'D').depends_on_cards);
+    const dBefore = dJson();
+
+    err = loopErr(single(
+      [{ session_letter: 'T', title: 'New T', depends_on_cards: [] }],
+      { dependency_updates: [{ card: 'D', add_dependency: 'Q' }] }
+    ));
+    check(
+      'A dependency_updates entry naming a letter that exists nowhere is refused',
+      err && err.includes('dependency_updates, card "D": depends on Q, which is neither on the board nor in this file'),
+      err
+    );
+    check('Unknown update dependency lands nothing (no T, D unchanged)',
+      loopCount() === countBefore && dJson() === dBefore, `cards: ${loopCount()}, D: ${dJson()}`);
+
+    err = loopErr(single(
+      [{ session_letter: 'T', title: 'New T', depends_on_cards: [] }],
+      { dependency_updates: [{ card: 'X', add_dependency: 'A' }] }
+    ));
+    check(
+      'A dependency_updates entry whose target exists nowhere is refused',
+      err && err.includes('dependency_updates, card "X": target card X is neither on the board nor in this file'),
+      err
+    );
+    check('Unknown update target lands nothing', loopCount() === countBefore, `cards: ${loopCount()}`);
+
+    // Done and In Progress targets: warnings, and the rest of the file lands.
+    // A's update even names a letter that exists nowhere - the update is a
+    // no-op, so nothing bad is stored and it stays a warning.
+    const pCard = db.getProject(loopId).phases[0].subphases[0].cards.find(c => c.session_letter === 'P');
+    db.updateCardStatus(pCard.id, 'In Progress');
+    const warnRun = db.appendCards(loopId, single(
+      [{ session_letter: 'T', title: 'New T', depends_on_cards: ['A'] }],
+      { dependency_updates: [
+        { card: 'A', add_dependencies: ['T', 'Q'] },
+        { card: 'P', add_dependency: 'T' },
+        { card: 's', add_dependency: 't' },
+      ] }
+    ));
+    const afterWarn = {};
+    for (const s of db.getProject(loopId).phases[0].subphases) for (const c of s.cards) afterWarn[c.session_letter] = c;
+    check(
+      'Done and In Progress targets only warn',
+      warnRun.warnings.some(w => w.includes('Card "A" is "Done"')) &&
+        warnRun.warnings.some(w => w.includes('Card "P" is "In Progress"')),
+      JSON.stringify(warnRun.warnings)
+    );
+    check(
+      'The rest of that import lands: T added, lowercase S target updated, A and P untouched',
+      warnRun.cardsAdded === 1 && warnRun.dependenciesUpdated === 1 && afterWarn.T &&
+        JSON.stringify(afterWarn.S.depends_on_cards) === '["R","D","T"]' &&
+        afterWarn.A.depends_on_cards.length === 0 &&
+        JSON.stringify(afterWarn.P.depends_on_cards) === '["A"]',
+      JSON.stringify(warnRun)
+    );
   } catch (error) {
     console.log(`❌ FAILED: unexpected error — ${error.stack}`);
     failed++;

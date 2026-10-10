@@ -1124,13 +1124,21 @@ class KanbanDatabase {
       }
     }
 
-    // Mirror the write-phase rules: an update whose target is missing or not
-    // Not Started is skipped there with a warning, so it adds no edge here
+    // A target that exists nowhere is a typo and refuses the import, matching
+    // the dialog. A target that exists but is not Not Started (Done, In
+    // Progress, or any custom column) is skipped by the write phase with a
+    // warning - a legitimate no-op - so it adds no edge here, and the
+    // letters it names are never stored, so they are not checked either.
     const updateEdges = new Set();
     for (const update of Array.isArray(dependencyUpdates) ? dependencyUpdates : []) {
       const target = this.normalizeSessionLetter(update.card || update.session_letter);
       const node = graph.get(target);
-      if (!node || node.status !== 'Not Started') continue;
+      if (!node) {
+        throw new Error(
+          `dependency_updates, card "${target}": target card ${target} is neither on the board nor in this file`
+        );
+      }
+      if (node.status !== 'Not Started') continue;
       const adds = this.normalizeDependsOnCards(
         [].concat(update.add_dependencies || update.add_dependency || [])
       );
@@ -1138,6 +1146,11 @@ class KanbanDatabase {
         if (node.deps.includes(dep)) continue;
         if (dep === target) {
           throw new Error(`dependency_updates, card "${target}": cannot depend on itself`);
+        }
+        if (!graph.has(dep)) {
+          throw new Error(
+            `dependency_updates, card "${target}": depends on ${dep}, which is neither on the board nor in this file`
+          );
         }
         node.deps.push(dep);
         updateEdges.add(`${target}>${dep}`);
@@ -1737,9 +1750,10 @@ class KanbanDatabase {
             WHERE p.project_id = ? AND c.session_letter = ?
           `).get(projectId, targetLetter);
 
+          // Unreachable in practice: assertAppendDependenciesSound has already
+          // refused a target that exists neither on the board nor in the file
           if (!targetCard) {
-            warnings.push(`Card "${targetLetter}" not found, skipping dependency update`);
-            continue;
+            throw new Error(`Dependency update target "${targetLetter}" not found`);
           }
 
           if (targetCard.status !== 'Not Started') {
