@@ -57,6 +57,8 @@ contextBridge.exposeInMainWorld('electron', {
 
   // App info
   getAppInfo: () => ipcRenderer.invoke('app:getInfo'),
+  getSetting: (key) => ipcRenderer.invoke('db:getSetting', key),
+  setSetting: (key, value) => ipcRenderer.invoke('db:setSetting', key, value),
 
   // File operations (for prompt handling)
   writePromptToTemp: (prompt, cardId) => ipcRenderer.invoke('file:writePromptToTemp', prompt, cardId),

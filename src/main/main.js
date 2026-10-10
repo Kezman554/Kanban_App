@@ -486,6 +486,24 @@ ipcMain.handle('app:getInfo', async () => {
   }
 })
 
+ipcMain.handle('db:getSetting', async (event, key) => {
+  try {
+    return db.getSetting(key)
+  } catch (error) {
+    console.error('Error getting setting:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('db:setSetting', async (event, key, value) => {
+  try {
+    return db.setSetting(key, value)
+  } catch (error) {
+    console.error('Error setting setting:', error)
+    throw error
+  }
+})
+
 // File dialog handler for importing projects
 ipcMain.handle('dialog:openJsonFile', async () => {
   const result = await dialog.showOpenDialog({

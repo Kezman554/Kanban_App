@@ -1788,6 +1788,57 @@ class KanbanDatabase {
   }
 
   // ============================================================================
+  // APP SETTINGS
+  // ============================================================================
+
+  /**
+   * Read an app-wide setting.
+   * @param {string} key - Setting key
+   * @returns {string|null} - The stored value, or null if never set
+   */
+  getSetting(key) {
+    try {
+      if (typeof key !== 'string' || key.trim() === '') {
+        throw new Error('Setting key must be a non-empty string');
+      }
+      const row = this.db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
+      return row ? row.value : null;
+    } catch (error) {
+      throw new Error(`Failed to get setting: ${error.message}`);
+    }
+  }
+
+  /**
+   * Store an app-wide setting. The value is trimmed; an empty value (or null)
+   * removes the row, so the setting reads back as not set rather than "".
+   * @param {string} key - Setting key
+   * @param {string|null} value - Value to store
+   * @returns {string|null} - The value now stored, or null if cleared
+   */
+  setSetting(key, value) {
+    try {
+      if (typeof key !== 'string' || key.trim() === '') {
+        throw new Error('Setting key must be a non-empty string');
+      }
+      if (value !== null && value !== undefined && typeof value !== 'string') {
+        throw new Error('Setting value must be a string');
+      }
+      const trimmed = (value || '').trim();
+      if (trimmed === '') {
+        this.db.prepare('DELETE FROM settings WHERE key = ?').run(key);
+        return null;
+      }
+      this.db.prepare(`
+        INSERT INTO settings (key, value, updated_at) VALUES (?, ?, CURRENT_TIMESTAMP)
+        ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = CURRENT_TIMESTAMP
+      `).run(key, trimmed);
+      return trimmed;
+    } catch (error) {
+      throw new Error(`Failed to set setting: ${error.message}`);
+    }
+  }
+
+  // ============================================================================
   // IMPORT/EXPORT OPERATIONS
   // ============================================================================
 

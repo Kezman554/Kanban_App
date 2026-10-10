@@ -144,6 +144,16 @@ function initDb(dbPath = null) {
     )
   `);
 
+  // App-wide settings. Plain key/value text so a new setting needs no
+  // migration. Nothing is seeded: an absent row means "not set".
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Create indexes on foreign keys for better query performance
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_phases_project_id

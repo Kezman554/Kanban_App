@@ -1,5 +1,126 @@
 import React, { useState, useEffect } from 'react';
 import { testPromptGenerator } from '../services/promptGenerator.js';
+import { copyText } from '../utils/clipboard.js';
+
+// A stored, editable path with a copy button - the app's own repo has no
+// project row, so its directory_path lives in the settings table instead.
+// Deliberately never falls back to the detected "Running from" path: that is
+// where this process runs, not a path on the machine being typed at.
+function StoredPathRow({ label, settingKey, placeholder, hint }) {
+  const [value, setValue] = useState(null);
+  const [loaded, setLoaded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    window.electron.getSetting(settingKey)
+      .then(v => { if (!cancelled) { setValue(v); setLoaded(true); } })
+      .catch(err => { if (!cancelled) { setError(err.message || 'Failed to load'); setLoaded(true); } });
+    return () => { cancelled = true; };
+  }, [settingKey]);
+
+  // Not set: the field is open and ready, rather than hidden behind an Edit
+  const showInput = editing || (loaded && !value);
+
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      const stored = await window.electron.setSetting(settingKey, draft);
+      setValue(stored);
+      setEditing(false);
+    } catch (err) {
+      setError(err.message || 'Failed to save');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="py-2 border-b border-dark-border">
+      <div className="flex justify-between items-center gap-4">
+        <span className="text-dark-text-secondary whitespace-nowrap">{label}</span>
+        {!loaded ? (
+          <span className="text-dark-text-secondary">...</span>
+        ) : showInput ? (
+          <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
+            {!value && !editing && (
+              <span className="text-xs text-amber-400 whitespace-nowrap">Not set</span>
+            )}
+            <input
+              type="text"
+              value={draft}
+              onChange={(e) => setDraft(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSave();
+                if (e.key === 'Escape' && editing) { setEditing(false); setError(null); }
+              }}
+              placeholder={placeholder}
+              className="flex-1 min-w-0 max-w-md px-2 py-1 bg-dark-bg border border-dark-border rounded text-sm text-dark-text font-mono focus:outline-none focus:border-blue-500"
+            />
+            <button
+              onClick={handleSave}
+              disabled={saving || (!draft.trim() && !value)}
+              className="px-3 py-1 rounded text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+            {editing && (
+              <button
+                onClick={() => { setEditing(false); setError(null); }}
+                className="px-3 py-1 rounded text-xs font-medium bg-dark-bg border border-dark-border text-dark-text-secondary hover:text-dark-text"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-dark-text font-mono text-right break-all">{value}</span>
+            <button
+              onClick={async () => {
+                try {
+                  await copyText(value);
+                  setCopied(true);
+                  setTimeout(() => setCopied(false), 2000);
+                } catch (err) {
+                  console.error('Failed to copy path:', err);
+                }
+              }}
+              className={`flex-shrink-0 transition-colors ${copied ? 'text-green-400' : 'text-dark-text-secondary hover:text-dark-text'}`}
+              title={copied ? 'Copied!' : 'Copy path to clipboard'}
+            >
+              {copied ? (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+              ) : (
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                </svg>
+              )}
+            </button>
+            <button
+              onClick={() => { setDraft(value); setEditing(true); setError(null); }}
+              className="flex-shrink-0 text-dark-text-secondary hover:text-dark-text transition-colors"
+              title={`Change ${label}`}
+            >
+              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+              </svg>
+            </button>
+          </div>
+        )}
+      </div>
+      {error && <p className="mt-1 text-xs text-red-400 text-right">{error}</p>}
+      {hint && showInput && <p className="mt-1 text-xs text-dark-text-secondary text-right">{hint}</p>}
+    </div>
+  );
+}
 
 function SettingsPage({ onProjectsChange }) {
   // API Key state
@@ -562,9 +683,23 @@ function SettingsPage({ onProjectsChange }) {
               <span className="text-dark-text-secondary">Platform</span>
               <span className="text-dark-text font-mono">{appInfo?.platform || '-'} ({appInfo?.arch || '-'})</span>
             </div>
+            <StoredPathRow
+              label="Repo - laptop (dev)"
+              settingKey="repo_path_laptop"
+              placeholder="Path to the clone you author and push from"
+              hint="Where the code is written and pushed from. Saved in the board's database; clear it and save to unset."
+            />
+            <StoredPathRow
+              label="Repo - Pi (deploy)"
+              settingKey="repo_path_pi"
+              placeholder="Path on the Pi you pull and rebuild from, over SSH"
+              hint="Where the code is pulled and rebuilt. Saved in the board's database; clear it and save to unset."
+            />
+            {/* Detected, not configured: which copy of the code THIS process is
+                running. Informational only - not a path to copy. */}
             <div className="flex justify-between gap-4 py-2 border-b border-dark-border">
-              <span className="text-dark-text-secondary whitespace-nowrap">Directory</span>
-              <span className="text-dark-text font-mono text-right break-all">{appInfo?.directory || '-'}</span>
+              <span className="text-dark-text-secondary whitespace-nowrap">Running from</span>
+              <span className="text-dark-text-secondary font-mono text-right break-all">{appInfo?.directory || '-'}</span>
             </div>
             <div className="flex justify-between py-2">
               <span className="text-dark-text-secondary">GitHub</span>

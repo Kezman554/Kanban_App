@@ -203,6 +203,11 @@ if (typeof window !== 'undefined' && !window.electron) {
     clearAllData: () =>
       Promise.reject(new Error('Clearing all data is disabled on the browser board (use the desktop dev app if you really mean it).')),
 
+    // --- app settings (stored in the Pi DB, so shared by every browser) ---
+    getSetting: (key) => req('GET', `/settings/${enc(key)}`).then((r) => r.value),
+    setSetting: (key, value) =>
+      req('PUT', `/settings/${enc(key)}`, { value }).then((r) => r.value),
+
     // --- misc ---
     exportProjectToJson: () => Promise.resolve(null),
     getAppInfo: () =>

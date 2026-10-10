@@ -74,6 +74,20 @@ app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
 // Aggregate counts — backs the smoke check and the migration-integrity test.
 // Summed from per-project stats so it can never disagree with /projects.
+// App-wide settings. An unset key is a normal state, so it answers 200 with
+// value null rather than 404.
+app.get('/settings/:key', h((req, res) => {
+  res.json({ key: req.params.key, value: db.getSetting(req.params.key) });
+}));
+
+app.put('/settings/:key', h((req, res) => {
+  const value = req.body ? req.body.value : undefined;
+  if (value !== null && typeof value !== 'string') {
+    throw new Error('body.value (string, or null to clear) is required');
+  }
+  res.json({ key: req.params.key, value: db.setSetting(req.params.key, value) });
+}));
+
 app.get('/stats', h((_req, res) => {
   const projects = db.getAllProjects();
   const totals = projects.reduce(
