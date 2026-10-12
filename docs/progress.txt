@@ -1161,6 +1161,10 @@ Vault U); /next-letter for an empty subphase gives Hub AL, Vault V, LOTR AK
 (unchanged); POST /projects/22/append claiming "O" refused with the retired
 message, card count unchanged at 326.
 
+Redeployed at 8761b68 (this log entry; no code change): pulled, kanban-api
+rebuilt, smoke test OK (326 cards, API == DB), Pi checkout at 8761b68,
+/next-letter still Hub AL, Vault V.
+
 Known gaps / followups
 ----------------------
 - The vault's kanban-export.json still carries derived last_session_letter
