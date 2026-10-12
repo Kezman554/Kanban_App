@@ -318,6 +318,170 @@ ipcMain.handle('db:exportToVault', async () => {
   }
 })
 
+// Clear all data (delete all projects)
+ipcMain.handle('db:clearAllData', async () => {
+  try {
+    const projects = db.getAllProjects()
+    for (const project of projects) {
+      db.deleteProject(project.id)
+    }
+    return { success: true, deletedCount: projects.length }
+  } catch (error) {
+    throw new Error(`Failed to clear data: ${error.message}`)
+  }
+})
+
+// Export all projects
+ipcMain.handle('db:exportAllProjects', async () => {
+  try {
+    const projects = db.getAllProjects()
+    const exportData = []
+
+    for (const project of projects) {
+      const fullProject = db.exportProjectToJson(project.id)
+      exportData.push(fullProject)
+    }
+
+    return exportData
+  } catch (error) {
+    throw new Error(`Failed to export projects: ${error.message}`)
+  }
+})
+
+// Save file dialog
+ipcMain.handle('dialog:saveJsonFile', async (event, defaultName) => {
+  const result = await dialog.showSaveDialog({
+    defaultPath: defaultName,
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] }
+    ]
+  })
+
+  if (result.canceled) {
+    return null
+  }
+
+  return result.filePath
+})
+
+// Write file
+ipcMain.handle('file:writeJson', async (event, filePath, data) => {
+  try {
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8')
+    return { success: true }
+  } catch (error) {
+    throw new Error(`Failed to write file: ${error.message}`)
+  }
+})
+
+// Get app info
+ipcMain.handle('app:getInfo', async () => {
+  const packageJsonPath = path.join(projectRoot, 'package.json')
+  let version = '1.0.0'
+
+  try {
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))
+    version = packageJson.version || version
+  } catch (e) {
+    // Use default version
+  }
+
+  return {
+    version,
+    electron: process.versions.electron,
+    node: process.versions.node,
+    platform: process.platform,
+    arch: process.arch,
+    directory: projectRoot
+  }
+})
+
+ipcMain.handle('db:getSetting', async (event, key) => {
+  try {
+    return db.getSetting(key)
+  } catch (error) {
+    console.error('Error getting setting:', error)
+    throw error
+  }
+})
+
+ipcMain.handle('db:setSetting', async (event, key, value) => {
+  try {
+    return db.setSetting(key, value)
+  } catch (error) {
+    console.error('Error setting setting:', error)
+    throw error
+  }
+})
+
+// File dialog handler for importing projects
+ipcMain.handle('dialog:openJsonFile', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openFile'],
+    filters: [
+      { name: 'JSON Files', extensions: ['json'] },
+      { name: 'All Files', extensions: ['*'] }
+    ]
+  })
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  const filePath = result.filePaths[0]
+
+  try {
+    const content = fs.readFileSync(filePath, 'utf-8')
+    const jsonData = JSON.parse(content)
+    return { filePath, data: jsonData }
+  } catch (error) {
+    throw new Error(`Failed to read or parse file: ${error.message}`)
+  }
+})
+
+// Directory picker dialog
+ipcMain.handle('dialog:selectDirectory', async () => {
+  const result = await dialog.showOpenDialog({
+    properties: ['openDirectory']
+  })
+
+  if (result.canceled || result.filePaths.length === 0) {
+    return null
+  }
+
+  return result.filePaths[0]
+})
+
+// Open folder in system file explorer
+ipcMain.handle('shell:openInExplorer', async (event, directoryPath) => {
+  try {
+    await shell.openPath(directoryPath)
+    return { success: true }
+  } catch (error) {
+    throw new Error(`Failed to open folder: ${error.message}`)
+  }
+})
+
+// Update project directory path
+ipcMain.handle('db:updateProjectPath', async (event, projectId, directoryPath) => {
+  try {
+    return db.updateProjectPath(projectId, directoryPath)
+  } catch (error) {
+    console.error('Error updating project path:', error)
+    throw error
+  }
+})
+
+// File reading handlers
+ipcMain.handle('files:readProjectFiles', async (event, directoryPath, prdPath) => {
+  try {
+    return readProjectFiles(directoryPath, prdPath)
+  } catch (error) {
+    console.error('Error reading project files:', error)
+    return { prd: null, progress: null }
+  }
+})
+
 // Done cards handler
 ipcMain.handle('cards:getDoneCards', async (event, projectId) => {
   try {
