@@ -1344,3 +1344,47 @@ Known gaps / followups
   within the phase or project; the append importer never did either.
 - Board/RoadmapView handleMarkDone still accept an unused progressNotes
   argument (carried from the terminal removal).
+
+Session Progress - 2026-10-12 (Vault summary: index of cards with notes)
+========================================================================
+
+Goal: 64 of 326 cards carry a note (~28,000 chars), but nothing read at
+session start said so: kanban-summary.md only showed notes as Resume hints
+on in-progress cards (all eight of which have empty notes), and the notes
+themselves sit in the 361 KB kanban-export.json.
+
+1. buildSummaryMarkdown (src/main/vaultSummary.js) adds, after each
+   project's Blocked line, "- **Notes on:** <letters>" - every card with a
+   non-empty note whatever its status, letters only, in session-letter
+   order; omitted when the project has no notes. In-progress cards with a
+   note appear both here and in their Resume hint (unchanged), by design.
+2. Header gains: "*Notes on: lists which cards carry a note; the note text
+   is in kanban-export.json (each card's `notes` field).*"
+3. The comparator moved to src/database/sessionLetters.js (getBaseLetter,
+   getSuffix, compareSessionLetters); operations.js's private helpers
+   delegate to it, and the Pi Dockerfile copies it.
+4. Caught before commit: Vite bundled vaultSummary.js for the desktop app
+   but left the new require external, so dist-electron/vaultSummary.js
+   could not resolve it - and the built main.js requires it at startup, so
+   the desktop app would not have launched. main.js now loads vaultSummary
+   from source via projectRoot, as it already does operations.js, and the
+   vaultSummary Vite entry is removed. Desktop app booted (hidden) clean.
+
+Tests: vault-export 58 (was 51): index lists every status in letter order
+(A, C, C2, C3, C10, Q, AA), skips blank/whitespace notes, includes the
+in-progress card that also has a Resume hint, sits after Blocked, absent
+for a project without notes, no note text leaks, header pointer present.
+All other suites green; both builds clean.
+
+On the live data (vault kanban-export.json, exported 2026-10-12T18:14Z),
+old vs new builder: 6,055 -> 6,500 bytes (+445); 8 projects gain a line
+listing 64 letters in total (Y9, Y10, Y11 sorted numerically); DocuSync,
+GymSync and LOTR gain nothing; no existing line changed.
+
+Not yet pushed or deployed.
+
+Known gaps / followups
+----------------------
+- A card in a custom status column is in none of exportForVault's four
+  card lists, so it is missing from the export as a whole (and therefore
+  from this index). The live board uses only the default columns.
