@@ -1381,7 +1381,12 @@ old vs new builder: 6,055 -> 6,500 bytes (+445); 8 projects gain a line
 listing 64 letters in total (Y9, Y10, Y11 sorted numerically); DocuSync,
 GymSync and LOTR gain nothing; no existing line changed.
 
-Not yet pushed or deployed.
+Deployed to the Pi (88973bd): pulled, kanban-api rebuilt (image now copies
+sessionLetters.js), smoke test OK (326 cards, API == DB). Live GET
+/export/summary (read-only - builds from the DB, writes nothing): 6,500
+bytes, identical index lines to the local run, 64 letters across 8
+projects. The vault's kanban-summary.md picks this up at the next export
+(nightly cron or "Sync to Vault"); POST /export/run was not triggered.
 
 Known gaps / followups
 ----------------------
