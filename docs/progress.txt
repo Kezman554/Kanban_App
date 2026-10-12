@@ -1328,7 +1328,15 @@ the dialog, dialog open, no orphan; empty project -> only "+ New phase", A;
 prompt-less card shows "Add prompt" and no Copy / Start Session, editor
 opens empty with the placeholder, nothing stored.
 
-Not yet pushed or deployed.
+Deployed to the Pi (8a4fb8c): pulled, kanban-api rebuilt, smoke test OK
+(326 cards, API == DB). Live, nothing created: /next-letter with no
+subphaseId gives CoinQuest AF, LOTR AK, Hub AL; POST /projects/27/cards with
+an empty placement is refused with the resolver's message; the bundle
+carries the new picker entries and "Add prompt". Read-only look at CoinQuest
+(31/31): "All tasks complete!" with "+ Add Card"; the dialog opens with no
+destination, no letter, Create disabled, 12 options (completed subphases,
+5 "+ New subphase...", "+ New phase..." last); cancelled; no console
+errors; card count unchanged at 326.
 
 Known gaps / followups
 ----------------------
