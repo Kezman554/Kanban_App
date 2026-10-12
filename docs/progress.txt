@@ -1257,10 +1257,82 @@ both failure paths were exercised on the scratch board above.
 
 Known gaps / followups
 ----------------------
-- A card with no prompt_guide no longer has an in-app way to add one (the
-  only entry point was Generate Prompt). Prompts arrive with the card JSON.
+- RESOLVED in 4c53db2: a card with no prompt_guide had no in-app way to
+  add one (the only entry point was Generate Prompt); it now offers "Add
+  prompt". (On the Pi, only KitchenSync R5 had an empty prompt.)
+- Follow-up live check (read-only): LOTR AI - In Progress, claude_sub, has a
+  prompt - shows Copy to Clipboard and no Start Session, which separates the
+  new Not-Started-only gate from the isManual exclusion GymSync U showed.
 - getDoneCards (IPC, shim, GET /projects/:id/done) has no in-app caller now
   that prompt generation is gone; kept, as the Pi route is part of the
   documented API.
 - Board/RoadmapView handleMarkDone still accept a progressNotes argument
   that nothing passes.
+
+Session Progress - 2026-10-12 (Hand-adding cards: empty boards, new phase/subphase, Add prompt)
+===============================================================================================
+
+Goal: once every subphase is Done the board shows no "+" button, so a 100%
+project (CoinQuest, 31/31) could only take cards by append import; a card
+could only go into an existing subphase; and a prompt-less card had no way
+to get a prompt.
+
+1. Board empty state ("All tasks complete!" or "No phases in this project")
+   now has a "+ Add Card" button that opens AddCardDialog with no
+   destination. handleOpenAddCard(subphaseId = null). Completed phases stay
+   hidden; the per-subphase "+" buttons are unchanged.
+2. AddCardDialog destination picker:
+   - "+ New subphase..." last in each phase's optgroup, "+ New phase..."
+     after all of them; each reveals name (required) / short name /
+     description fields. "+ New phase..." also asks for its first
+     subphase's name (a phase cannot be created childless).
+   - Always shown (a project with no phases needs "+ New phase").
+     Destination starts unset when opened from the empty state; Create is
+     disabled until one is chosen and any required names are filled, and
+     handleSubmit refuses it too.
+   - The letter is fetched for every destination: a subphase still to be
+     created is asked for with no subphase id, which getNextSessionLetter
+     already treats as empty (high-water + 1). Superseded responses are
+     discarded so a slow answer cannot overwrite a newer one.
+3. createCardAt(projectId, placement, cardData) - new public data-layer
+   method, wired through all five hosts (operations.js, preload, main,
+   shim, POST /projects/:id/cards on the Pi). It runs resolveAppendTarget
+   (the append importer's own placement rules and MAX+1 display_order -
+   no new creation SQL) and then createCard, in one transaction, so a card
+   refused on its letter leaves no phase or subphase behind. The dialog's
+   existing-subphase mode goes through it too (add_to_phase +
+   add_to_subphase). GET /projects/:id/next-letter now accepts an omitted
+   subphaseId (= a subphase still to be created). appendCards is untouched.
+4. CardDetail: the prompt section renders for every non-manual card; an
+   empty one shows "No prompt yet" + "Add prompt" into the existing editor
+   (textarea placeholder only, never stored). Copy to Clipboard, the
+   header Copy and Start Session stay gated on hasPromptGuide.
+
+Tests: new create-card-at.test.js 23/23 - next letter for a new subphase is
+high-water + 1 past a retired gap; existing / new-subphase / new-phase
+placements land (last in phase / last in project); a duplicate letter with
+a new phase and a retired letter with a new subphase both leave no orphan
+and do not move the high-water mark; resolver refusals (childless phase,
+no placement, foreign phase) and blank names refused; first card on a
+project with no phases. Other suites unchanged and green; both builds clean;
+preload/main/shim surfaces cross-checked; desktop app boots with
+createCardAt exposed.
+
+Scratch board (local pi-server, fixture DB, never the live board), 40/40:
+button on a 100% project and on a project with no phases; destination
+unset, no letter, Create disabled until chosen; picker lists completed
+subphases plus the two "+ New" entries; new subphase -> letter F (C retired)
+and lands last in Phase 1, which reappears on the board; new phase -> G,
+lands last with its subphase; retired letter "C" with a new phase refused in
+the dialog, dialog open, no orphan; empty project -> only "+ New phase", A;
+prompt-less card shows "Add prompt" and no Copy / Start Session, editor
+opens empty with the placeholder, nothing stored.
+
+Not yet pushed or deployed.
+
+Known gaps / followups
+----------------------
+- The new-phase / new-subphase fields do not check names for duplicates
+  within the phase or project; the append importer never did either.
+- Board/RoadmapView handleMarkDone still accept an unused progressNotes
+  argument (carried from the terminal removal).
