@@ -281,6 +281,7 @@ class KanbanDatabase {
         });
       }
 
+      this._advanceSessionLetterHighWater(projectId);
       return projectId;
     });
 
@@ -632,6 +633,7 @@ class KanbanDatabase {
 
       // Backstop behind the dialog's own check - also covers the Pi's HTTP API
       this.assertSessionLetterAvailable(projectId, cardData.session_letter);
+      this.assertSessionLetterNotRetired(projectId, cardData.session_letter);
 
       const sql = `
         INSERT INTO cards (
@@ -663,6 +665,7 @@ class KanbanDatabase {
         0
       );
 
+      this._advanceSessionLetterHighWater(projectId);
       return result.lastInsertRowid;
     } catch (error) {
       throw new Error(`Failed to create card: ${error.message}`);
@@ -725,7 +728,8 @@ class KanbanDatabase {
         WHERE p.project_id = ?
       `).all(projectId).map(row => row.session_letter);
 
-      if (allProjectLetters.length === 0) {
+      const highWater = this.getSessionLetterHighWater(projectId);
+      if (allProjectLetters.length === 0 && highWater === null) {
         return 'A';
       }
 
@@ -734,8 +738,9 @@ class KanbanDatabase {
         allProjectLetters.map(letter => this._getBaseLetter(letter))
       );
 
-      // Find next available base letter
-      return this._getNextUnusedBaseLetter(usedBaseLetters);
+      // Find next available base letter AFTER the high-water mark, so a
+      // deleted card's letter (or any older gap) is never handed out again
+      return this._getNextUnusedBaseLetter(usedBaseLetters, highWater);
     } catch (error) {
       throw new Error(`Failed to get next session letter: ${error.message}`);
     }
@@ -750,31 +755,121 @@ class KanbanDatabase {
    * is the same value the app's "Export for Claude" text shows as
    * "Last session letter".
    *
+   * Never lower than the project's persisted high-water mark, so deleting
+   * the highest card does not walk the sequence backwards - and an append
+   * file written from this value (exportForVault's last_session_letter)
+   * continues past retired letters too.
+   *
    * @param {number} projectId - Project ID
-   * @returns {string|null} - The highest session letter, or null if the project has no cards
+   * @returns {string|null} - The highest session letter, or null if the project has never had cards
    */
   getLastSessionLetter(projectId) {
-    const letters = this.db.prepare(`
+    const letters = this._getProjectSessionLetters(projectId);
+    const persisted = this._getPersistedHighWater(projectId);
+    if (persisted !== null) letters.push(persisted);
+
+    if (letters.length === 0) return null;
+
+    const sorted = letters.slice().sort((a, b) => this._compareSessionLetters(a, b));
+    return sorted[sorted.length - 1];
+  }
+
+  /**
+   * The highest base letter ever allocated in the project (C, AK - never C2):
+   * max(persisted high-water mark, highest base letter on the board).
+   * Reading through the board means a NULL, stale or corrupted counter
+   * degrades to today's derived value and can never sit below a live card.
+   *
+   * @param {number} projectId - Project ID
+   * @returns {string|null} - A base letter, or null if the project has never had cards
+   */
+  getSessionLetterHighWater(projectId) {
+    const last = this.getLastSessionLetter(projectId);
+    return last === null ? null : this._getBaseLetter(last);
+  }
+
+  /**
+   * Throw if a letter's base belongs to a deleted card: at or below the
+   * project's high-water mark and held by no card in the project. Only base
+   * letters are retired - a suffix (C3) may come back while any C card
+   * remains.
+   *
+   * @param {number} projectId - Project ID
+   * @param {string} letter - Session letter to validate
+   * @param {string} prefix - Prepended to the message (the append import's batch/card label)
+   */
+  assertSessionLetterNotRetired(projectId, letter, prefix = '') {
+    const normalized = this.normalizeSessionLetter(letter);
+    if (typeof normalized !== 'string' || normalized === '') return;
+
+    const base = this._getBaseLetter(normalized);
+    const highWater = this.getSessionLetterHighWater(projectId);
+    if (highWater === null || this._compareSessionLetters(base, highWater) > 0) return;
+
+    const inUse = this._getProjectSessionLetters(projectId)
+      .some(l => this._getBaseLetter(this.normalizeSessionLetter(l)) === base);
+    if (inUse) return;
+
+    throw new Error(
+      `${prefix}session letter "${normalized}" is retired: ${base} belonged to a deleted card ` +
+      `and letters are never reissued (this project's high-water mark is ${highWater})`
+    );
+  }
+
+  /**
+   * The persisted high-water mark, or null if unset or not a plain base letter.
+   * @private
+   */
+  _getPersistedHighWater(projectId) {
+    const row = this.db.prepare(
+      'SELECT session_letter_high_water AS mark FROM projects WHERE id = ?'
+    ).get(projectId);
+    const mark = row && typeof row.mark === 'string' ? row.mark.trim().toUpperCase() : '';
+    return /^[A-Z]+$/.test(mark) ? mark : null;
+  }
+
+  /**
+   * Raise the persisted high-water mark to cover every card now on the
+   * board. Called after every card insert. Never lowers it, and deleteCard
+   * never calls it.
+   * @private
+   */
+  _advanceSessionLetterHighWater(projectId) {
+    const mark = this.getSessionLetterHighWater(projectId);
+    if (mark === null || !/^[A-Z]+$/.test(mark)) return;
+    if (mark === this._getPersistedHighWater(projectId)) return;
+    this.db.prepare(
+      'UPDATE projects SET session_letter_high_water = ? WHERE id = ?'
+    ).run(mark, projectId);
+  }
+
+  /**
+   * Every session letter on the project's board, as stored.
+   * @private
+   */
+  _getProjectSessionLetters(projectId) {
+    return this.db.prepare(`
       SELECT c.session_letter
       FROM cards c
       JOIN subphases s ON c.subphase_id = s.id
       JOIN phases p ON s.phase_id = p.id
       WHERE p.project_id = ?
     `).all(projectId).map(row => row.session_letter).filter(Boolean);
+  }
 
-    if (letters.length === 0) return null;
-
-    const sorted = letters.slice().sort((a, b) => {
-      const aBase = this._getBaseLetter(a);
-      const bBase = this._getBaseLetter(b);
-      if (aBase !== bBase) {
-        if (aBase.length !== bBase.length) return aBase.length - bBase.length;
-        return aBase.localeCompare(bBase);
-      }
-      return this._getSuffix(a) - this._getSuffix(b);
-    });
-
-    return sorted[sorted.length - 1];
+  /**
+   * Session letter order: shorter base first (A < AA), then alphabetically,
+   * then by numeric suffix (C < C2 < C3).
+   * @private
+   */
+  _compareSessionLetters(a, b) {
+    const aBase = this._getBaseLetter(a);
+    const bBase = this._getBaseLetter(b);
+    if (aBase !== bBase) {
+      if (aBase.length !== bBase.length) return aBase.length - bBase.length;
+      return aBase.localeCompare(bBase);
+    }
+    return this._getSuffix(a) - this._getSuffix(b);
   }
 
   /**
@@ -796,13 +891,21 @@ class KanbanDatabase {
   }
 
   /**
-   * Find next unused base letter (A, B, C, ... Z, AA, AB, etc.)
+   * Find next unused base letter (A, B, C, ... Z, AA, AB, etc.) after
+   * startAfter. A startAfter outside A-ZZ searches from A, as before the
+   * high-water mark existed.
    * @private
    */
-  _getNextUnusedBaseLetter(usedBaseLetters) {
+  _getNextUnusedBaseLetter(usedBaseLetters, startAfter = null) {
+    let skipping = typeof startAfter === 'string' && /^[A-Z]{1,2}$/.test(startAfter);
+
     // Try single letters first (A-Z)
     for (let i = 0; i < 26; i++) {
       const letter = String.fromCharCode(65 + i); // A=65
+      if (skipping) {
+        if (letter === startAfter) skipping = false;
+        continue;
+      }
       if (!usedBaseLetters.has(letter)) {
         return letter;
       }
@@ -812,6 +915,10 @@ class KanbanDatabase {
     for (let i = 0; i < 26; i++) {
       for (let j = 0; j < 26; j++) {
         const letter = String.fromCharCode(65 + i) + String.fromCharCode(65 + j);
+        if (skipping) {
+          if (letter === startAfter) skipping = false;
+          continue;
+        }
         if (!usedBaseLetters.has(letter)) {
           return letter;
         }
@@ -1686,6 +1793,18 @@ class KanbanDatabase {
         }
       }
 
+      // Retired letters, judged against the board before this file: a letter
+      // at or below the project's high-water mark that no card holds belonged
+      // to a deleted card, and reissuing it would re-point every note, commit
+      // and progress entry that names it at a different card
+      batches.forEach((batch, index) => {
+        if (!batch || !Array.isArray(batch.new_cards)) return;
+        const label = batched ? `Batch ${index + 1}, ` : '';
+        for (const card of batch.new_cards) {
+          this.assertSessionLetterNotRetired(projectId, card.session_letter, `${label}card "${card.title}": `);
+        }
+      });
+
       // Same whole-file scope, and also before any insert: dependencies are
       // checked against the board as it will be once everything lands
       this.assertAppendDependenciesSound(projectId, batches, batched, data.dependency_updates);
@@ -1734,6 +1853,8 @@ class KanbanDatabase {
           cardsAdded++;
         }
       });
+
+      this._advanceSessionLetterHighWater(projectId);
 
       // Process dependency updates once every batch has landed, so an update
       // may reference a letter added by any batch

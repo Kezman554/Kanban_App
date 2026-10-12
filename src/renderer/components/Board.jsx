@@ -212,9 +212,11 @@ const Board = ({ projectId }) => {
     const allCards = getAllCards();
     if (allCards.length === 0) return;
 
-    // Find highest session letter
+    // Find highest session letter - never below the project's high-water
+    // mark, so a deleted card's letter is not offered again
     const letters = allCards
       .map(c => c.session_letter)
+      .concat(project.session_letter_high_water || [])
       .filter(Boolean)
       .sort(compareSessionLetters);
     const lastSessionLetter = letters[letters.length - 1] || 'none';

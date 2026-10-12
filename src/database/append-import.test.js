@@ -75,33 +75,35 @@ function runTests() {
     // ------------------------------------------------------------------
     // BUG 2: same-batch internal dependency resolution
     // ------------------------------------------------------------------
+    // Letters climb through the file (A, then B C, then E F G): one below the
+    // project's high-water mark that no card holds is retired and refused
     const result1 = db.appendCards(mainId, {
       add_to_phase: db.getProject(mainId).phases[0].id,
       add_to_subphase: mainSubphase.id,
       new_cards: [
-        { session_letter: 'Y', title: 'Session Y', depends_on_cards: [] },
-        { session_letter: 'Z', title: 'Session Z', depends_on_cards: ['Y'] },
+        { session_letter: 'B', title: 'Session B', depends_on_cards: [] },
+        { session_letter: 'C', title: 'Session C', depends_on_cards: ['B'] },
       ],
     });
     check('Append batch inserts both cards', result1.cardsAdded === 2);
 
     const afterAppend = db.getProject(mainId).phases[0].subphases[0].cards;
-    const cardY = afterAppend.find(c => c.session_letter === 'Y');
-    const cardZ = afterAppend.find(c => c.session_letter === 'Z');
+    const cardB = afterAppend.find(c => c.session_letter === 'B');
+    const cardC = afterAppend.find(c => c.session_letter === 'C');
 
     check(
       'Same-batch depends_on_cards reference survives import',
-      cardZ && JSON.stringify(cardZ.depends_on_cards) === '["Y"]',
-      `got ${cardZ && JSON.stringify(cardZ.depends_on_cards)}`
+      cardC && JSON.stringify(cardC.depends_on_cards) === '["B"]',
+      `got ${cardC && JSON.stringify(cardC.depends_on_cards)}`
     );
 
     let workable = db.getWorkableCards(mainId).map(c => c.session_letter);
-    check('Z is blocked while same-batch dep Y is not done', !workable.includes('Z'));
-    check('Y itself is workable', workable.includes('Y'));
+    check('C is blocked while same-batch dep B is not done', !workable.includes('C'));
+    check('B itself is workable', workable.includes('B'));
 
-    db.updateCardStatus(cardY.id, 'Done');
+    db.updateCardStatus(cardB.id, 'Done');
     workable = db.getWorkableCards(mainId).map(c => c.session_letter);
-    check('Completing Y releases Z', workable.includes('Z'));
+    check('Completing B releases C', workable.includes('C'));
 
     // ------------------------------------------------------------------
     // FEATURE: external_dependencies import + gating
@@ -534,15 +536,15 @@ function runTests() {
     err = loopErr(single([{ session_letter: 'P', title: 'New P', depends_on_cards: ['p'] }]));
     check('A new card depending on itself is refused', err && err.includes('card "P": depends on itself'), err);
 
-    // Composite: new C -> existing D, and dependency_updates makes D -> C
+    // Composite: new E -> existing D, and dependency_updates makes D -> E
     err = loopErr(single(
-      [{ session_letter: 'C', title: 'New C', depends_on_cards: ['D'] }],
-      { dependency_updates: [{ card: 'D', add_dependency: 'C' }] }
+      [{ session_letter: 'E', title: 'New E', depends_on_cards: ['D'] }],
+      { dependency_updates: [{ card: 'D', add_dependency: 'E' }] }
     ));
     check(
       'New card plus a dependency_updates edge closing a loop is refused',
-      err && err.includes('C -> D -> C') && err.includes('"Existing D" (on the board)') &&
-        err.includes('Added by dependency_updates: D -> C'),
+      err && err.includes('E -> D -> E') && err.includes('"Existing D" (on the board)') &&
+        err.includes('Added by dependency_updates: D -> E'),
       err
     );
     check('Composite loop lands nothing, and D gains no edge',

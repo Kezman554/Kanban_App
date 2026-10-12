@@ -52,6 +52,15 @@ function initDb(dbPath = null) {
     db.exec('ALTER TABLE projects ADD COLUMN short_name TEXT');
   }
 
+  // Add session_letter_high_water column if it doesn't exist (for existing databases).
+  // The highest BASE letter (C, AK - never C2) ever allocated in the project.
+  // Only ever advances, so a deleted card's letter is retired rather than
+  // reissued; backfilled from the cards once the cards table exists, below.
+  const hasHighWater = projectColumns.some(col => col.name === 'session_letter_high_water');
+  if (!hasHighWater) {
+    db.exec('ALTER TABLE projects ADD COLUMN session_letter_high_water TEXT');
+  }
+
   // Backfill short_name for known projects whose first-word fallback would be wrong.
   // Only updates rows where short_name IS NULL so user edits are never overwritten.
   const backfill = db.prepare('UPDATE projects SET short_name = ? WHERE slug = ? AND short_name IS NULL');
@@ -183,6 +192,27 @@ function initDb(dbPath = null) {
   db.exec(`
     CREATE INDEX IF NOT EXISTS idx_cards_resource
     ON cards(resource)
+  `);
+
+  // Backfill session_letter_high_water with each project's current highest
+  // base letter, ordered as getLastSessionLetter orders (shorter base first,
+  // then alphabetically). This deliberately makes today's gaps permanent.
+  // Only fills NULLs, so re-running never moves a counter already set, and a
+  // project with no cards stays NULL until its first card lands.
+  db.exec(`
+    UPDATE projects SET session_letter_high_water = (
+      SELECT base FROM (
+        SELECT RTRIM(UPPER(TRIM(c.session_letter)), '0123456789') AS base
+        FROM cards c
+        JOIN subphases s ON c.subphase_id = s.id
+        JOIN phases p ON s.phase_id = p.id
+        WHERE p.project_id = projects.id
+      )
+      WHERE base != ''
+      ORDER BY LENGTH(base) DESC, base DESC
+      LIMIT 1
+    )
+    WHERE session_letter_high_water IS NULL
   `);
 
   // Insert default resources if table is empty
