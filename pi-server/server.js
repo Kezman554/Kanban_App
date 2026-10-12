@@ -121,7 +121,10 @@ app.get('/projects/:id/done', h((req, res) => {
 
 app.get('/projects/:id/next-letter', h((req, res) => {
   const projectId = intParam(req.params.id, 'project id');
-  const subphaseId = intParam(req.query.subphaseId, 'subphaseId query param');
+  // Omitted = a subphase still to be created, which allocates like an empty one
+  const subphaseId = req.query.subphaseId === undefined
+    ? null
+    : intParam(req.query.subphaseId, 'subphaseId query param');
   res.json({ next_letter: db.getNextSessionLetter(projectId, subphaseId) });
 }));
 
@@ -150,6 +153,14 @@ app.post('/projects/:id/append', h((req, res) => {
 app.post('/projects/import', h((req, res) => {
   const id = db.importProjectFromJson(req.body || {});
   res.status(201).json({ id });
+}));
+
+// Add Card dialog: create a card at a placement that may create its phase
+// and/or subphase, in one transaction. Body: { placement, card }
+app.post('/projects/:id/cards', h((req, res) => {
+  const body = req.body || {};
+  const result = db.createCardAt(intParam(req.params.id, 'project id'), body.placement, body.card || {});
+  res.status(201).json(result);
 }));
 
 app.post('/subphases/:subphaseId/cards', h((req, res) => {

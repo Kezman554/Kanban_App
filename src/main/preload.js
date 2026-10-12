@@ -11,6 +11,7 @@ contextBridge.exposeInMainWorld('electron', {
   // Card operations
   getCard: (cardId) => ipcRenderer.invoke('db:getCard', cardId),
   createCard: (subphaseId, cardData) => ipcRenderer.invoke('db:createCard', subphaseId, cardData),
+  createCardAt: (projectId, placement, cardData) => ipcRenderer.invoke('db:createCardAt', projectId, placement, cardData),
   getNextSessionLetter: (projectId, subphaseId) => ipcRenderer.invoke('db:getNextSessionLetter', projectId, subphaseId),
   updateCardStatus: (cardId, status) => ipcRenderer.invoke('db:updateCardStatus', cardId, status),
   updateCardPrompt: (cardId, promptData) => ipcRenderer.invoke('db:updateCardPrompt', cardId, promptData),

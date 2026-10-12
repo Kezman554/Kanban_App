@@ -673,9 +673,49 @@ class KanbanDatabase {
   }
 
   /**
+   * Create a card at a placement that may not exist yet - the Add Card
+   * dialog's create path. The placement is one of resolveAppendTarget's
+   * three legal combinations (add_to_phase + add_to_subphase, add_to_phase +
+   * new_subphase, new_phase + new_subphase), resolved by that same code so
+   * the dialog and the append importer share one set of rules and one
+   * display_order computation. The card is then inserted by createCard, with
+   * all its letter checks.
+   *
+   * One transaction: a card refused on its letter (duplicate or retired)
+   * leaves no new phase or subphase behind.
+   *
+   * @param {number} projectId - Project ID
+   * @param {Object} placement - Placement fields, as in an append batch
+   * @param {Object} cardData - Card data, as for createCard
+   * @returns {Object} - { cardId, subphaseId, createdPhase, createdSubphase }
+   */
+  createCardAt(projectId, placement, cardData) {
+    const transaction = this.db.transaction(() => {
+      const p = placement || {};
+      for (const [key, what] of [['new_phase', 'New phase'], ['new_subphase', 'New subphase']]) {
+        if (p[key] && (typeof p[key].name !== 'string' || p[key].name.trim() === '')) {
+          throw new Error(`${what} name is required`);
+        }
+      }
+
+      const { targetSubphaseId, createdPhase, createdSubphase } =
+        this.resolveAppendTarget(projectId, p, '');
+      const cardId = this.createCard(targetSubphaseId, cardData);
+      return { cardId, subphaseId: targetSubphaseId, createdPhase, createdSubphase };
+    });
+
+    try {
+      return transaction();
+    } catch (error) {
+      throw new Error(error.message.startsWith('Failed to create card') ? error.message : `Failed to create card: ${error.message}`);
+    }
+  }
+
+  /**
    * Get the next available session letter for a subphase
    * @param {number} projectId - Project ID
-   * @param {number} subphaseId - Subphase ID
+   * @param {number|null} subphaseId - Subphase ID, or null for a subphase
+   *   still to be created (treated as empty)
    * @returns {string} - Next available session letter
    *
    * Logic:

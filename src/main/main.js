@@ -219,6 +219,15 @@ ipcMain.handle('db:createCard', async (event, subphaseId, cardData) => {
   }
 })
 
+ipcMain.handle('db:createCardAt', async (event, projectId, placement, cardData) => {
+  try {
+    return db.createCardAt(projectId, placement, cardData)
+  } catch (error) {
+    console.error('Error creating card:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:deleteCard', async (event, cardId) => {
   try {
     return db.deleteCard(cardId)

@@ -1183,8 +1183,11 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
           </div>
 
-          {/* Claude Code Prompt (prompt_guide) - only for non-manual cards */}
-          {(hasPromptGuide || isEditingPromptGuide) && !isManual && (
+          {/* Claude Code Prompt (prompt_guide) - for every non-manual card. An
+              empty one shows an "Add prompt" way into the editor; the editor's
+              placeholder is never stored, so a prompt-less card keeps offering
+              neither Copy nor Start Session. */}
+          {!isManual && (
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
@@ -1209,7 +1212,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         Save
                       </button>
                     </>
-                  ) : (
+                  ) : hasPromptGuide && (
                     <>
                       <button
                         onClick={handleEditPromptGuide}
@@ -1243,12 +1246,22 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   value={editedPromptGuide}
                   onChange={(e) => setEditedPromptGuide(e.target.value)}
                   className="w-full h-64 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text font-mono resize-none focus:outline-none scrollbar-dark"
-                  placeholder="Enter prompt guide..."
+                  placeholder="The prompt to paste into a Claude Code session for this card..."
                   autoFocus
                 />
-              ) : (
+              ) : hasPromptGuide ? (
                 <div className="bg-dark-bg border border-dark-border rounded-lg p-3 max-h-64 overflow-y-auto scrollbar-dark">
                   <pre className="text-sm text-dark-text whitespace-pre-wrap font-mono">{card.prompt_guide}</pre>
+                </div>
+              ) : (
+                <div className="bg-dark-bg border border-dashed border-dark-border rounded-lg p-4 flex items-center justify-between gap-3">
+                  <p className="text-sm text-dark-text-secondary italic">No prompt yet</p>
+                  <button
+                    onClick={handleEditPromptGuide}
+                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                  >
+                    Add prompt
+                  </button>
                 </div>
               )}
             </div>

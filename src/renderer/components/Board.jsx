@@ -717,16 +717,19 @@ const Board = ({ projectId }) => {
     await loadProject(true);
   };
 
-  // Open add card dialog for a specific subphase
-  const handleOpenAddCard = (subphaseId) => {
+  // Open add card dialog, pre-selecting the subphase it was opened from. null
+  // (the empty-board button) opens it with no destination chosen.
+  const handleOpenAddCard = (subphaseId = null) => {
     setAddCardSubphaseId(subphaseId);
     setIsAddCardDialogOpen(true);
   };
 
-  // Handle creating a new card
-  const handleCreateCard = async (subphaseId, cardData) => {
+  // Handle creating a new card. placement is one of the append importer's
+  // three legal placements, so the dialog can create the card's phase and/or
+  // subphase in the same transaction as the card.
+  const handleCreateCard = async (placement, cardData) => {
     try {
-      await window.electron.createCard(subphaseId, cardData);
+      await window.electron.createCardAt(projectId, placement, cardData);
       await loadProject(true);
     } catch (err) {
       console.error('Failed to create card:', err);
@@ -1276,6 +1279,17 @@ const Board = ({ projectId }) => {
                   {boardDisplayData.completedCards.length > 0
                     ? 'All tasks complete!'
                     : 'No phases in this project'}
+                  {/* With no active subphase there is no per-subphase "+" button,
+                      so this is the only way to hand-add a card. Opens with no
+                      destination chosen. */}
+                  <div className="mt-4">
+                    <button
+                      onClick={() => handleOpenAddCard(null)}
+                      className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium transition-colors"
+                    >
+                      + Add Card
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -115,10 +115,17 @@ if (typeof window !== 'undefined' && !window.electron) {
     getCard: (id) => getOrNull(`/cards/${enc(id)}`),
     createCard: (subphaseId, data) =>
       req('POST', `/subphases/${enc(subphaseId)}/cards`, data).then((r) => r.id),
+    // Placement as in an append batch: add_to_phase + add_to_subphase,
+    // add_to_phase + new_subphase, or new_phase + new_subphase
+    createCardAt: (projectId, placement, card) =>
+      req('POST', `/projects/${enc(projectId)}/cards`, { placement, card }),
+    // A null subphaseId means a subphase still to be created (treated as empty)
     getNextSessionLetter: (projectId, subphaseId) =>
-      req('GET', `/projects/${enc(projectId)}/next-letter?subphaseId=${enc(subphaseId)}`).then(
-        (r) => r.next_letter
-      ),
+      req(
+        'GET',
+        `/projects/${enc(projectId)}/next-letter` +
+          (subphaseId == null ? '' : `?subphaseId=${enc(subphaseId)}`)
+      ).then((r) => r.next_letter),
     updateCardStatus: (id, status) =>
       req('PATCH', `/cards/${enc(id)}/status`, { status }).then((r) => r.updated),
     updateCardPrompt: (id, promptData) =>

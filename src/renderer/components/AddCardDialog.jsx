@@ -1,5 +1,40 @@
 import React, { useState, useEffect, useRef } from 'react';
 
+// Name (required), short name and description (optional) for a phase or
+// subphase created along with the card
+const NewGroupFields = ({ label, value, onChange }) => {
+  const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
+  const input = 'px-3 py-2 bg-dark-surface border border-dark-border rounded-lg text-dark-text text-sm focus:outline-none focus:border-blue-500';
+  return (
+    <div className="space-y-2">
+      <div className="text-xs font-semibold text-dark-text-secondary">{label}</div>
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={value.name}
+          onChange={set('name')}
+          className={`flex-1 ${input}`}
+          placeholder="Name (required)"
+        />
+        <input
+          type="text"
+          value={value.short_name}
+          onChange={set('short_name')}
+          className={`w-32 ${input}`}
+          placeholder="Short name"
+        />
+      </div>
+      <input
+        type="text"
+        value={value.description}
+        onChange={set('description')}
+        className={`w-full ${input}`}
+        placeholder="Description (optional)"
+      />
+    </div>
+  );
+};
+
 const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existingCards, phases = [] }) => {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -10,25 +45,46 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
   const [promptGuide, setPromptGuide] = useState('');
   const [gitCommitMessage, setGitCommitMessage] = useState('');
   const [nextLetter, setNextLetter] = useState('');
-  // null means "use the subphase the Add button was clicked from". Kept as an
+  // Destination key: 'sub:<id>' (existing subphase), 'newsub:<phaseId>' (new
+  // subphase under an existing phase), 'newphase', or '' (not chosen yet).
+  // null means "use the subphase the Add button was clicked from" - kept as an
   // override rather than seeded from the prop so the default needs no effect
-  // to apply and cannot race the letter fetch on open.
-  const [selectedSubphaseId, setSelectedSubphaseId] = useState(null);
+  // to apply and cannot race the letter fetch on open. Opened with no subphase
+  // (the empty-board button) the destination starts unset.
+  const [selectedDestination, setSelectedDestination] = useState(null);
+  const [newPhase, setNewPhase] = useState({ name: '', short_name: '', description: '' });
+  const [newSubphase, setNewSubphase] = useState({ name: '', short_name: '', description: '' });
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState(null);
   const dialogRef = useRef(null);
   const errorRef = useRef(null);
 
   // Where the card will actually land
-  const targetSubphaseId = selectedSubphaseId !== null ? selectedSubphaseId : subphaseId;
+  const destination = selectedDestination !== null
+    ? selectedDestination
+    : (subphaseId ? `sub:${subphaseId}` : '');
+  const [destinationMode, destinationId] = destination.split(':');
+  const targetSubphaseId = destinationMode === 'sub' ? Number(destinationId) : null;
+  const isNewSubphase = destinationMode === 'newsub';
+  const isNewPhase = destinationMode === 'newphase';
 
-  // Fetch the suggested session letter for the CHOSEN subphase - getNextSessionLetter
-  // is subphase-scoped, so changing the destination has to re-suggest
+  // Fetch the suggested session letter for the CHOSEN destination -
+  // getNextSessionLetter is subphase-scoped, so changing the destination has
+  // to re-suggest. A subphase still to be created is an empty subphase, so it
+  // is asked for with no subphase id (the project's high-water mark plus one).
+  // A response for a destination since changed away from is discarded, so a
+  // slow earlier answer cannot overwrite the current one.
   useEffect(() => {
-    if (isOpen && projectId && targetSubphaseId) {
-      fetchNextLetter();
-    }
-  }, [isOpen, projectId, targetSubphaseId]);
+    if (!(isOpen && projectId && destination)) return undefined;
+    let superseded = false;
+    window.electron.getNextSessionLetter(projectId, targetSubphaseId)
+      .then((letter) => { if (!superseded) setNextLetter(letter); })
+      .catch((err) => {
+        console.error('Failed to get next session letter:', err);
+        if (!superseded) setNextLetter('?');
+      });
+    return () => { superseded = true; };
+  }, [isOpen, projectId, destination]);
 
   // Reset form when dialog opens
   useEffect(() => {
@@ -42,7 +98,9 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
       setPromptGuide('');
       setGitCommitMessage('');
       setNextLetter('');
-      setSelectedSubphaseId(null);
+      setSelectedDestination(null);
+      setNewPhase({ name: '', short_name: '', description: '' });
+      setNewSubphase({ name: '', short_name: '', description: '' });
       setError(null);
     }
   }, [isOpen]);
@@ -88,16 +146,6 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
     }
   }, [error]);
 
-  const fetchNextLetter = async () => {
-    try {
-      const letter = await window.electron.getNextSessionLetter(projectId, targetSubphaseId);
-      setNextLetter(letter);
-    } catch (err) {
-      console.error('Failed to get next session letter:', err);
-      setNextLetter('?');
-    }
-  };
-
   const handleDependencyToggle = (letter) => {
     setDependencies(prev => {
       if (prev.includes(letter)) {
@@ -110,6 +158,19 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!destination) {
+      setError('Choose a destination');
+      return;
+    }
+    if (isNewPhase && !newPhase.name.trim()) {
+      setError('New phase name is required');
+      return;
+    }
+    if ((isNewPhase || isNewSubphase) && !newSubphase.name.trim()) {
+      setError('New subphase name is required');
+      return;
+    }
 
     if (!title.trim()) {
       setError('Title is required');
@@ -147,7 +208,23 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
         git_commit_message: gitCommitMessage.trim() || null,
       };
 
-      await onSave(targetSubphaseId, cardData);
+      // One of resolveAppendTarget's three legal placements
+      const named = (fields) => ({
+        name: fields.name.trim(),
+        short_name: fields.short_name.trim() || null,
+        description: fields.description.trim() || null,
+      });
+      let placement;
+      if (isNewPhase) {
+        placement = { new_phase: named(newPhase), new_subphase: named(newSubphase) };
+      } else if (isNewSubphase) {
+        placement = { add_to_phase: Number(destinationId), new_subphase: named(newSubphase) };
+      } else {
+        const phase = phases.find(ph => (ph.subphases || []).some(sub => sub.id === targetSubphaseId));
+        placement = { add_to_phase: phase ? phase.id : null, add_to_subphase: targetSubphaseId };
+      }
+
+      await onSave(placement, cardData);
       onClose();
     } catch (err) {
       console.error('Failed to create card:', err);
@@ -205,17 +282,20 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
           <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-dark">
             {/* Destination - defaults to the subphase the button was clicked from.
                 Lists EVERY subphase, including those the board hides because all
-                their cards are done, so work can be filed where it belongs. */}
-            {phases.length > 0 && (
-              <div>
+                their cards are done, so work can be filed where it belongs. Always
+                shown: on a project with no phases, "+ New phase" is the only way in. */}
+            <div>
                 <label className="block text-sm font-medium text-dark-text mb-1">
-                  Destination
+                  Destination <span className="text-red-400">*</span>
                 </label>
                 <select
-                  value={targetSubphaseId || ''}
-                  onChange={(e) => setSelectedSubphaseId(Number(e.target.value))}
-                  className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text focus:outline-none focus:border-blue-500"
+                  value={destination}
+                  onChange={(e) => setSelectedDestination(e.target.value)}
+                  className={`w-full px-3 py-2 bg-dark-bg border rounded-lg text-dark-text focus:outline-none focus:border-blue-500 ${destination ? 'border-dark-border' : 'border-yellow-600'}`}
                 >
+                  {!destination && (
+                    <option value="" disabled>Choose a destination...</option>
+                  )}
                   {phases.map(phase => (
                     <optgroup key={phase.id} label={phase.name}>
                       {(phase.subphases || []).map(sub => {
@@ -227,19 +307,38 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                             ? ' - all done (hidden from board)'
                             : '';
                         return (
-                          <option key={sub.id} value={sub.id}>
+                          <option key={sub.id} value={`sub:${sub.id}`}>
                             {sub.name}{suffix}
                           </option>
                         );
                       })}
+                      <option value={`newsub:${phase.id}`}>+ New subphase...</option>
                     </optgroup>
                   ))}
+                  <option value="newphase">+ New phase...</option>
                 </select>
                 <p className="text-xs text-dark-text-secondary mt-1">
                   Completed phases are hidden on the board but can still be chosen here
                 </p>
-              </div>
-            )}
+
+                {/* Inline fields for a phase and/or subphase created with the card */}
+                {(isNewPhase || isNewSubphase) && (
+                  <div className="mt-3 p-3 bg-dark-bg border border-dark-border rounded-lg space-y-3">
+                    {isNewPhase && (
+                      <NewGroupFields
+                        label="New phase"
+                        value={newPhase}
+                        onChange={setNewPhase}
+                      />
+                    )}
+                    <NewGroupFields
+                      label={isNewPhase ? 'Its first subphase' : `New subphase in ${(phases.find(ph => String(ph.id) === destinationId) || {}).name || 'phase'}`}
+                      value={newSubphase}
+                      onChange={setNewSubphase}
+                    />
+                  </div>
+                )}
+            </div>
 
             {/* Session Letter */}
             <div>
@@ -420,7 +519,11 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
             </button>
             <button
               onClick={handleSubmit}
-              disabled={isLoading || !title.trim() || !nextLetter.trim()}
+              disabled={
+                isLoading || !title.trim() || !nextLetter.trim() || !destination ||
+                (isNewPhase && !newPhase.name.trim()) ||
+                ((isNewPhase || isNewSubphase) && !newSubphase.name.trim())
+              }
               className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Creating...' : 'Create Card'}
