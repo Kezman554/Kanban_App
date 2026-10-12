@@ -1245,7 +1245,15 @@ Verification:
   no longer attempts it. The Pi image never built it (web-build excluded
   it), so the Pi build only sheds the three @xterm packages.
 
-Not yet pushed or deployed.
+Deployed to the Pi (ef6a230): pulled, kanban-api rebuilt, smoke test OK
+(326 cards, API == DB). Live bundle (388 KB) carries both Start Session
+failure messages and no Generate/Regenerate, xterm, terminal dock or API
+Configuration strings. Read-only look at the live board (GymSync, nothing
+clicked that writes): Not Started card J shows Copy to Clipboard / Start
+Session / Mark as Done; In Progress card U shows Mark as Done only (it is a
+manual card, so Copy is hidden by the unchanged isManual gate); no console
+errors. Start Session itself was not clicked on live data - its success and
+both failure paths were exercised on the scratch board above.
 
 Known gaps / followups
 ----------------------
