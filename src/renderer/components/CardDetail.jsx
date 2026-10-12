@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { copyText } from '../utils/clipboard.js';
 
 const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusChange, onCardUpdated, onCardDeleted, project }) => {
-  const [copySuccess, setCopySuccess] = useState(false);
   const [promptGuideCopySuccess, setPromptGuideCopySuccess] = useState(false);
   const [commitMessageCopySuccess, setCommitMessageCopySuccess] = useState(false);
   const [isEditingCommitMessage, setIsEditingCommitMessage] = useState(false);
@@ -40,7 +39,6 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
   // Reset state when card changes
   useEffect(() => {
-    setCopySuccess(false);
     setPromptGuideCopySuccess(false);
     setCommitMessageCopySuccess(false);
     setIsEditingCommitMessage(false);
@@ -134,18 +132,6 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     anthropic_api: 'Anthropic API',
     none: 'Manual Task',
     tbc: 'To Be Confirmed'
-  };
-
-  const handleCopyToClipboard = async () => {
-    const textToCopy = card.prompt_guide || '';
-
-    try {
-      await copyText(textToCopy);
-      setCopySuccess(true);
-      setTimeout(() => setCopySuccess(false), 2000);
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
-    }
   };
 
   const handleCopyPromptGuide = async () => {
@@ -484,27 +470,33 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     }
   };
 
-  // Copy the prompt, move the card to In Progress, and close the view - the
-  // card closing is the confirmation. Closes only when both steps succeeded:
-  // a failed copy leaves the card open and Not Started (moving it would record
-  // a session that never began), and a failed move leaves it open with a
-  // message rather than hiding the failure behind a closed card.
+  // Start a Not Started card: move it to In Progress and close the view - the
+  // card closing is the confirmation. "Start Session" (an engineer card with a
+  // prompt) copies the prompt first and moves only if the copy succeeded: a
+  // failed copy leaves the card open and Not Started, since moving it would
+  // record a session that never began. "Mark as Started" (manual and TBC
+  // cards) has no prompt and touches no clipboard. Either way a failed move
+  // leaves the card open with a message rather than hiding the failure
+  // behind a closed card.
   const handleStartSession = async () => {
-    const prompt = card.prompt_guide || '';
-    if (!prompt) return;
+    const copiesPrompt = !isManual && !isTBC;
+    if (copiesPrompt) {
+      const prompt = card.prompt_guide || '';
+      if (!prompt) return;
 
-    // copyText reports failure by returning false rather than throwing (on the
-    // Pi's plain-HTTP board it takes the legacy execCommand path)
-    let copied = false;
-    try {
-      copied = await copyText(prompt);
-    } catch (error) {
-      console.error('Failed to copy to clipboard:', error);
-    }
-    if (!copied) {
-      setSessionNotification('Failed to copy prompt - please copy manually');
-      setTimeout(() => setSessionNotification(null), 5000);
-      return;
+      // copyText reports failure by returning false rather than throwing (on the
+      // Pi's plain-HTTP board it takes the legacy execCommand path)
+      let copied = false;
+      try {
+        copied = await copyText(prompt);
+      } catch (error) {
+        console.error('Failed to copy to clipboard:', error);
+      }
+      if (!copied) {
+        setSessionNotification('Failed to copy prompt - please copy manually');
+        setTimeout(() => setSessionNotification(null), 5000);
+        return;
+      }
     }
 
     // onStatusChange resolves true once the new status is stored
@@ -515,7 +507,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
       console.error('Failed to update card status:', error);
     }
     if (!moved) {
-      setSessionNotification('Prompt copied, but the card could not be moved to In Progress - move it by hand');
+      setSessionNotification(copiesPrompt
+        ? 'Prompt copied, but the card could not be moved to In Progress - move it by hand'
+        : 'The card could not be moved to In Progress - move it by hand');
       return;
     }
 
@@ -1551,37 +1545,16 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         {/* Footer Actions */}
         <div className="flex-shrink-0 p-6 border-t border-dark-border bg-dark-surface rounded-b-xl">
           <div className="flex flex-wrap gap-3">
-            {/* Copy to Clipboard (only if prompt_guide exists) - at any status,
-                so a card already In Progress can re-grab its prompt */}
-            {hasPromptGuide && !isManual && !isTBC && (
-              <button
-                onClick={handleCopyToClipboard}
-                className={`
-                  flex-1 min-w-[140px] px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2
-                  ${copySuccess
-                    ? 'bg-green-700 text-white'
-                    : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text'}
-                `}
-              >
-                {copySuccess ? (
-                  <>
-                    <span>OK</span> Copied!
-                  </>
-                ) : (
-                  <>
-                    <span>[=]</span> Copy to Clipboard
-                  </>
-                )}
-              </button>
-            )}
-
-            {/* Start Session (only on a Not Started card with a prompt_guide) */}
-            {hasPromptGuide && !isManual && !isTBC && card.status === 'Not Started' && (
+            {/* One-click start, only on a Not Started card: "Start Session" for
+                an engineer card with a prompt (an engineer card with an empty
+                prompt gets none - starting it is a mistake worth noticing),
+                "Mark as Started" for manual and TBC cards */}
+            {card.status === 'Not Started' && (isManual || isTBC || hasPromptGuide) && (
               <button
                 onClick={handleStartSession}
                 className="flex-1 min-w-[140px] px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
-                <span>&gt;</span> Start Session
+                <span>&gt;</span> {isManual || isTBC ? 'Mark as Started' : 'Start Session'}
               </button>
             )}
 
