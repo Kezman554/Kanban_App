@@ -1114,3 +1114,59 @@ Known gaps / followups
 ----------------------
 - AppendCardsDialog's preview still does not predict loops or unknown
   dependency letters; they surface as the import error.
+
+Session Progress - 2026-10-12 (Session letters are append-only)
+===============================================================
+
+Goal: a session letter is how a card is named everywhere outside the app
+(vault notes, progress.txt, commits), but the app recycled them: an empty
+subphase got the FIRST unused base letter, and getLastSessionLetter was
+derived from live cards, so deleting the highest card handed its letter
+straight back out. A deleted card's letter is now retired permanently.
+
+1. projects.session_letter_high_water (schema.js): guarded ALTER plus a
+   re-runnable SQL backfill (only NULLs) to each project's current highest
+   BASE letter - deliberately freezing today's gaps. A project with no cards
+   stays NULL until its first card lands.
+2. operations.js:
+   - _advanceSessionLetterHighWater after every insert: createProject,
+     createCard, appendCards. Never lowers; deleteCard never touches it.
+   - getLastSessionLetter = max(persisted, derived), so exportForVault's
+     last_session_letter follows the mark. getSessionLetterHighWater is its
+     base. A NULL / stale-low / corrupted counter degrades to the board.
+   - getNextSessionLetter's empty-subphase path continues AFTER the mark
+     (_getNextUnusedBaseLetter gained a startAfter; same A-Z, AA-ZZ walk).
+   - assertSessionLetterNotRetired: a base letter at or below the mark held
+     by no card is refused. appendCards runs it pre-insert over the whole
+     file (cancels the import; message names letter, card title, batch).
+     createCard runs it too - the spec named only appendCards, but its goal
+     is "never suggested or accepted", and createCard backs the Pi's POST.
+   - Suffixes stay derived and subphase-local (a deleted C3 can return).
+3. Board.jsx "Export for Claude": Last session letter includes the mark.
+4. Host wiring: none. No new IPC/HTTP method; getSessionLetterHighWater and
+   assertSessionLetterNotRetired are only called inside operations.js.
+
+Tests: new session-letter-high-water.test.js 38/38 (the spec's six cases
+plus Hub- and Vault-shaped fixtures, suffix recycling, Z -> AA, export
+field, backfill re-run). append-import 61/61: two fixtures renumbered that
+had appended letters below the high-water mark (Y,Z then E -> B,C then E;
+composite-loop "C" -> "E"). All other suites unchanged and green; both
+builds clean. The real data layer run over the live export's 326 letters:
+Hub AL, Vault V, other nine unchanged, last_session_letter identical on all
+11 boards.
+
+Deployed to the Pi (093d639): pulled, kanban-api rebuilt, smoke test OK
+(326 cards, API == DB). Live: backfilled marks match the spec (Hub AK,
+Vault U); /next-letter for an empty subphase gives Hub AL, Vault V, LOTR AK
+(unchanged); POST /projects/22/append claiming "O" refused with the retired
+message, card count unchanged at 326.
+
+Known gaps / followups
+----------------------
+- The vault's kanban-export.json still carries derived last_session_letter
+  values until the next export (nightly cron or "Sync to Vault"); all 11 are
+  identical either way today.
+- AppendCardsDialog's preview does not predict retired letters; they surface
+  as the import error, like loops and unknown letters.
+- AddCardDialog accepts a typed retired letter until Create, where
+  createCard refuses it.
