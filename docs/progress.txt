@@ -1425,4 +1425,10 @@ Done; its failed move stays open with its own message; TBC works the same;
 Start Session's failed copy, failed move and success behave exactly as
 before. Both builds clean.
 
-Not yet pushed or deployed.
+Deployed to the Pi (5c488f6): pulled, kanban-api rebuilt, smoke test OK
+(326 cards, API == DB). Live bundle carries "Mark as Started" and both
+failure messages, and no "Copy to Clipboard". Read-only look (opened, footer
+read, closed - nothing clicked): DocuSync Y (manual, Not Started) shows
+Mark as Started + Mark as Done; Alfred Home Hub AK (claude_sub with a
+prompt, Not Started) shows Start Session + Mark as Done; no console errors;
+card counts unchanged.
