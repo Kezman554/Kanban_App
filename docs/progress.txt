@@ -1174,3 +1174,85 @@ Known gaps / followups
   as the import error, like loops and unknown letters.
 - AddCardDialog accepts a typed retired letter until Create, where
   createCard refuses it.
+
+Session Progress - 2026-10-12 (Remove AI generation + terminal; Start Session closes the card)
+=============================================================================================
+
+Goal: remove two capabilities that no longer worked where the app is used
+(the browser board on the Pi), and fix the one that is alive: Start Session.
+
+1. AI card generation removed: src/renderer/services/anthropic.js and
+   promptGenerator.js; the api:getAnthropicKey / getMaskedKey / saveKey /
+   testConnection handlers, their preload exposures and shim stubs; the
+   Settings "API Configuration" and "Prompt Generator Test" sections;
+   CardDetail's Generate Prompt and Regenerate buttons. Nothing reads .env
+   any more, so .env.example and the dotenv dependency went too (the local
+   .env file is untouched and now unread).
+2. Embedded terminal removed: src/main/terminal.js, Terminal.jsx,
+   TerminalTabs.jsx, TerminalSessionContext.jsx (and the provider in
+   App.jsx), the CurrentProjectPage terminal dock, the Card.jsx terminal
+   dot/badge, CardDetail's terminal badge/panel/progress-notes textarea,
+   handleViewTerminal/handleCloseTerminal, tempPromptFile/deleteTempFile,
+   the terminal:* + file:writePromptToTemp/deleteTempFile IPC, preload and
+   shim stubs, the vite.config.js terminal entry, and the node-pty /
+   @xterm/xterm / addon-fit / addon-web-links dependencies (also from
+   pi-server/web-build.package.json; its lock had only the three @xterm
+   entries removed, and `npm ci --dry-run` accepts it).
+3. CardTestPage is reachable (sidebar "Card Test"), so it was kept and only
+   its sample text about terminal integration / AI prompt generation was
+   neutralised. It had no code dependency on either feature beyond Card.jsx.
+4. Start Session (CardDetail):
+   - Footer flattened to Copy to Clipboard (unchanged gating) / Start
+     Session / Mark as Done; the cardHasTerminal branches are gone.
+   - Start Session shows only on a Not Started card (plus the existing
+     prompt / not-manual / not-TBC gate). The card prop is live: the panel
+     closes on any click outside it, and reopening passes the card from the
+     freshly loaded project, so a drag back to Not Started brings it back.
+   - It branches on copyText's boolean. Failed copy: card stays open, Not
+     Started, "Failed to copy prompt - please copy manually". Copy OK but
+     status change failed: stays open with "Prompt copied, but the card
+     could not be moved to In Progress - move it by hand". Both OK: the
+     view closes (no success banner or timer).
+   - Board/RoadmapView handleStatusChange now resolve true/false. Board's
+     no longer calls setError on failure: that replaces the whole board,
+     open card included, with an error screen, so a failed move would have
+     been hidden after all. CardDetail is its only caller.
+   - handleMarkDone now calls onMarkDone(card.id): progressNotes only ever
+     came from the terminal panel, so it was always empty on the reachable
+     path. Parent handlers unchanged. notes column/editor untouched.
+5. Mistake caught before push: 4fc6676 cut main.js from the API-key block
+   to the done-cards handler and took twelve unrelated desktop IPC handlers
+   with it (settings, dialogs, data export/clear, app info, project path,
+   project files). Restored in 608649f; preload, main and shim surfaces now
+   cross-checked (every preload channel has a handler).
+
+Verification:
+- DB suites unchanged and green (250 checks); both builds clean. Web bundle
+  388 KB; the >500 KB chunk warning seen on earlier builds is gone.
+- Browser board driven end to end: the built dist-web served by a local
+  pi-server on a LAN IP (not a secure context, so the same legacy
+  execCommand copy path as the Pi), scratch DB, 33/33 checks - including a
+  forced copy failure (open, Not Started, message, clipboard untouched), a
+  real success (prompt on the system clipboard, In Progress, view closed),
+  Start Session absent on In Progress and Done, present again after a
+  dnd-kit drag back to Not Started, a forced status failure (open, message),
+  Settings without the API section, Card Test rendering, no console errors.
+- Desktop app booted hidden from dist-electron/main.js: board, Settings,
+  Card Test render; every renderer-facing preload method resolves; no
+  console errors.
+- Install: node-pty was the only native module besides better-sqlite3, and
+  the one that failed to compile under VS Build Tools 2026; `npm install`
+  no longer attempts it. The Pi image never built it (web-build excluded
+  it), so the Pi build only sheds the three @xterm packages.
+
+Not yet pushed or deployed.
+
+Known gaps / followups
+----------------------
+- A card with no prompt_guide no longer has an in-app way to add one (the
+  only entry point was Generate Prompt). Prompts arrive with the card JSON.
+- getDoneCards (IPC, shim, GET /projects/:id/done) has no in-app caller now
+  that prompt generation is gone; kept, as the Pi route is part of the
+  documented API.
+- Board/RoadmapView handleMarkDone still accept a progressNotes argument
+  that nothing passes.
