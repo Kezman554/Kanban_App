@@ -11,10 +11,9 @@
  * `{updated: true}`, the renderer expects a bare `true`, so we unwrap here.
  *
  * The handful of methods that were native to the desktop (file dialogs, opening
- * folders, the local Claude Code / API-key integration, the embedded terminal)
- * can't work in a browser. They are given real web equivalents where one exists
- * (upload / download) and otherwise degrade loudly — a visible message, never a
- * silent no-op or a dead button. See docs/pi-port-analysis.md and the card's
+ * folders, reading laptop files) can't work in a browser. They are given real
+ * web equivalents where one exists (upload / download) and otherwise degrade
+ * loudly — a visible message, never a silent no-op or a dead button. See docs/pi-port-analysis.md and the card's
  * feature-gap report for the full list.
  */
 
@@ -178,26 +177,9 @@ if (typeof window !== 'undefined' && !window.electron) {
     importProjectFromFile: () =>
       Promise.reject(new Error('Importing by laptop file path is desktop-only; use the file picker (Import) instead.')),
 
-    // --- local Claude Code / prompt-temp integration: no-op in browser ---
-    // Copy-to-clipboard prompt flows still work; only writing a temp file /
-    // launching Claude Code locally is gone.
-    writePromptToTemp: () => Promise.resolve({ success: true, path: null }),
-    deleteTempFile: () => Promise.resolve({ success: true }),
     // PRD/progress/CLAUDE.md live on the laptop filesystem — unreadable from the
     // browser. Same shape the Electron handler returns on failure.
     readProjectFiles: () => Promise.resolve({ prd: null, progress: null }),
-
-    // --- Anthropic API key / AI prompt generation: disabled in browser ---
-    // An API key must never be shipped to a browser; this feature stays on the
-    // desktop dev app.
-    getAnthropicApiKey: () => Promise.resolve(null),
-    getMaskedApiKey: () => Promise.resolve(null),
-    saveApiKey: () => {
-      unavailable('API-key management and AI prompt generation are only available in the desktop dev app, not the browser board.');
-      return Promise.resolve({ success: false });
-    },
-    testApiConnection: () =>
-      Promise.resolve({ success: false, error: 'AI features are disabled on the browser board.' }),
 
     // --- destructive: disabled on the shared board ---
     clearAllData: () =>
@@ -219,18 +201,6 @@ if (typeof window !== 'undefined' && !window.electron) {
         arch: (typeof navigator !== 'undefined' && navigator.platform) || 'browser',
         directory: '(browser board — served from the Pi)',
       }),
-
-    // --- embedded terminal: already dead pre-port (node-pty), stays off ---
-    terminal: {
-      create: () => Promise.resolve({ success: false }),
-      write: () => Promise.resolve(),
-      resize: () => Promise.resolve(),
-      kill: () => Promise.resolve(),
-      getActive: () => Promise.resolve([]),
-      isAvailable: () => Promise.resolve(false),
-      onData: () => () => {},
-      onExit: () => () => {},
-    },
   };
 
   console.log('[browser board] window.electron shim active (API base: ' + (BASE || 'same origin') + ')');

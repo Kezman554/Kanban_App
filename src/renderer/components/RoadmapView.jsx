@@ -125,16 +125,20 @@ const RoadmapView = ({ projectId }) => {
     }
   };
 
+  // Resolves true once the status is stored, false if it was not - Start
+  // Session closes the view only on true
   const handleStatusChange = async (cardId, newStatus) => {
     try {
       await window.electron.updateCardStatus(cardId, newStatus);
-      await loadProject();
-      if (selectedCard?.id === cardId) {
-        setSelectedCard(prev => ({ ...prev, status: newStatus }));
-      }
     } catch (err) {
       console.error('Failed to update card status:', err);
+      return false;
     }
+    await loadProject();
+    if (selectedCard?.id === cardId) {
+      setSelectedCard(prev => ({ ...prev, status: newStatus }));
+    }
+    return true;
   };
 
   // Resource icons

@@ -6,8 +6,8 @@
 #   docker build -f pi-server/Dockerfile -t kanban-api .   # context = repo root
 
 # --- Stage 1: build the browser board (static React) ------------------------
-# Uses a lean dep set (web-build.package.json) with NO electron / node-pty /
-# better-sqlite3 — none are needed for the static UI, so the image build stays
+# Uses a lean dep set (web-build.package.json) with NO electron /
+# better-sqlite3 — neither is needed for the static UI, so the image build stays
 # fast and free of native compiles. The window.electron bridge is provided at
 # runtime by src/renderer/electron-web-shim.js.
 FROM node:22-bookworm-slim AS web

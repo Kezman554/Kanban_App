@@ -1,11 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { generatePrompt } from '../services/promptGenerator.js';
 import { copyText } from '../utils/clipboard.js';
-import { useTerminalSessions } from '../contexts/TerminalSessionContext.jsx';
 
 const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusChange, onCardUpdated, onCardDeleted, project }) => {
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [generateError, setGenerateError] = useState(null);
   const [copySuccess, setCopySuccess] = useState(false);
   const [promptGuideCopySuccess, setPromptGuideCopySuccess] = useState(false);
   const [commitMessageCopySuccess, setCommitMessageCopySuccess] = useState(false);
@@ -42,29 +38,8 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   const [deleteError, setDeleteError] = useState(null);
   const panelRef = useRef(null);
 
-  // Terminal session context
-  const {
-    hasActiveSession,
-    getSession,
-    createSession,
-    switchToSession,
-    closeSession,
-  } = useTerminalSessions();
-
-  // Check if this card has an active terminal
-  const cardHasTerminal = card ? hasActiveSession(card.id) : false;
-  const terminalSession = card ? getSession(card.id) : null;
-  const isTerminalRunning = terminalSession?.status === 'running';
-  const terminalExitCode = terminalSession?.exitCode;
-
-  // Progress notes state (only shown after terminal exits)
-  const [progressNotes, setProgressNotes] = useState('');
-  const [tempPromptFile, setTempPromptFile] = useState(null);
-
   // Reset state when card changes
   useEffect(() => {
-    setIsGenerating(false);
-    setGenerateError(null);
     setCopySuccess(false);
     setPromptGuideCopySuccess(false);
     setCommitMessageCopySuccess(false);
@@ -73,7 +48,6 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setCommitMessageSaveSuccess(false);
     setCommitMessageSaveError(null);
     setSessionNotification(null);
-    setProgressNotes('');
     setIsEditingPromptGuide(false);
     setEditedPromptGuide('');
     setPromptGuideSaveSuccess(false);
@@ -98,21 +72,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     setShowDeleteConfirm(false);
     setIsDeleting(false);
     setDeleteError(null);
-    // Clean up any temp file from previous card
-    if (tempPromptFile) {
-      window.electron.deleteTempFile(tempPromptFile).catch(() => {});
-      setTempPromptFile(null);
-    }
   }, [card?.id]);
-
-  // Clean up temp file on unmount
-  useEffect(() => {
-    return () => {
-      if (tempPromptFile) {
-        window.electron.deleteTempFile(tempPromptFile).catch(() => {});
-      }
-    };
-  }, [tempPromptFile]);
 
   // Handle click outside to close
   useEffect(() => {
@@ -174,35 +134,6 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     anthropic_api: 'Anthropic API',
     none: 'Manual Task',
     tbc: 'To Be Confirmed'
-  };
-
-  const handleGeneratePrompt = async () => {
-    setIsGenerating(true);
-    setGenerateError(null);
-
-    try {
-      const result = await generatePrompt({
-        card,
-        project
-      });
-
-      if (result.success) {
-        // Save generated prompt to card's prompt_guide
-        await window.electron.updateCardPrompt(card.id, { prompt_guide: result.prompt });
-
-        // Refresh card data in parent component
-        if (onCardUpdated) {
-          await onCardUpdated(card.id);
-        }
-
-      } else {
-        setGenerateError(result.error || 'Failed to generate prompt');
-      }
-    } catch (error) {
-      setGenerateError(error.message || 'An unexpected error occurred');
-    } finally {
-      setIsGenerating(false);
-    }
   };
 
   const handleCopyToClipboard = async () => {
@@ -553,54 +484,48 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     }
   };
 
+  // Copy the prompt, move the card to In Progress, and close the view - the
+  // card closing is the confirmation. Closes only when both steps succeeded:
+  // a failed copy leaves the card open and Not Started (moving it would record
+  // a session that never began), and a failed move leaves it open with a
+  // message rather than hiding the failure behind a closed card.
   const handleStartSession = async () => {
     const prompt = card.prompt_guide || '';
     if (!prompt) return;
 
-    // Copy prompt to clipboard
+    // copyText reports failure by returning false rather than throwing (on the
+    // Pi's plain-HTTP board it takes the legacy execCommand path)
+    let copied = false;
     try {
-      await copyText(prompt);
-      setSessionNotification('Prompt copied to clipboard - paste into your terminal');
-      setTimeout(() => setSessionNotification(null), 5000);
+      copied = await copyText(prompt);
     } catch (error) {
       console.error('Failed to copy to clipboard:', error);
+    }
+    if (!copied) {
       setSessionNotification('Failed to copy prompt - please copy manually');
       setTimeout(() => setSessionNotification(null), 5000);
+      return;
     }
 
-    // Move card to 'In Progress'
-    if (onStatusChange && card.status !== 'In Progress') {
-      try {
-        await onStatusChange(card.id, 'In Progress');
-      } catch (error) {
-        console.error('Failed to update card status:', error);
-      }
+    // onStatusChange resolves true once the new status is stored
+    let moved = false;
+    try {
+      moved = onStatusChange ? await onStatusChange(card.id, 'In Progress') : false;
+    } catch (error) {
+      console.error('Failed to update card status:', error);
     }
-  };
-
-  const handleViewTerminal = () => {
-    switchToSession(card.id);
-  };
-
-  const handleCloseTerminal = () => {
-    closeSession(card.id);
-    // Clean up temp file if exists
-    if (tempPromptFile) {
-      window.electron.deleteTempFile(tempPromptFile).catch(() => {});
-      setTempPromptFile(null);
+    if (!moved) {
+      setSessionNotification('Prompt copied, but the card could not be moved to In Progress - move it by hand');
+      return;
     }
+
+    onClose();
   };
 
   const handleMarkDone = () => {
     if (onMarkDone) {
-      // Pass progress notes if any
-      onMarkDone(card.id, progressNotes.trim() || undefined);
+      onMarkDone(card.id);
     }
-    // Close terminal session if exists
-    if (cardHasTerminal) {
-      closeSession(card.id);
-    }
-    setProgressNotes('');
   };
 
   const handleExpandPlan = () => {
@@ -738,16 +663,6 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   {card.complexity} complexity
                 </span>
               )}
-              {/* Active Terminal Badge */}
-              {cardHasTerminal && (
-                <span className={`
-                  text-xs px-2 py-1 rounded flex items-center gap-1
-                  ${isTerminalRunning ? 'bg-green-900 text-green-300' : 'bg-gray-700 text-gray-300'}
-                `}>
-                  <span className={`w-1.5 h-1.5 rounded-full ${isTerminalRunning ? 'bg-green-400 animate-pulse' : 'bg-gray-400'}`} />
-                  {isTerminalRunning ? 'Session Running' : 'Session Ended'}
-                </span>
-              )}
             </div>
           </div>
 
@@ -770,11 +685,11 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
           </button>
         </div>
 
-        {/* Session Start Notification */}
+        {/* Start Session failure (on success the view closes instead) */}
         {sessionNotification && (
-          <div className="mx-6 mt-4 p-3 bg-green-900/50 border border-green-600 rounded-lg flex items-center gap-2">
-            <span className="text-green-400">✓</span>
-            <span className="text-green-200 text-sm">{sessionNotification}</span>
+          <div className="mx-6 mt-4 p-3 bg-red-900/50 border border-red-600 rounded-lg flex items-center gap-2">
+            <span className="text-red-400">!</span>
+            <span className="text-red-200 text-sm">{sessionNotification}</span>
           </div>
         )}
 
@@ -1297,19 +1212,6 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   ) : (
                     <>
                       <button
-                        onClick={handleGeneratePrompt}
-                        disabled={isGenerating}
-                        className={`
-                          text-xs px-3 py-1 rounded font-medium transition-colors
-                          ${isGenerating
-                            ? 'bg-dark-border text-dark-text-secondary cursor-not-allowed'
-                            : 'bg-purple-700 hover:bg-purple-600 text-white'}
-                        `}
-                        title="Regenerate prompt using AI"
-                      >
-                        {isGenerating ? 'Generating...' : 'Regenerate'}
-                      </button>
-                      <button
                         onClick={handleEditPromptGuide}
                         className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
                         title="Edit prompt"
@@ -1336,11 +1238,6 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               {promptGuideSaveError && (
                 <div className="mb-2 text-xs text-red-400">{promptGuideSaveError}</div>
               )}
-              {generateError && !isEditingPromptGuide && (
-                <div className="mb-2 bg-red-900/20 border border-red-700 rounded-lg p-2">
-                  <p className="text-xs text-red-300">{generateError}</p>
-                </div>
-              )}
               {isEditingPromptGuide ? (
                 <textarea
                   value={editedPromptGuide}
@@ -1352,37 +1249,6 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               ) : (
                 <div className="bg-dark-bg border border-dark-border rounded-lg p-3 max-h-64 overflow-y-auto scrollbar-dark">
                   <pre className="text-sm text-dark-text whitespace-pre-wrap font-mono">{card.prompt_guide}</pre>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Generate Prompt Button - shown when no prompt exists for non-manual, non-TBC cards */}
-          {!hasPromptGuide && !isEditingPromptGuide && !isManual && !isTBC && (
-            <div className="space-y-3">
-              <button
-                onClick={handleGeneratePrompt}
-                disabled={isGenerating}
-                className={`
-                  w-full px-4 py-3 rounded-lg font-medium transition-colors flex items-center justify-center gap-2
-                  ${isGenerating
-                    ? 'bg-dark-border text-dark-text-secondary cursor-not-allowed'
-                    : 'bg-blue-600 hover:bg-blue-500 text-white'}
-                `}
-              >
-                {isGenerating ? (
-                  <>
-                    <span className="animate-spin">...</span> Generating...
-                  </>
-                ) : (
-                  <>
-                    <span>*</span> Generate Prompt
-                  </>
-                )}
-              </button>
-              {generateError && (
-                <div className="bg-red-900/20 border border-red-700 rounded-lg p-3">
-                  <p className="text-sm text-red-300">{generateError}</p>
                 </div>
               )}
             </div>
@@ -1621,52 +1487,6 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             </div>
           )}
 
-          {/* Removed old Generated Prompt section - prompt generation now saves directly to prompt_guide */}
-
-          {/* Active Terminal Session Info */}
-          {cardHasTerminal && (
-            <div className={`
-              rounded-lg p-4
-              ${isTerminalRunning ? 'bg-green-900/20 border border-green-700' : 'bg-blue-900/20 border border-blue-700'}
-            `}>
-              <h3 className={`text-sm font-semibold mb-2 flex items-center gap-2 ${isTerminalRunning ? 'text-green-300' : 'text-blue-300'}`}>
-                <span className={`w-2 h-2 rounded-full ${isTerminalRunning ? 'bg-green-500 animate-pulse' : 'bg-gray-500'}`} />
-                {isTerminalRunning ? 'Claude Code Session Running' : 'Session Ended'}
-                {!isTerminalRunning && terminalExitCode !== null && (
-                  <span className={terminalExitCode === 0 ? 'text-green-400' : 'text-yellow-400'}>
-                    (Exit code: {terminalExitCode})
-                  </span>
-                )}
-              </h3>
-              <p className="text-sm text-dark-text mb-4">
-                {isTerminalRunning
-                  ? 'A Claude Code session is running for this card. Click below to view the terminal.'
-                  : 'The session has completed. Review the output and mark the task as done if successful.'}
-              </p>
-
-              <button
-                onClick={handleViewTerminal}
-                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <span>&gt;_</span> View Terminal
-              </button>
-
-              {/* Progress Notes (only when session ended) */}
-              {!isTerminalRunning && (
-                <div className="mt-4 space-y-2">
-                  <label className="text-xs text-dark-text-secondary">
-                    Progress Notes (optional)
-                  </label>
-                  <textarea
-                    value={progressNotes}
-                    onChange={(e) => setProgressNotes(e.target.value)}
-                    placeholder="What was accomplished? Any issues or follow-up needed?"
-                    className="w-full h-24 p-3 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text resize-none focus:outline-none focus:border-blue-500 scrollbar-dark"
-                  />
-                </div>
-              )}
-            </div>
-          )}
         </div>
 
         {/* Delete Confirmation */}
@@ -1718,92 +1538,48 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         {/* Footer Actions */}
         <div className="flex-shrink-0 p-6 border-t border-dark-border bg-dark-surface rounded-b-xl">
           <div className="flex flex-wrap gap-3">
-            {/* When terminal is running - show View Terminal and minimal actions */}
-            {cardHasTerminal && isTerminalRunning && (
-              <>
-                <button
-                  onClick={handleViewTerminal}
-                  className="flex-1 min-w-[140px] px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                >
-                  <span>&gt;_</span> View Terminal
-                </button>
-                <p className="text-sm text-dark-text-secondary italic flex items-center py-2">
-                  Session in progress...
-                </p>
-              </>
+            {/* Copy to Clipboard (only if prompt_guide exists) - at any status,
+                so a card already In Progress can re-grab its prompt */}
+            {hasPromptGuide && !isManual && !isTBC && (
+              <button
+                onClick={handleCopyToClipboard}
+                className={`
+                  flex-1 min-w-[140px] px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2
+                  ${copySuccess
+                    ? 'bg-green-700 text-white'
+                    : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text'}
+                `}
+              >
+                {copySuccess ? (
+                  <>
+                    <span>OK</span> Copied!
+                  </>
+                ) : (
+                  <>
+                    <span>[=]</span> Copy to Clipboard
+                  </>
+                )}
+              </button>
             )}
 
-            {/* When terminal has exited - show prominent Mark as Done */}
-            {cardHasTerminal && !isTerminalRunning && card.status !== 'Done' && (
-              <>
-                <button
-                  onClick={handleViewTerminal}
-                  className="flex-1 min-w-[120px] px-4 py-2 bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                >
-                  <span>&gt;_</span> View Terminal
-                </button>
-                <button
-                  onClick={handleStartSession}
-                  disabled={!hasPromptGuide}
-                  className="flex-1 min-w-[120px] px-4 py-2 bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text rounded-lg font-medium transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <span>+</span> New Session
-                </button>
-                <button
-                  onClick={handleMarkDone}
-                  className="flex-[2] min-w-[160px] px-4 py-3 bg-green-600 hover:bg-green-500 text-white rounded-lg font-bold transition-colors flex items-center justify-center gap-2 text-lg"
-                >
-                  <span>OK</span> Mark as Done
-                </button>
-              </>
+            {/* Start Session (only on a Not Started card with a prompt_guide) */}
+            {hasPromptGuide && !isManual && !isTBC && card.status === 'Not Started' && (
+              <button
+                onClick={handleStartSession}
+                className="flex-1 min-w-[140px] px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <span>&gt;</span> Start Session
+              </button>
             )}
 
-            {/* When no terminal - show normal actions */}
-            {!cardHasTerminal && (
-              <>
-                {/* Copy to Clipboard (only if prompt_guide exists) */}
-                {hasPromptGuide && !isManual && !isTBC && (
-                  <button
-                    onClick={handleCopyToClipboard}
-                    className={`
-                      flex-1 min-w-[140px] px-4 py-2 rounded-lg font-medium transition-colors flex items-center justify-center gap-2
-                      ${copySuccess
-                        ? 'bg-green-700 text-white'
-                        : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text'}
-                    `}
-                  >
-                    {copySuccess ? (
-                      <>
-                        <span>OK</span> Copied!
-                      </>
-                    ) : (
-                      <>
-                        <span>[=]</span> Copy to Clipboard
-                      </>
-                    )}
-                  </button>
-                )}
-
-                {/* Start Session (only if prompt_guide exists) */}
-                {hasPromptGuide && !isManual && !isTBC && (
-                  <button
-                    onClick={handleStartSession}
-                    className="flex-1 min-w-[140px] px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span>&gt;</span> Start Session
-                  </button>
-                )}
-
-                {/* Mark as Done */}
-                {card.status !== 'Done' && (
-                  <button
-                    onClick={handleMarkDone}
-                    className="flex-1 min-w-[140px] px-4 py-2 bg-green-700 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-                  >
-                    <span>OK</span> Mark as Done
-                  </button>
-                )}
-              </>
+            {/* Mark as Done */}
+            {card.status !== 'Done' && (
+              <button
+                onClick={handleMarkDone}
+                className="flex-1 min-w-[140px] px-4 py-2 bg-green-700 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <span>OK</span> Mark as Done
+              </button>
             )}
           </div>
         </div>

@@ -3,7 +3,7 @@
 
 A desktop Kanban project management app for managing projects and tasks. Can be used for any project type - software development, content creation, personal projects, etc. Includes optional integration with Claude Code for AI-assisted development workflows.
 
-*Differentiator:* It pulls the task cards and their pre written prompts from the project JSON, integrates with Claude Code and the Anthropic API to generate further contextual prompts and track progress across development projects.
+*Differentiator:* It pulls the task cards and their pre-written prompts from the project JSON, hands each prompt to a Claude Code session (Start Session copies it and moves the card to In Progress), and tracks progress across development projects. Cards are authored outside the app; there is no in-app AI generation.
 
 ## Tech Stack
 
@@ -12,7 +12,6 @@ A desktop Kanban project management app for managing projects and tasks. Can be 
 •	Styling: Tailwind CSS
 •	Database: SQLite via better-sqlite3
 •	Drag & Drop: @dnd-kit/core
-•	Future: xterm.js for embedded terminal
 
 ## Project Location
 ```
@@ -56,13 +55,6 @@ When a project has a `directory_path` set, the app uses these conventions to fin
 4. **Resource Tracking:** Each card tagged with what it consumes (subscription tokens vs API credits vs manual).
 
 5. **Progress Tracking:** progress.json updated after each Claude Code session to track what's actually built.
-
-## Environment Variables
-
-Required in `.env`:
-```
-ANTHROPIC_API_KEY=sk-ant-api03-...
-```
 
 ## Running the App
 
@@ -112,6 +104,6 @@ https://github.com/Kezman554/Kanban_App.git
 ## Progress Log
 
 After completing any significant task (feature, bug fix, investigation with findings, data repair), append a session entry to `docs/progress.txt` without being asked. Follow the existing format (`Session Progress - YYYY-MM-DD` header, numbered sections, "Known gaps / followups"). Date entries by the day the work happened. Small tweaks don't need an entry.
-## Terminal error
-Embedded terminal disabled - node-pty won't compile with VS Build Tools 2026 (folder naming issue). Revisit when node-gyp updates.
+## Removed features
+In-app AI prompt generation (and its API-key settings) and the embedded terminal (node-pty / xterm) were removed on 2026-10-12. The app reads no `.env`.
 

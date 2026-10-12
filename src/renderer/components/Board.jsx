@@ -677,20 +677,24 @@ const Board = ({ projectId }) => {
     }
   };
 
-  // Handle status change from CardDetail
+  // Handle status change from CardDetail. Resolves true once the status is
+  // stored, false if it was not - Start Session closes the view only on true.
+  // No setError on failure: that swaps the whole board (open card included)
+  // for an error screen, and CardDetail reports the failure itself.
   const handleStatusChange = async (cardId, newStatus) => {
     try {
       await window.electron.updateCardStatus(cardId, newStatus);
-      await loadProject(true);
-      // Update selected card if it was the one changed
-      if (selectedCard?.id === cardId) {
-        const updatedCard = findCardById(cardId);
-        if (updatedCard) setSelectedCard({ ...updatedCard, status: newStatus });
-      }
     } catch (err) {
       console.error('Failed to update card status:', err);
-      setError('Failed to update card status');
+      return false;
     }
+    await loadProject(true);
+    // Update selected card if it was the one changed
+    if (selectedCard?.id === cardId) {
+      const updatedCard = findCardById(cardId);
+      if (updatedCard) setSelectedCard({ ...updatedCard, status: newStatus });
+    }
+    return true;
   };
 
   // Handle card data updates (notes, prompt_guide, etc.) from CardDetail

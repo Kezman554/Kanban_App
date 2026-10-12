@@ -67,8 +67,8 @@ function CardTestPage() {
     {
       id: 5,
       session_letter: 'E',
-      title: 'Session E: Decide on Terminal Integration Approach',
-      description: 'Need to decide between xterm.js, node-pty, or another terminal emulation library.',
+      title: 'Session E: Decide on Hosting Approach',
+      description: 'Need to decide between a static host, a container on the Pi, or a managed platform.',
       success_criteria: 'Decision made and documented with rationale',
       resource: 'tbc',
       status: 'Not Started',
@@ -81,8 +81,8 @@ function CardTestPage() {
     {
       id: 6,
       session_letter: 'F',
-      title: 'Session F: Implement API Integration',
-      description: 'Integrate with Anthropic API for prompt generation and Claude Code launching.',
+      title: 'Session F: Summarise Session Logs',
+      description: 'Use the Anthropic API to summarise each session log into a short changelog entry.',
       success_criteria: 'API calls work correctly with proper error handling',
       resource: 'anthropic_api',
       status: 'Not Started',
@@ -92,7 +92,7 @@ function CardTestPage() {
       likely_needs_expansion: true,
       isBlocked: true,
       blockedReason: 'Waiting on cards: C, D',
-      prompt_guide: 'Set up Anthropic API client and implement prompt generation...',
+      prompt_guide: 'Set up an Anthropic API client and summarise each log file...',
       checkpoint: 'Test API calls with sample data'
     },
     {

@@ -33,12 +33,6 @@ contextBridge.exposeInMainWorld('electron', {
   exportProjectToJson: (projectId) => ipcRenderer.invoke('db:exportProjectToJson', projectId),
   exportToVault: () => ipcRenderer.invoke('db:exportToVault'),
 
-  // API operations
-  getAnthropicApiKey: () => ipcRenderer.invoke('api:getAnthropicKey'),
-  getMaskedApiKey: () => ipcRenderer.invoke('api:getMaskedKey'),
-  saveApiKey: (key) => ipcRenderer.invoke('api:saveKey', key),
-  testApiConnection: () => ipcRenderer.invoke('api:testConnection'),
-
   // Dialog operations
   openJsonFile: () => ipcRenderer.invoke('dialog:openJsonFile'),
   saveJsonFile: (defaultName) => ipcRenderer.invoke('dialog:saveJsonFile', defaultName),
@@ -60,33 +54,9 @@ contextBridge.exposeInMainWorld('electron', {
   getSetting: (key) => ipcRenderer.invoke('db:getSetting', key),
   setSetting: (key, value) => ipcRenderer.invoke('db:setSetting', key, value),
 
-  // File operations (for prompt handling)
-  writePromptToTemp: (prompt, cardId) => ipcRenderer.invoke('file:writePromptToTemp', prompt, cardId),
-  deleteTempFile: (filePath) => ipcRenderer.invoke('file:deleteTempFile', filePath),
-
   // Project file reading
   readProjectFiles: (directoryPath, prdPath) => ipcRenderer.invoke('files:readProjectFiles', directoryPath, prdPath),
 
   // Done cards
   getDoneCards: (projectId) => ipcRenderer.invoke('cards:getDoneCards', projectId),
-
-  // Terminal operations
-  terminal: {
-    create: (options) => ipcRenderer.invoke('terminal:create', options),
-    write: (terminalId, data) => ipcRenderer.invoke('terminal:write', terminalId, data),
-    resize: (terminalId, cols, rows) => ipcRenderer.invoke('terminal:resize', terminalId, cols, rows),
-    kill: (terminalId) => ipcRenderer.invoke('terminal:kill', terminalId),
-    getActive: () => ipcRenderer.invoke('terminal:getActive'),
-    isAvailable: () => ipcRenderer.invoke('terminal:isAvailable'),
-    onData: (callback) => {
-      const listener = (event, { terminalId, data }) => callback(terminalId, data)
-      ipcRenderer.on('terminal:data', listener)
-      return () => ipcRenderer.removeListener('terminal:data', listener)
-    },
-    onExit: (callback) => {
-      const listener = (event, { terminalId, exitCode, signal }) => callback(terminalId, exitCode, signal)
-      ipcRenderer.on('terminal:exit', listener)
-      return () => ipcRenderer.removeListener('terminal:exit', listener)
-    },
-  },
 })
