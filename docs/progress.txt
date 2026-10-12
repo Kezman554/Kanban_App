@@ -1393,3 +1393,36 @@ Known gaps / followups
 - A card in a custom status column is in none of exportForVault's four
   card lists, so it is missing from the export as a whole (and therefore
   from this index). The live board uses only the default columns.
+
+Session Progress - 2026-10-12 (Card footer: no Copy to Clipboard; Mark as Started)
+==================================================================================
+
+Goal: the footer's Copy to Clipboard duplicated two other controls, and a
+manual or TBC card could only be moved to In Progress by dragging it on the
+board - the card itself offered only Mark as Done.
+
+1. Footer "[=] Copy to Clipboard", handleCopyToClipboard and its
+   copySuccess state removed. The prompt section's Copy and Edit are
+   unchanged (Copy is the only control that copies unsaved edits).
+2. "Mark as Started" for manual (resource none) and TBC cards at Not
+   Started, in Start Session's position and styling: moves the card to In
+   Progress and closes the view; no clipboard write. A failed move keeps
+   the card open with "The card could not be moved to In Progress - move it
+   by hand" (no mention of a prompt).
+3. One handler (handleStartSession) serves both: the copy step and the
+   copy-gated move apply only to engineer cards, so Start Session's
+   behaviour and both its failure messages are unchanged.
+4. Unchanged by design: an engineer card with an empty prompt gets no start
+   button (only KitchenSync R5 on the live board); Mark as Done keeps its
+   gating; the Manual Task Guidance panel is untouched.
+
+Scratch board (local pi-server, fixture with each card in its own cell),
+22/22: footers across manual / TBC / engineer / API / empty-prompt / In
+Progress / Done cards - no footer Copy to Clipboard anywhere; manual Not
+Started shows exactly Mark as Started + Mark as Done; Mark as Started moves
+to In Progress, closes, leaves the clipboard untouched; then only Mark as
+Done; its failed move stays open with its own message; TBC works the same;
+Start Session's failed copy, failed move and success behave exactly as
+before. Both builds clean.
+
+Not yet pushed or deployed.
