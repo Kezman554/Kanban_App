@@ -41,7 +41,7 @@ COPY pi-server/package.json ./package.json
 RUN npm install --omit=dev --no-audit --no-fund
 
 # The wrapped data layer, copied unmodified from the repo.
-COPY src/database/schema.js src/database/operations.js ./src/database/
+COPY src/database/schema.js src/database/operations.js src/database/sessionLetters.js ./src/database/
 COPY src/main/vaultSummary.js ./src/main/
 COPY pi-server/server.js pi-server/vaultExport.js pi-server/vault-commit.sh ./pi-server/
 

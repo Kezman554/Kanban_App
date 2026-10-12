@@ -1,3 +1,7 @@
+// Shared with the data layer, so the notes index sorts letters exactly as the
+// board does (C before C2, Z before AA)
+const { compareSessionLetters } = require('../database/sessionLetters')
+
 // Short label used for each project in the "Ready to Pick Up" section.
 // Reads project.short_name (set per-project in the UI). Falls back to the
 // first word of project.name when short_name is unset/blank.
@@ -69,6 +73,8 @@ function buildSummaryMarkdown(data) {
   lines.push('')
   lines.push(`*Synced: ${syncedHuman} — ${projects.length} projects, ${doneCards} of ${totalCards} cards done (${overallPct}%)*`)
   lines.push('')
+  lines.push(`*Notes on: lists which cards carry a note; the note text is in kanban-export.json (each card's \`notes\` field).*`)
+  lines.push('')
   lines.push('---')
   lines.push('')
 
@@ -115,6 +121,24 @@ function buildSummaryMarkdown(data) {
         parts.push(`${internalOnlyCount} card${internalOnlyCount > 1 ? 's' : ''} blocked internally`)
       }
       lines.push(`- **Blocked:** ${parts.join('; ')}`)
+    }
+
+    // Index of every card carrying a note, whatever its status - letters
+    // only, the text stays in kanban-export.json. In-progress cards are
+    // deliberately included even when their note already shows as a Resume
+    // hint: this is the complete index, the hint a convenience. Omitted when
+    // the project has no notes (nothing to point at).
+    const noted = [
+      ...inProgCards,
+      ...(p.unblocked_cards || []),
+      ...blockedCards,
+      ...(p.done_cards || []),
+    ]
+      .filter(c => normaliseNotes(c.notes))
+      .map(c => c.session_letter)
+    const notedLetters = [...new Set(noted)].sort(compareSessionLetters)
+    if (notedLetters.length > 0) {
+      lines.push(`- **Notes on:** ${notedLetters.join(', ')}`)
     }
     lines.push('')
   }

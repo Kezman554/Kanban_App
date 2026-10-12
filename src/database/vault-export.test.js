@@ -458,6 +458,49 @@ function runTests() {
     );
 
     // ------------------------------------------------------------------
+    // Summary "Notes on:" index - letters of every card with a note
+    // ------------------------------------------------------------------
+    const card = (letter, notes, extra = {}) => ({ session_letter: letter, title: `Session ${letter}`, complexity: 'low', notes, ...extra });
+    const notesData = {
+      exported_at: '2026-10-12T12:00:00Z',
+      projects: [
+        {
+          name: 'Noted', stats: { total_cards: 9, completed_cards: 4, completion_percentage: 44 },
+          in_progress_cards: [card('Q', 'resume from step 3')],
+          unblocked_cards: [card('AA', 'aa note'), card('Z', '   ')],
+          blocked_cards: [card('C2', 'c2 note', { external_dependencies: [] })],
+          done_cards: [card('C', 'done note'), card('B', ''), card('A', 'line one\n\nline two'), card('C10', 'x'), card('C3', 'y')],
+        },
+        {
+          name: 'Quiet', stats: { total_cards: 2, completed_cards: 1, completion_percentage: 50 },
+          in_progress_cards: [card('A', '')],
+          unblocked_cards: [],
+          blocked_cards: [],
+          done_cards: [card('B', null)],
+        },
+      ],
+    };
+    const notesSummary = buildSummaryMarkdown(notesData);
+    const notedSection = notesSummary.split('## Noted')[1].split('## Quiet')[0];
+    const quietSection = notesSummary.split('## Quiet')[1].split('## Ready to Pick Up')[0];
+    check(
+      'Notes index lists every noted card, any status, in session-letter order',
+      notedSection.includes('- **Notes on:** A, C, C2, C3, C10, Q, AA'),
+      notedSection.split('\n').find(l => l.includes('Notes on')) || '(no line)'
+    );
+    check('Blank and whitespace-only notes are not indexed', !/Notes on:.*\b(B|Z)\b/.test(notedSection));
+    check(
+      'An in-progress card with a note shows in both its Resume hint and the index',
+      notedSection.includes('*Resume:* resume from step 3') && /Notes on:.*\bQ\b/.test(notedSection)
+    );
+    check('The index sits after the Blocked line',
+      notedSection.indexOf('**Blocked:**') > -1 && notedSection.indexOf('**Notes on:**') > notedSection.indexOf('**Blocked:**'));
+    check('A project with no notes gets no index line', !quietSection.includes('Notes on'));
+    check('No note text leaks into the summary', !notesSummary.includes('aa note') && !notesSummary.includes('done note') && !notesSummary.includes('line two'));
+    check('Header explains where the note text lives',
+      notesSummary.split('---\n\n## ')[0].includes('note text is in kanban-export.json'));
+
+    // ------------------------------------------------------------------
     // deletePhase: guarded to empty phases
     // ------------------------------------------------------------------
     const project = db.getProject(mainId);

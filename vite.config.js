@@ -36,14 +36,6 @@ export default defineConfig({
           },
         },
       },
-      {
-        entry: resolve(__dirname, 'src/main/vaultSummary.js'),
-        vite: {
-          build: {
-            outDir: resolve(__dirname, 'dist-electron'),
-          },
-        },
-      },
     ]),
     renderer(),
   ],

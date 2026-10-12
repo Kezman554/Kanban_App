@@ -1,4 +1,5 @@
 const { initDb } = require('./schema');
+const sessionLetters = require('./sessionLetters');
 
 // Placement fields a batch (or a single-destination file's top level) may use
 // to say where its cards land.
@@ -903,13 +904,7 @@ class KanbanDatabase {
    * @private
    */
   _compareSessionLetters(a, b) {
-    const aBase = this._getBaseLetter(a);
-    const bBase = this._getBaseLetter(b);
-    if (aBase !== bBase) {
-      if (aBase.length !== bBase.length) return aBase.length - bBase.length;
-      return aBase.localeCompare(bBase);
-    }
-    return this._getSuffix(a) - this._getSuffix(b);
+    return sessionLetters.compareSessionLetters(a, b);
   }
 
   /**
@@ -917,8 +912,7 @@ class KanbanDatabase {
    * @private
    */
   _getBaseLetter(letter) {
-    // Remove trailing digits to get base letter
-    return letter.replace(/\d+$/, '');
+    return sessionLetters.getBaseLetter(letter);
   }
 
   /**
@@ -926,8 +920,7 @@ class KanbanDatabase {
    * @private
    */
   _getSuffix(letter) {
-    const match = letter.match(/(\d+)$/);
-    return match ? parseInt(match[1], 10) : 1;
+    return sessionLetters.getSuffix(letter);
   }
 
   /**

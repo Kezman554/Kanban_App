@@ -5,14 +5,16 @@ const fs = require('fs')
 // File reader for project files
 const { readProjectFiles } = require('./fileReader')
 
-// Vault summary markdown builder
-const { buildSummaryMarkdown } = require('./vaultSummary')
-
 // Resolve the correct path to database operations
 // In dev mode with vite-plugin-electron, __dirname is dist-electron
 // We need to go up one level to project root and into src/database
 const projectRoot = path.join(__dirname, '..')
 const KanbanDatabase = require(path.join(projectRoot, 'src/database/operations'))
+
+// Vault summary markdown builder - loaded from source like the data layer,
+// because it requires src/database/sessionLetters by a path that only
+// resolves from src/main (the Pi and the tests load it from there too)
+const { buildSummaryMarkdown } = require(path.join(projectRoot, 'src/main/vaultSummary'))
 
 // Initialize database
 let db = null
