@@ -1432,3 +1432,54 @@ read, closed - nothing clicked): DocuSync Y (manual, Not Started) shows
 Mark as Started + Mark as Done; Alfred Home Hub AK (claude_sub with a
 prompt, Not Started) shows Start Session + Mark as Done; no console errors;
 card counts unchanged.
+
+Session Progress - 2026-10-15 (Mark as Done closes; one project Edit form)
+==========================================================================
+
+Goal: four small board changes and one data correction.
+
+1. Mark as Done finishes the job. Board.handleMarkDone now resolves true
+   once the status is stored and the board reloaded; CardDetail awaits it
+   and closes, so the card is already in Done when the view goes. A failed
+   save keeps the card open with "The card could not be marked as done -
+   try again" (it used to setError, which swaps the whole board for an
+   error screen). The unused progressNotes stub went with it.
+2. One Edit button in the project header opens EditProjectDialog: name
+   (required - Save disabled while blank), short name, description, file
+   path. Save writes all four in one updateProject call; Cancel, Escape
+   and x discard, and reopening starts from the stored values. Blank
+   short name / description / path store NULL. The short-name pencil
+   (ShortNameField.jsx, deleted) and the path pencil are gone; the Short
+   pill is read-only; copy-path and open-in-explorer are unchanged; the
+   "Set project folder" link (no path set) opens the same form. No API
+   change: PATCH /projects/:id -> updateProject already allowed name and
+   description. Desktop gets a Browse... button (native picker); the
+   browser board hides it via a new window.electron.isBrowserBoard flag
+   and takes a typed path.
+3. "Export for Claude" relabelled "Export project JSON". Label only.
+4. DailySync (project 19, "Personal Morning Alarm") Phase 11 short names:
+   phase 151 "UI makeover" -> "11", subphase 259 "Makeover" -> "11.1".
+   There is no UI or API route for phase/subphase short names, so this is
+   a one-off command for Nick to run on the Pi (inside kanban-api, one
+   transaction, guarded on id AND old value - refuses and changes nothing
+   unless exactly one row of each matches). Dry-run against a backup copy
+   inside the container: set both values, a second run refused (0 + 0),
+   copy deleted, live rows confirmed untouched. Not run on the live DB by
+   me. The laptop DB was not touched.
+
+Scratch board (local pi-server + dist-web, fixture DB), 26/26: label;
+no pencils, pill and copy-path present; form opens prefilled with exactly
+the four fields; no Browse on the browser board; Cancel and Escape discard
+(DB and header unchanged); blank name disables Save; Save writes all four
+and the header shows them; clearing optional fields stores NULL; "Set
+project folder" opens the form; Mark as Done closes and the card shows in
+Done at once (Not Started and In Progress cards); a failed Mark as Done
+stays open with its message and no error screen; no console errors. Both
+builds clean. The desktop Browse... button was not exercised.
+
+Known gaps / followups
+----------------------
+- Roadmap view still has its own path pencil (RoadmapView.jsx); the brief
+  covered the project (board) header only.
+- Phase and subphase names/short names still have no editor; corrections
+  like item 4 need a direct DB write.
