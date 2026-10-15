@@ -516,10 +516,22 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
     onClose();
   };
 
-  const handleMarkDone = () => {
-    if (onMarkDone) {
-      onMarkDone(card.id);
+  // Mark as Done finishes the job: onMarkDone resolves true once the card is
+  // stored as Done and the board reloaded, so it is already in the Done
+  // column when the view closes. A failure keeps the card open and says so.
+  const handleMarkDone = async () => {
+    let done = false;
+    try {
+      done = onMarkDone ? await onMarkDone(card.id) : false;
+    } catch (error) {
+      console.error('Failed to mark card as done:', error);
     }
+    if (!done) {
+      setSessionNotification('The card could not be marked as done - try again');
+      setTimeout(() => setSessionNotification(null), 5000);
+      return;
+    }
+    onClose();
   };
 
   const handleExpandPlan = () => {
@@ -679,7 +691,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
           </button>
         </div>
 
-        {/* Start Session failure (on success the view closes instead) */}
+        {/* Start Session / Mark as Done failure (on success the view closes instead) */}
         {sessionNotification && (
           <div className="mx-6 mt-4 p-3 bg-red-900/50 border border-red-600 rounded-lg flex items-center gap-2">
             <span className="text-red-400">!</span>

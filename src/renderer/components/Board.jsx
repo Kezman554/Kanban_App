@@ -15,7 +15,7 @@ import CompletedStack from './CompletedStack';
 import CardDetail from './CardDetail';
 import AddCardDialog from './AddCardDialog';
 import AppendCardsDialog from './AppendCardsDialog';
-import ShortNameField from './ShortNameField';
+import EditProjectDialog from './EditProjectDialog';
 import { buildCardStatusByLetter, isCardBlocked as isCardBlockedShared } from '../utils/cardBlocking';
 
 // Droppable Cell Component
@@ -62,6 +62,7 @@ const Board = ({ projectId }) => {
   const [vaultSyncStatus, setVaultSyncStatus] = useState({ phase: 'idle', message: '' });
   const [isAppendCardsDialogOpen, setIsAppendCardsDialogOpen] = useState(false);
   const [pathCopied, setPathCopied] = useState(false);
+  const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -656,25 +657,18 @@ const Board = ({ projectId }) => {
     }, 300);
   };
 
-  // Handle marking card as done
-  const handleMarkDone = async (cardId, progressNotes) => {
+  // Handle marking card as done. Resolves true once the status is stored
+  // and the board reloaded (so the card is already in Done when CardDetail
+  // closes), false if it was not - CardDetail then stays open and reports it.
+  const handleMarkDone = async (cardId) => {
     try {
       await window.electron.updateCardStatus(cardId, 'Done');
-      // TODO: Store progress notes if provided
-      if (progressNotes) {
-        console.log('Progress notes for card', cardId, ':', progressNotes);
-        // Could save to card.notes field or a separate progress log
-      }
-      await loadProject(true);
-      // Update selected card if it was the one marked done
-      if (selectedCard?.id === cardId) {
-        const updatedCard = findCardById(cardId);
-        if (updatedCard) setSelectedCard({ ...updatedCard, status: 'Done' });
-      }
     } catch (err) {
       console.error('Failed to mark card as done:', err);
-      setError('Failed to update card status');
+      return false;
     }
+    await loadProject(true);
+    return true;
   };
 
   // Handle status change from CardDetail. Resolves true once the status is
@@ -845,19 +839,31 @@ const Board = ({ projectId }) => {
             <div>
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-2xl font-bold text-dark-text">{project.name}</h1>
-                <ShortNameField
-                  value={project.short_name}
-                  onSave={async (next) => {
-                    await window.electron.updateProject(project.id, { short_name: next });
-                    await loadProject(true);
-                  }}
-                />
+                <span
+                  title="Short label used in summary exports. Defaults to the first word of the project name if blank."
+                  className="flex items-center gap-1.5 px-2 py-0.5 text-xs rounded border border-dark-border bg-dark-surface text-dark-text-secondary"
+                >
+                  <span className="font-medium">Short:</span>
+                  <span className={project.short_name ? 'text-dark-text' : 'italic'}>
+                    {project.short_name || 'not set'}
+                  </span>
+                </span>
               </div>
               {project.description && (
                 <p className="text-sm text-dark-text-secondary mt-1">{project.description}</p>
               )}
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
+              <button
+                onClick={() => setIsEditProjectOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-blue-600/20 text-blue-300 hover:bg-blue-600/30 border border-blue-500/30 transition-colors"
+                title="Edit name, short name, description and file path"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                </svg>
+                Edit
+              </button>
               <button
                 onClick={() => setIsAppendCardsDialogOpen(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-green-600/20 text-green-300 hover:bg-green-600/30 border border-green-500/30 transition-colors"
@@ -876,7 +882,7 @@ const Board = ({ projectId }) => {
                 <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
                 </svg>
-                {exportCopied ? 'Copied!' : 'Export for Claude'}
+                {exportCopied ? 'Copied!' : 'Export project JSON'}
               </button>
               <button
                 onClick={handleSyncToVault}
@@ -953,31 +959,10 @@ const Board = ({ projectId }) => {
                     </svg>
                   )}
                 </button>
-                <button
-                  onClick={async () => {
-                    const newPath = await window.electron.selectDirectory();
-                    if (newPath) {
-                      await window.electron.updateProjectPath(project.id, newPath);
-                      await loadProject(true);
-                    }
-                  }}
-                  className="text-dark-text-secondary hover:text-dark-text transition-colors"
-                  title="Change project folder"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                  </svg>
-                </button>
               </>
             ) : (
               <button
-                onClick={async () => {
-                  const newPath = await window.electron.selectDirectory();
-                  if (newPath) {
-                    await window.electron.updateProjectPath(project.id, newPath);
-                    await loadProject(true);
-                  }
-                }}
+                onClick={() => setIsEditProjectOpen(true)}
                 className="flex items-center gap-1.5 text-blue-400 hover:text-blue-300 transition-colors"
               >
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1337,6 +1322,14 @@ const Board = ({ projectId }) => {
         onCardUpdated={handleCardUpdated}
         onCardDeleted={handleCardDeleted}
         project={project}
+      />
+
+      {/* Edit Project Dialog */}
+      <EditProjectDialog
+        isOpen={isEditProjectOpen}
+        project={project}
+        onClose={() => setIsEditProjectOpen(false)}
+        onSaved={() => loadProject(true)}
       />
 
       {/* Add Card Dialog */}

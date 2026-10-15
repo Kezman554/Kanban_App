@@ -100,6 +100,9 @@ if (typeof window !== 'undefined' && !window.electron) {
   }
 
   window.electron = {
+    // Lets the renderer hide desktop-only controls (e.g. the native folder picker)
+    isBrowserBoard: true,
+
     // --- projects (fetch) ---
     getAllProjects: () => req('GET', '/projects'),
     getProject: (id) => getOrNull(`/projects/${enc(id)}`),
