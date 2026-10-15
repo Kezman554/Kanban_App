@@ -1477,6 +1477,13 @@ Done at once (Not Started and In Progress cards); a failed Mark as Done
 stays open with its message and no error screen; no console errors. Both
 builds clean. The desktop Browse... button was not exercised.
 
+Deployed to the Pi (13d7242): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). Live bundle (read-only fetch, nothing clicked)
+carries "Export project JSON", "Edit Project", the Mark as Done failure
+message and isBrowserBoard, and no "Export for Claude"; the one remaining
+"Change project folder" is RoadmapView's. Item 4's command is with Nick
+to run; phase 151 / subphase 259 still read "UI makeover" / "Makeover".
+
 Known gaps / followups
 ----------------------
 - Roadmap view still has its own path pencil (RoadmapView.jsx); the brief
