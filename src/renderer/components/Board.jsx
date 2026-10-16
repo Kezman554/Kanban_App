@@ -67,12 +67,12 @@ const COLUMN_TONES = {
 // offset shadow) with the card count in a cream badge
 const ColumnLabel = ({ name, count }) => (
   <h3
-    className={`inline-flex items-center gap-2 pl-4 pr-1.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-cream ${
+    className={`inline-flex items-center gap-[10px] pl-[21px] pr-2 py-[5px] rounded-full text-[15.6px] leading-[21px] font-bold uppercase tracking-wider text-cream ${
       COLUMN_TONES[name] || 'bg-pal-lilac-deep'
     }`}
   >
     {name}
-    <span className="min-w-[1.5rem] px-1.5 py-0.5 rounded-full bg-cream text-card-ink text-center tracking-normal">
+    <span className="min-w-[31px] px-2 py-[3px] rounded-full bg-cream text-card-ink text-center tracking-normal">
       {count}
     </span>
   </h3>
