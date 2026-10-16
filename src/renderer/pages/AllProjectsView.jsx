@@ -8,17 +8,19 @@ import {
 } from '../utils/cardBlocking';
 
 // Workable Cards resource picker. Claude covers both AI resources (the
-// subscription and the API); Manual is human-only; To Be Confirmed shows
-// under All only.
+// subscription and the API); Manual is human-only; To Be Confirmed is the
+// cards whose approach isn't decided yet.
 const RESOURCE_FILTERS = [
   { id: 'all', label: 'All' },
   { id: 'claude', label: 'Claude' },
   { id: 'manual', label: 'Manual' },
+  { id: 'tbc', label: 'To Be Confirmed' },
 ];
 const matchesResource = (card, filter) =>
   filter === 'all' ||
   (filter === 'claude' && (card.resource === 'claude_sub' || card.resource === 'anthropic_api')) ||
-  (filter === 'manual' && card.resource === 'none');
+  (filter === 'manual' && card.resource === 'none') ||
+  (filter === 'tbc' && card.resource === 'tbc');
 
 function AllProjectsView() {
   const [projects, setProjects] = useState([]);
@@ -366,7 +368,7 @@ function AllProjectsView() {
                 <p className="text-muted">
                   {resourceFilter === 'all'
                     ? 'No workable cards found'
-                    : `No workable ${resourceFilter === 'manual' ? 'manual' : 'Claude'} cards found (try All)`}
+                    : `No workable ${RESOURCE_FILTERS.find(r => r.id === resourceFilter).label} cards found (try All)`}
                 </p>
               </div>
             ) : (

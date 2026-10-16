@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { copyText } from '../utils/clipboard.js';
-import { Check, Trash2, LinkIcon, TriangleAlert, Pencil, Play, Copy, X } from './icons';
+import { Check, Trash2, LinkIcon, TriangleAlert, Pencil, Play, Copy, X, Lock } from './icons';
 import { paletteFor } from '../utils/palette';
-import { buildCardStatusByLetter, isCardBlocked } from '../utils/cardBlocking';
+import { buildCardStatusByLetter, isCardBlocked, getBlockedReason } from '../utils/cardBlocking';
 
 // A chip in the header band: thin outline on translucent cream, or
 // outline-only on the blocked fill so it follows the theme
@@ -13,6 +13,10 @@ const HeaderChip = ({ children, onBlocked }) => (
     {children}
   </span>
 );
+
+// Start Session / Mark as Done on a blocked card: disabled, flat on the page
+// yellow, no shadow
+const blockedButton = 'bg-page text-muted border-line cursor-not-allowed';
 
 // Icon button on the header band
 const bandButton = 'flex-shrink-0 w-9 h-9 rounded-full border-[1.5px] border-card-line bg-cream/60 text-card-ink hover:bg-cream flex items-center justify-center transition-colors';
@@ -129,7 +133,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
   // Header band colour: the card's palette colour, or the blocked fill -
   // a blocked card is never coloured. Worked out here, never stored.
-  const isBlockedCard = isCardBlocked(card, buildCardStatusByLetter(project));
+  const statusByLetter = buildCardStatusByLetter(project);
+  const isBlockedCard = isCardBlocked(card, statusByLetter);
+  const blockedReason = isBlockedCard ? getBlockedReason(card, statusByLetter) : null;
   const colour = paletteFor(card.id);
   const bandInk = isBlockedCard ? 'text-ink' : 'text-card-ink';
   const hasPromptGuide = card.prompt_guide && card.prompt_guide.trim() !== '';
@@ -1563,6 +1569,14 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
         {/* Footer Actions */}
         <div className="flex-shrink-0 p-6 border-t border-divider bg-sidebar">
+          {/* A blocked card can't be started or completed: the buttons stay in
+              place but are disabled, flat on the page yellow, and say why */}
+          {isBlockedCard && (
+            <p className="text-sm text-muted mb-3 flex items-center gap-1.5">
+              <Lock className="w-4 h-4 flex-shrink-0" />
+              Blocked{blockedReason ? ` - ${blockedReason}` : ''}. Finish its dependencies to start or complete it.
+            </p>
+          )}
           <div className="flex flex-wrap gap-3">
             {/* One-click start, only on a Not Started card: "Start Session" for
                 an engineer card with a prompt (an engineer card with an empty
@@ -1571,7 +1585,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             {card.status === 'Not Started' && (isManual || isTBC || hasPromptGuide) && (
               <button
                 onClick={handleStartSession}
-                className="flex-1 min-w-[140px] px-4 py-2.5 bg-primary hover:brightness-110 text-on-primary border-[1.5px] border-card-line shadow-card rounded-xl font-semibold transition flex items-center justify-center gap-2"
+                disabled={isBlockedCard}
+                className={`flex-1 min-w-[140px] px-4 py-2.5 border-[1.5px] rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
+                  isBlockedCard ? blockedButton : 'bg-primary hover:brightness-110 text-on-primary border-card-line shadow-card'
+                }`}
               >
                 <Play className="w-4 h-4" /> {isManual || isTBC ? 'Mark as Started' : 'Start Session'}
               </button>
@@ -1581,7 +1598,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             {card.status !== 'Done' && (
               <button
                 onClick={handleMarkDone}
-                className="flex-1 min-w-[140px] px-4 py-2.5 bg-progress hover:brightness-95 text-card-ink border-[1.5px] border-card-line shadow-card rounded-xl font-semibold transition flex items-center justify-center gap-2"
+                disabled={isBlockedCard}
+                className={`flex-1 min-w-[140px] px-4 py-2.5 border-[1.5px] rounded-xl font-semibold transition flex items-center justify-center gap-2 ${
+                  isBlockedCard ? blockedButton : 'bg-progress hover:brightness-95 text-card-ink border-card-line shadow-card'
+                }`}
               >
                 <Check className="w-4 h-4" /> Mark as Done
               </button>

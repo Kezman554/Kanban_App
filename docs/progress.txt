@@ -1752,8 +1752,8 @@ Known gaps / followups
 - The pre-restyle tag is local only (not pushed).
 - The Export toast was not triggered in testing (it would have overwritten
   the system clipboard); it was checked by code only.
-- A blocked card still offers Start Session in the card view, as before
-  the restyle (behaviour unchanged on purpose).
+- RESOLVED (item 50): a blocked card no longer offers Start Session or
+  Mark as Done in the card view.
 - Teal text on the light sidebar is 4.36:1 - avoid that pairing.
 - Dark-mode outline was not in the spec; chose #9A8E74 (>=3.36:1 on every
   dark surface). Light "raised" was not in the spec; equals panel.
@@ -1950,3 +1950,15 @@ Deployed to the Pi (7c16be0): pulled, kanban-api rebuilt, smoke test OK
 Deployed to the Pi (ee88071): pulled, kanban-api rebuilt, smoke test OK
 (359 cards, API == DB). The live bundle names ee88071 and carries the
 Workable Cards tab.
+49. Workable Cards picker gains "To Be Confirmed" (resource tbc): All /
+   Claude / Manual / To Be Confirmed. The empty message names the choice.
+   There are no workable TBC cards on the scratch DB, so it shows "No
+   workable To Be Confirmed cards found (try All)".
+50. Card view on a blocked card (Nick's call; a behaviour change, not
+   just a visual one): Start Session (or Mark as Started) and Mark as Done
+   stay in place but are disabled. They are flat on the page yellow with
+   muted text, no shadow and a not-allowed cursor, and a line above them
+   says why ("Blocked - Waiting on: G. Finish its dependencies to start or
+   complete it."). Checked on blocked card H: both buttons are disabled,
+   clicking them leaves the view open and the card Blocked. On ready card
+   E both are still enabled.
