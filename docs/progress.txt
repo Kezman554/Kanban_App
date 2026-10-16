@@ -1527,8 +1527,24 @@ in both modes (board, Settings, All Projects, Roadmap): Fredoka loads
 all four weights, theme swaps in place, no console errors beyond the
 existing dev CSP warning.
 
+The Pi web build's lean set (pi-server/web-build.package.json + lock)
+gained @fontsource/fredoka and lucide-react (00a8fe5); npm ci + web build
+from that set verified locally first.
+
+Deploy: the first Pi rebuild failed at the Dockerfile's COPY of the
+deleted tailwind.config.js. compose stopped at the build step, so the
+old container kept serving (no downtime). Fixed in 075955e. Deployed to
+the Pi (075955e): pulled, kanban-api rebuilt, smoke test OK (359 cards,
+API == DB). Live bundle (read-only fetch, nothing clicked) is
+index-BBWole8z.js / index-D_XepPqw.css - identical hashes to the local
+lean-set build. It carries the light/dark token blocks, 12 Fredoka faces
+(font file served 200), the Appearance section and the kanban-theme
+key, and no stock palette variables. The theme choice is per browser,
+so the laptop and the phone each keep their own.
+
 Known gaps / followups
 ----------------------
+- The pre-restyle tag is local only (not pushed).
 - Spec'd dark scrim and card shadow are rgba(0,0,0,...), which conflicts
   with the "no black anywhere" rule - needs Nick's call.
 - Light dashed rgba(58,47,34,.5) is 2.77:1 on the page (<3:1); revisit in
