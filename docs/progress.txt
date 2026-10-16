@@ -1813,3 +1813,9 @@ Stacking fix and build label (2026-10-16)
    the file fallback on a 2 KB copy of those files: 2.0.0 / 9599859.
    The Pi label names the commit the image was built from. The deploy-log
    commit pulled afterwards (no rebuild) does not change it.
+
+Deployed to the Pi (56f2b74): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). Live bundle index-B7droXAf.js carries "2.0.0" and
+"56f2b74", so the Pi build resolved its commit from the copied .git files.
+The CSS has the isolate utility. The sidebar on the Pi will keep reading
+56f2b74 after this log-only commit is pulled, since there is no rebuild.
