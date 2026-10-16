@@ -70,23 +70,23 @@ const EditProjectDialog = ({ isOpen, project, onClose, onSaved }) => {
     }
   };
 
-  const inputClass = 'w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text focus:outline-none focus:border-blue-500';
+  const inputClass = 'w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-primary';
 
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/60 z-40" />
+      <div className="fixed inset-0 bg-scrim z-40" />
 
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-lg bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col">
+        <div className="w-full max-w-lg bg-panel border border-line rounded-xl shadow-card flex flex-col">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-dark-border">
-            <h2 className="text-xl font-bold text-dark-text">Edit Project</h2>
+          <div className="flex items-center justify-between p-6 border-b border-divider">
+            <h2 className="text-xl font-bold text-ink">Edit Project</h2>
             <button
               onClick={onClose}
               disabled={saving}
-              className="p-2 rounded hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text transition-colors"
+              className="p-2 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
             >
               <span className="text-xl">×</span>
             </button>
@@ -95,34 +95,34 @@ const EditProjectDialog = ({ isOpen, project, onClose, onSaved }) => {
           {/* Form */}
           <form onSubmit={handleSubmit} className="p-6 space-y-4">
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">
-                Name <span className="text-red-400">*</span>
+              <label className="block text-sm font-medium text-ink mb-1">
+                Name <span className="text-danger-text">*</span>
               </label>
               <input ref={nameRef} type="text" value={fields.name} onChange={set('name')} disabled={saving} className={inputClass} />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">Short name</label>
+              <label className="block text-sm font-medium text-ink mb-1">Short name</label>
               <input type="text" value={fields.short_name} onChange={set('short_name')} disabled={saving} placeholder="e.g. Vault" className={inputClass} />
-              <p className="text-xs text-dark-text-secondary mt-1">{SHORT_NAME_HINT}</p>
+              <p className="text-xs text-muted mt-1">{SHORT_NAME_HINT}</p>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">Description</label>
+              <label className="block text-sm font-medium text-ink mb-1">Description</label>
               <input type="text" value={fields.description} onChange={set('description')} disabled={saving} className={inputClass} />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">File path</label>
+              <label className="block text-sm font-medium text-ink mb-1">File path</label>
               <div className="flex gap-2">
-                <input type="text" value={fields.directory_path} onChange={set('directory_path')} disabled={saving} className={`${inputClass} font-mono text-sm`} />
+                <input type="text" value={fields.directory_path} onChange={set('directory_path')} disabled={saving} className={`${inputClass} text-sm`} />
                 {/* The browser board has no native folder picker - type the path */}
                 {!window.electron.isBrowserBoard && (
                   <button
                     type="button"
                     onClick={handleBrowse}
                     disabled={saving}
-                    className="px-3 py-2 rounded-lg bg-dark-bg border border-dark-border text-dark-text hover:bg-dark-hover transition-colors text-sm flex-shrink-0"
+                    className="px-3 py-2 rounded-lg bg-page border border-line text-ink hover:bg-hover transition-colors text-sm flex-shrink-0"
                   >
                     Browse…
                   </button>
@@ -131,8 +131,8 @@ const EditProjectDialog = ({ isOpen, project, onClose, onSaved }) => {
             </div>
 
             {error && (
-              <div className="p-3 bg-red-900/30 border border-red-700 rounded-lg">
-                <p className="text-sm text-red-300">{error}</p>
+              <div className="p-3 bg-danger/10 border border-danger-text rounded-lg">
+                <p className="text-sm text-danger-text">{error}</p>
               </div>
             )}
 
@@ -141,19 +141,19 @@ const EditProjectDialog = ({ isOpen, project, onClose, onSaved }) => {
           </form>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-dark-border">
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-divider">
             <button
               type="button"
               onClick={onClose}
               disabled={saving}
-              className="px-4 py-2 rounded-lg bg-dark-bg border border-dark-border text-dark-text hover:bg-dark-hover transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-page border border-line text-ink hover:bg-hover transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               onClick={handleSubmit}
               disabled={!canSave}
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg bg-primary hover:bg-primary text-cream font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>

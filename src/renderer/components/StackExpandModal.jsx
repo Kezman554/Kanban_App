@@ -47,21 +47,21 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
       onClick={handleBackdropClick}
     >
       {/* Blurred grey transparent backdrop */}
-      <div className="absolute inset-0 bg-gray-900/70 backdrop-blur-sm" />
+      <div className="absolute inset-0 bg-scrim backdrop-blur-sm" />
 
       {/* Confirmation Dialog */}
       {confirmUnlock && (
         <div className="absolute inset-0 z-20 flex items-center justify-center">
-          <div className="bg-dark-surface border border-dark-border rounded-lg shadow-2xl p-6 max-w-md">
-            <h3 className="text-lg font-bold text-dark-text mb-4">Unlock Card?</h3>
-            <p className="text-dark-text-secondary mb-2">
-              Are you sure you want to unlock <span className="font-semibold text-dark-text">"{confirmUnlock.title}"</span>?
+          <div className="bg-panel border border-line rounded-lg shadow-card p-6 max-w-md">
+            <h3 className="text-lg font-bold text-ink mb-4">Unlock Card?</h3>
+            <p className="text-muted mb-2">
+              Are you sure you want to unlock <span className="font-semibold text-ink">"{confirmUnlock.title}"</span>?
             </p>
-            <p className="text-dark-text-secondary mb-6 text-sm">
+            <p className="text-muted mb-6 text-sm">
               This will remove all dependencies for this card. It will become immediately actionable.
             </p>
             {unlockError && (
-              <div className="mb-4 p-3 rounded bg-red-900/50 border border-red-700 text-red-300 text-sm">
+              <div className="mb-4 p-3 rounded bg-danger/10 border border-danger-text text-danger-text text-sm">
                 {unlockError}
               </div>
             )}
@@ -69,14 +69,14 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
               <button
                 onClick={handleCancelUnlock}
                 disabled={isUnlocking}
-                className="px-4 py-2 rounded bg-dark-bg border border-dark-border text-dark-text hover:bg-dark-hover transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded bg-page border border-line text-ink hover:bg-hover transition-colors disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleConfirmUnlock}
                 disabled={isUnlocking}
-                className="px-4 py-2 rounded bg-yellow-600 hover:bg-yellow-500 text-white font-semibold transition-colors disabled:opacity-50"
+                className="px-4 py-2 rounded bg-pal-marigold hover:brightness-95 text-card-ink border border-card-line font-semibold transition-colors disabled:opacity-50"
               >
                 {isUnlocking ? 'Unlocking...' : 'Unlock'}
               </button>
@@ -86,15 +86,15 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
       )}
 
       {/* Modal content */}
-      <div className="relative z-10 bg-dark-surface border border-dark-border rounded-lg shadow-2xl max-w-4xl w-full max-h-[80vh] flex flex-col">
+      <div className="relative z-10 bg-panel border border-line rounded-lg shadow-card max-w-4xl w-full max-h-[80vh] flex flex-col">
         {/* Header with close button */}
-        <div className="flex items-center justify-between p-4 border-b border-dark-border">
-          <h3 className="text-lg font-bold text-dark-text">
+        <div className="flex items-center justify-between p-4 border-b border-divider">
+          <h3 className="text-lg font-bold text-ink">
             {title || `${cards.length} Cards`}
           </h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text transition-colors"
+            className="w-8 h-8 flex items-center justify-center rounded hover:bg-hover text-muted hover:text-ink transition-colors"
             title="Close"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -104,7 +104,7 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
         </div>
 
         {/* Scrollable grid content */}
-        <div className="flex-1 overflow-y-auto p-4 scrollbar-dark">
+        <div className="flex-1 overflow-y-auto p-4 scrollbar-themed">
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {cards.map((card) => (
               <div key={card.id}>

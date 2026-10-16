@@ -1490,3 +1490,49 @@ Known gaps / followups
   covered the project (board) header only.
 - Phase and subphase names/short names still have no editor; corrections
   like item 4 need a direct DB write.
+
+Session Progress - 2026-10-16
+=============================
+
+Restyle, stages 0-1 (visual only: no schema, export or vault-summary change)
+
+0. Tagged the pre-restyle build as `pre-restyle` (annotated, on fb9b85b,
+   local only - not pushed). Audit: six --color-dark-* tokens in an
+   extending @theme; 441 stock Tailwind colour utilities (105 distinct)
+   over 16 files; the only literal hex was in App.css, which nothing
+   imported; tailwind.config.js was v3-style and not loaded by Tailwind 4.
+   Both deleted.
+1. Tokens: index.css @theme now clears the stock palette (--color-*:
+   initial) and stock shadows, and defines role-named tokens (page,
+   sidebar, panel, raised, ink, muted, line, divider, dash, blocked,
+   scrim, hover, link, success/warn/danger-text, card-ink, card-line,
+   primary, progress, done, danger, the 12-colour pal-* fill/deep
+   palette, shadow-card). Dark overrides sit in :root[data-theme="dark"].
+   A one-off script mapped all 1,095 old class uses onto the roles; the
+   solid-fill/text pairings it got wrong were fixed by hand.
+2. Theme: utils/theme.js - System/Light/Dark radio in Settings >
+   Appearance, default System (follows the OS live), saved only in
+   localStorage 'kanban-theme', applied by swapping data-theme on <html>
+   before first paint and on change (no reload, no remount, no DB).
+3. Typeface: @fontsource/fredoka 400/500/600/700 bundled; sans, serif and
+   mono families all resolve to Fredoka; font-mono classes removed.
+4. Icons: lucide-react via components/icons.jsx (aria-hidden, focusable
+   false). Every emoji icon is gone: nav, resource icons (ResourceIcon),
+   lock, bin, link, folder, upload, warning, the ✓ done mark and the ⋮⋮
+   drag handle. Icon-only buttons carry aria-label.
+
+Verification: vite build clean; desktop app booted hidden from
+dist-electron against a scratch copy of data/kanban.db and screenshotted
+in both modes (board, Settings, All Projects, Roadmap): Fredoka loads
+all four weights, theme swaps in place, no console errors beyond the
+existing dev CSP warning.
+
+Known gaps / followups
+----------------------
+- Spec'd dark scrim and card shadow are rgba(0,0,0,...), which conflicts
+  with the "no black anywhere" rule - needs Nick's call.
+- Light dashed rgba(58,47,34,.5) is 2.77:1 on the page (<3:1); revisit in
+  stage 5. Teal text on the light sidebar is 4.36:1 - avoid that pairing.
+- Dark-mode outline was not in the spec; chose #9A8E74 (>=3.36:1 on every
+  dark surface). Light "raised" was not in the spec; equals panel.
+- Layout and card look are unchanged until stage 2.

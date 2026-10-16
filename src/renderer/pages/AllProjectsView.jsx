@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { ResourceIcon } from '../components/icons';
 import {
   buildCardStatusByLetter,
   isCardBlocked,
@@ -146,19 +147,19 @@ function AllProjectsView() {
     setIncludedProjects(new Set());
   };
 
-  // Resource icons mapping
-  const resourceIcons = {
-    claude_sub: { icon: '🤖', label: 'Claude Subscription' },
-    anthropic_api: { icon: '🔧', label: 'Anthropic API' },
-    none: { icon: '✋', label: 'Manual Task' },
-    tbc: { icon: '❓', label: 'To Be Confirmed' }
+  // Resource labels
+  const resourceLabels = {
+    claude_sub: { label: 'Claude Subscription' },
+    anthropic_api: { label: 'Anthropic API' },
+    none: { label: 'Manual Task' },
+    tbc: { label: 'To Be Confirmed' }
   };
 
   // Complexity badge colors
   const complexityColors = {
-    low: 'bg-green-900 text-green-300',
-    medium: 'bg-yellow-900 text-yellow-300',
-    high: 'bg-red-900 text-red-300'
+    low: 'bg-pal-mint text-card-ink',
+    medium: 'bg-pal-marigold text-card-ink',
+    high: 'bg-pal-coral text-card-ink'
   };
 
   if (loading) {
@@ -166,7 +167,7 @@ function AllProjectsView() {
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin text-4xl mb-4">⏳</div>
-          <p className="text-dark-text-secondary">Loading projects...</p>
+          <p className="text-muted">Loading projects...</p>
         </div>
       </div>
     );
@@ -176,10 +177,10 @@ function AllProjectsView() {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <p className="text-red-400 mb-4">Error: {error}</p>
+          <p className="text-danger-text mb-4">Error: {error}</p>
           <button
             onClick={loadData}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg"
+            className="px-4 py-2 bg-primary hover:bg-primary text-cream rounded-lg"
           >
             Retry
           </button>
@@ -192,26 +193,26 @@ function AllProjectsView() {
     <div className="h-full flex flex-col p-6">
       {/* Header */}
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-dark-text mb-2">All Projects View</h1>
-        <p className="text-dark-text-secondary">
+        <h1 className="text-2xl font-bold text-ink mb-2">All Projects View</h1>
+        <p className="text-muted">
           Showing {workableCards.length} workable cards across {includedProjects.size > 0 ? includedProjects.size : projects.length} project{(includedProjects.size > 0 ? includedProjects.size : projects.length) !== 1 ? 's' : ''}
         </p>
       </div>
 
       {/* Filters */}
-      <div className="mb-6 p-4 bg-dark-surface rounded-lg border border-dark-border">
-        <h2 className="text-sm font-semibold text-dark-text mb-3">Filters</h2>
+      <div className="mb-6 p-4 bg-panel rounded-lg border border-line">
+        <h2 className="text-sm font-semibold text-ink mb-3">Filters</h2>
 
         {/* Project Toggles */}
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-dark-text-secondary">Projects:</span>
+            <span className="text-xs text-muted">Projects:</span>
             <button
               onClick={selectAllProjects}
               className={`text-xs px-2 py-1 rounded ${
                 includedProjects.size === 0
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-dark-bg text-dark-text-secondary hover:text-dark-text'
+                  ? 'bg-primary text-cream'
+                  : 'bg-page text-muted hover:text-ink'
               }`}
             >
               All
@@ -229,8 +230,8 @@ function AllProjectsView() {
                   className={`
                     flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors
                     ${isIncluded
-                      ? 'bg-blue-600/20 border border-blue-500 text-blue-300'
-                      : 'bg-dark-bg border border-dark-border text-dark-text-secondary hover:border-dark-hover'
+                      ? 'bg-primary/15 border border-primary text-link'
+                      : 'bg-page border border-line text-muted hover:border-line'
                     }
                   `}
                 >
@@ -251,10 +252,10 @@ function AllProjectsView() {
               type="checkbox"
               checked={hideClaudeSub}
               onChange={(e) => setHideClaudeSub(e.target.checked)}
-              className="rounded border-dark-border bg-dark-bg text-blue-600 focus:ring-blue-500"
+              className="rounded border-divider bg-page text-link focus:ring-primary"
             />
-            <span className="text-sm text-dark-text">Hide claude_sub tasks</span>
-            <span className="text-xs text-dark-text-secondary">(for when tokens depleted)</span>
+            <span className="text-sm text-ink">Hide claude_sub tasks</span>
+            <span className="text-xs text-muted">(for when tokens depleted)</span>
           </label>
         </div>
       </div>
@@ -270,28 +271,28 @@ function AllProjectsView() {
             return (
               <div
                 key={project.id}
-                className="p-4 bg-dark-surface rounded-lg border border-dark-border"
+                className="p-4 bg-panel rounded-lg border border-line"
               >
-                <h3 className="font-semibold text-dark-text mb-2 truncate" title={project.name}>
+                <h3 className="font-semibold text-ink mb-2 truncate" title={project.name}>
                   {project.name}
                 </h3>
 
                 {/* Progress bar */}
-                <div className="h-2 bg-dark-bg rounded-full mb-2 overflow-hidden">
+                <div className="h-2 bg-page rounded-full mb-2 overflow-hidden">
                   <div
-                    className="h-full bg-green-600 transition-all"
+                    className="h-full bg-done transition-all"
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
 
-                <div className="flex justify-between text-xs text-dark-text-secondary">
+                <div className="flex justify-between text-xs text-muted">
                   <span>{stats.done}/{stats.total} complete</span>
                   <span>{percentage}%</span>
                 </div>
 
                 <div className="mt-2 flex gap-3 text-xs">
-                  <span className="text-blue-400">{stats.inProgress} in progress</span>
-                  <span className="text-green-400">{stats.workable} workable</span>
+                  <span className="text-link">{stats.inProgress} in progress</span>
+                  <span className="text-success-text">{stats.workable} workable</span>
                 </div>
               </div>
             );
@@ -299,12 +300,12 @@ function AllProjectsView() {
       </div>
 
       {/* Workable Cards List */}
-      <div className="flex-1 overflow-auto scrollbar-dark">
-        <h2 className="text-lg font-semibold text-dark-text mb-4">Workable Cards</h2>
+      <div className="flex-1 overflow-auto scrollbar-themed">
+        <h2 className="text-lg font-semibold text-ink mb-4">Workable Cards</h2>
 
         {workableCards.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-dark-text-secondary">
+            <p className="text-muted">
               {hideClaudeSub
                 ? 'No workable cards found (try disabling the claude_sub filter)'
                 : 'No workable cards found'}
@@ -315,13 +316,13 @@ function AllProjectsView() {
             {workableCards.map(card => (
               <div
                 key={`${card.projectId}-${card.id}`}
-                className="p-4 bg-dark-surface rounded-lg border border-dark-border hover:border-dark-hover transition-colors"
+                className="p-4 bg-panel rounded-lg border border-line hover:border-line transition-colors"
               >
                 <div className="flex items-start gap-3">
                   {/* Session Letter Badge */}
                   <div className={`
                     flex-shrink-0 w-10 h-10 rounded flex items-center justify-center font-bold
-                    ${card.status === 'In Progress' ? 'bg-blue-700 text-white' : 'bg-dark-bg text-dark-text'}
+                    ${card.status === 'In Progress' ? 'bg-primary text-cream' : 'bg-page text-ink'}
                   `}>
                     {card.session_letter}
                   </div>
@@ -329,15 +330,15 @@ function AllProjectsView() {
                   {/* Card Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-dark-text-secondary truncate">
+                      <span className="text-xs text-muted truncate">
                         {card.projectName} / {card.phaseName} / {card.subphaseName}
                       </span>
                     </div>
 
-                    <h3 className="font-semibold text-dark-text mb-2">{card.title}</h3>
+                    <h3 className="font-semibold text-ink mb-2">{card.title}</h3>
 
                     {card.description && (
-                      <p className="text-sm text-dark-text-secondary line-clamp-2 mb-2">
+                      <p className="text-sm text-muted line-clamp-2 mb-2">
                         {card.description}
                       </p>
                     )}
@@ -347,18 +348,18 @@ function AllProjectsView() {
                       {/* Status */}
                       <span className={`
                         text-xs px-2 py-0.5 rounded-full
-                        ${card.status === 'Not Started' ? 'bg-gray-700 text-gray-300' : ''}
-                        ${card.status === 'In Progress' ? 'bg-blue-700 text-blue-200' : ''}
+                        ${card.status === 'Not Started' ? 'bg-raised text-muted' : ''}
+                        ${card.status === 'In Progress' ? 'bg-primary text-on-primary' : ''}
                       `}>
                         {card.status}
                       </span>
 
                       {/* Resource */}
                       <span
-                        className="text-xs px-2 py-0.5 rounded bg-dark-bg text-dark-text-secondary flex items-center gap-1"
-                        title={resourceIcons[card.resource]?.label}
+                        className="text-xs px-2 py-0.5 rounded bg-page text-muted flex items-center gap-1"
+                        title={resourceLabels[card.resource]?.label}
                       >
-                        <span>{resourceIcons[card.resource]?.icon}</span>
+                        <ResourceIcon resource={card.resource} className="w-3.5 h-3.5" />
                         <span>{card.resource}</span>
                       </span>
 

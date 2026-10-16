@@ -1,5 +1,6 @@
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
+import { Lock, LinkIcon, Check, GripVertical, ResourceIcon } from './icons';
 
 const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }) => {
   // Disable drag for stacked cards OR blocked cards (even if at top of stack)
@@ -24,35 +25,35 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
   } : undefined;
 
   // Resource icons mapping
-  const resourceIcons = {
-    claude_sub: { icon: '🤖', label: 'Claude Subscription' },
-    anthropic_api: { icon: '🔧', label: 'Anthropic API' },
-    none: { icon: '✋', label: 'Manual Task' },
-    tbc: { icon: '❓', label: 'To Be Confirmed' }
+  const resourceLabels = {
+    claude_sub: 'Claude Subscription',
+    anthropic_api: 'Anthropic API',
+    none: 'Manual Task',
+    tbc: 'To Be Confirmed'
   };
 
   // Status colors and styles
   const statusStyles = {
     'Not Started': {
-      bg: 'bg-dark-surface',
-      border: 'border-dark-border',
-      text: 'text-dark-text'
+      bg: 'bg-panel',
+      border: 'border-divider',
+      text: 'text-ink'
     },
     'In Progress': {
-      bg: 'bg-dark-surface',
-      border: 'border-blue-500',
-      text: 'text-dark-text',
+      bg: 'bg-panel',
+      border: 'border-primary',
+      text: 'text-ink',
       borderWidth: 'border-2'
     },
     'Done': {
-      bg: 'bg-dark-surface/50',
-      border: 'border-green-700',
-      text: 'text-dark-text-secondary'
+      bg: 'bg-panel/50',
+      border: 'border-success-text',
+      text: 'text-muted'
     },
     'Blocked': {
-      bg: 'bg-dark-surface/30',
-      border: 'border-dark-border',
-      text: 'text-dark-text-secondary'
+      bg: 'bg-panel/30',
+      border: 'border-divider',
+      text: 'text-muted'
     }
   };
 
@@ -69,9 +70,9 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
 
   // Complexity badge colors
   const complexityColors = {
-    low: 'bg-green-900 text-green-300',
-    medium: 'bg-yellow-900 text-yellow-300',
-    high: 'bg-red-900 text-red-300'
+    low: 'bg-pal-mint text-card-ink',
+    medium: 'bg-pal-marigold text-card-ink',
+    high: 'bg-pal-coral text-card-ink'
   };
 
   // Card border style for TBC and Manual
@@ -90,7 +91,7 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
         ${statusStyle.bg} ${statusStyle.border} ${statusStyle.borderWidth || 'border'} ${getCardBorderStyle()}
         rounded-lg p-3 transition-all
         ${isStacked ? 'opacity-70 cursor-default' : 'cursor-pointer'}
-        ${!isStacked && !card.isBlocked ? 'hover:shadow-lg hover:border-blue-500/50' : ''}
+        ${!isStacked && !card.isBlocked ? 'hover:shadow-card hover:border-primary/60' : ''}
         ${isDragging ? 'opacity-50' : ''}
       `}
       onClick={handleClick}
@@ -101,8 +102,8 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
           {/* Drag Handle / Lock Icon */}
           {isDragDisabled ? (
             <div
-              className={`drag-handle flex-shrink-0 p-1 text-dark-text-secondary/50 ${
-                onUnlock ? 'cursor-pointer hover:text-yellow-400' : ''
+              className={`drag-handle flex-shrink-0 p-1 text-muted ${
+                onUnlock ? 'cursor-pointer hover:text-warn-text' : ''
               }`}
               onClick={onUnlock ? (e) => {
                 e.stopPropagation();
@@ -110,25 +111,25 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
               } : undefined}
               title={onUnlock ? 'Click to unlock this card' : 'Complete dependencies to unlock'}
             >
-              🔒
+              <Lock className="w-4 h-4" />
             </div>
           ) : (
             <div
-              className="drag-handle flex-shrink-0 p-1 text-dark-text-secondary hover:text-dark-text"
+              className="drag-handle flex-shrink-0 p-1 text-muted hover:text-ink"
               {...listeners}
               {...attributes}
               title="Drag to move card"
             >
-              ⋮⋮
+              <GripVertical className="w-4 h-4" />
             </div>
           )}
 
           {/* Session Letter Badge */}
           <div className={`
             flex-shrink-0 w-8 h-8 rounded flex items-center justify-center font-bold text-sm
-            ${actualStatus === 'Done' ? 'bg-green-700 text-white' : 'bg-dark-bg text-dark-text'}
+            ${actualStatus === 'Done' ? 'bg-done text-cream' : 'bg-page text-ink'}
           `}>
-            {actualStatus === 'Done' ? '✓' : card.session_letter}
+            {actualStatus === 'Done' ? <Check className="w-4 h-4" /> : card.session_letter}
           </div>
 
           {/* Card Title */}
@@ -139,8 +140,9 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
 
         {/* Resource Icon - hide for manual tasks */}
         {card.resource !== 'none' && (
-          <div className="flex-shrink-0" title={resourceIcons[card.resource]?.label}>
-            <span className="text-lg">{resourceIcons[card.resource]?.icon}</span>
+          <div className="flex-shrink-0 text-muted" title={resourceLabels[card.resource]}>
+            <ResourceIcon resource={card.resource} className="w-5 h-5" />
+            <span className="sr-only">{resourceLabels[card.resource]}</span>
           </div>
         )}
       </div>
@@ -150,10 +152,10 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
         {/* Status Indicator */}
         <span className={`
           text-xs px-2 py-0.5 rounded-full
-          ${actualStatus === 'Not Started' ? 'bg-gray-700 text-gray-300' : ''}
-          ${actualStatus === 'In Progress' ? 'bg-blue-700 text-blue-200' : ''}
-          ${actualStatus === 'Done' ? 'bg-green-700 text-green-200' : ''}
-          ${actualStatus === 'Blocked' ? 'bg-red-900 text-red-300' : ''}
+          ${actualStatus === 'Not Started' ? 'bg-raised text-muted' : ''}
+          ${actualStatus === 'In Progress' ? 'bg-primary text-on-primary' : ''}
+          ${actualStatus === 'Done' ? 'bg-done text-on-done' : ''}
+          ${actualStatus === 'Blocked' ? 'bg-pal-coral text-card-ink' : ''}
         `}>
           {actualStatus}
         </span>
@@ -161,10 +163,10 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
         {/* Blocked Indicator */}
         {isBlocked && (
           <div
-            className="text-xs px-2 py-0.5 rounded bg-red-900 text-red-300 flex items-center gap-1"
+            className="text-xs px-2 py-0.5 rounded border border-danger-text text-danger-text flex items-center gap-1"
             title={card.blockedReason || `Depends on: ${card.depends_on_cards.join(', ')}`}
           >
-            <span>🔒</span>
+            <Lock className="w-3 h-3" />
             <span>Blocked</span>
           </div>
         )}
@@ -172,10 +174,10 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
         {/* External (cross-project) Dependency Indicator - distinct from internal lock */}
         {unresolvedExternalDeps.length > 0 && (
           <div
-            className="text-xs px-2 py-0.5 rounded bg-amber-900 text-amber-300 border border-amber-700/60 flex items-center gap-1 max-w-[12rem]"
+            className="text-xs px-2 py-0.5 rounded bg-pal-marigold text-card-ink border border-card-line flex items-center gap-1 max-w-[12rem]"
             title={`Blocked by other project${unresolvedExternalDeps.length > 1 ? 's' : ''}:\n${externalDepTooltip}`}
           >
-            <span>🔗</span>
+            <LinkIcon className="w-3 h-3 flex-shrink-0" />
             <span className="truncate">
               {unresolvedExternalDeps.length === 1
                 ? unresolvedExternalDeps[0].project_slug
@@ -193,28 +195,28 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock }
 
         {/* Manual Task Indicator */}
         {card.resource === 'none' && (
-          <span className="text-xs px-2 py-0.5 rounded bg-purple-900 text-purple-300">
+          <span className="text-xs px-2 py-0.5 rounded bg-pal-lilac text-card-ink border border-card-line">
             Manual
           </span>
         )}
 
         {/* TBC Indicator */}
         {card.resource === 'tbc' && (
-          <span className="text-xs px-2 py-0.5 rounded bg-orange-900 text-orange-300">
+          <span className="text-xs px-2 py-0.5 rounded bg-pal-apricot text-card-ink border border-card-line">
             TBC
           </span>
         )}
 
         {/* Placeholder Indicator */}
         {card.is_placeholder && (
-          <span className="text-xs px-2 py-0.5 rounded bg-yellow-900 text-yellow-300">
+          <span className="text-xs px-2 py-0.5 rounded bg-pal-marigold text-card-ink border border-card-line">
             Placeholder
           </span>
         )}
 
         {/* Expansion Flag */}
         {card.likely_needs_expansion && (
-          <span className="text-xs px-2 py-0.5 rounded bg-indigo-900 text-indigo-300">
+          <span className="text-xs px-2 py-0.5 rounded bg-pal-lilac text-card-ink border border-card-line">
             May Expand
           </span>
         )}

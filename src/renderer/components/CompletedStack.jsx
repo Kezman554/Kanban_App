@@ -10,8 +10,8 @@ const CompletedStack = ({ cards, onCardClick }) => {
 
   if (!cards || cards.length === 0) {
     return (
-      <div className="h-20 flex items-center justify-center border-2 border-dashed border-dark-border rounded-lg">
-        <span className="text-xs text-dark-text-secondary">No completed cards</span>
+      <div className="h-20 flex items-center justify-center border-2 border-dashed border-line rounded-lg">
+        <span className="text-xs text-muted">No completed cards</span>
       </div>
     );
   }
@@ -35,7 +35,7 @@ const CompletedStack = ({ cards, onCardClick }) => {
         {hasStack && cards.slice(1, MAX_VISIBLE_EDGES + 1).map((card, index) => (
           <div
             key={card.id}
-            className="absolute left-0 right-0 h-2 bg-dark-surface border border-green-700 rounded-b-lg"
+            className="absolute left-0 right-0 h-2 bg-panel border border-success-text rounded-b-lg"
             style={{
               bottom: -((index + 1) * EDGE_PEEK),
               zIndex: MAX_VISIBLE_EDGES - index,
@@ -55,7 +55,7 @@ const CompletedStack = ({ cards, onCardClick }) => {
           {hasStack && (
             <button
               onClick={handleExpandClick}
-              className="absolute top-2 right-2 w-6 h-6 rounded bg-green-600 hover:bg-green-500 text-white text-xs font-bold flex items-center justify-center shadow-lg transition-colors z-10"
+              className="absolute top-2 right-2 w-6 h-6 rounded bg-done hover:bg-done text-cream text-xs font-bold flex items-center justify-center shadow-card transition-colors z-10"
               title={`View all ${cards.length} completed cards`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -68,7 +68,7 @@ const CompletedStack = ({ cards, onCardClick }) => {
         {/* Stack count badge - positioned at bottom of stacked edges */}
         {hasStack && (
           <div
-            className="absolute right-2 px-2 py-0.5 rounded-full bg-green-600 text-white text-xs font-bold shadow-lg"
+            className="absolute right-2 px-2 py-0.5 rounded-full bg-done text-cream text-xs font-bold shadow-card"
             style={{
               bottom: -(totalStackHeight + 4),
               zIndex: MAX_VISIBLE_EDGES + 2

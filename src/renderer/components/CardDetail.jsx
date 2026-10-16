@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { copyText } from '../utils/clipboard.js';
+import { Check, Trash2, LinkIcon, TriangleAlert } from './icons';
 
 const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusChange, onCardUpdated, onCardDeleted, project }) => {
   const [promptGuideCopySuccess, setPromptGuideCopySuccess] = useState(false);
@@ -574,25 +575,25 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/60 z-40 transition-opacity" />
+      <div className="fixed inset-0 bg-scrim z-40 transition-opacity" />
 
       {/* Centered Modal */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           ref={panelRef}
-          className="w-full max-w-3xl max-h-[90vh] bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col transform transition-all duration-200 ease-out"
+          className="w-full max-w-3xl max-h-[90vh] bg-panel border border-line rounded-xl shadow-card flex flex-col transform transition-all duration-200 ease-out"
           style={{ opacity: isOpen ? 1 : 0, transform: isOpen ? 'scale(1)' : 'scale(0.95)' }}
         >
         {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-dark-border">
+        <div className="flex items-start justify-between p-6 border-b border-divider">
           <div className="flex-1 pr-4">
             <div className="flex items-center gap-3 mb-2">
               {/* Session Letter Badge */}
               <div className={`
                 flex-shrink-0 w-10 h-10 rounded flex items-center justify-center font-bold text-lg
-                ${card.status === 'Done' ? 'bg-green-700 text-white' : 'bg-dark-bg text-dark-text'}
+                ${card.status === 'Done' ? 'bg-done text-cream' : 'bg-page text-ink'}
               `}>
-                {card.status === 'Done' ? '✓' : card.session_letter}
+                {card.status === 'Done' ? <Check className="w-5 h-5" /> : card.session_letter}
               </div>
               {editingField === 'title' ? (
                 <div className="flex-1 flex items-center gap-2">
@@ -607,29 +608,29 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         handleCancelEditField();
                       }
                     }}
-                    className="flex-1 px-2 py-1 bg-dark-bg border border-blue-500 rounded text-xl font-bold text-dark-text focus:outline-none"
+                    className="flex-1 px-2 py-1 bg-page border border-primary rounded text-xl font-bold text-ink focus:outline-none"
                     placeholder="Card title..."
                     autoFocus
                   />
                   <button
                     onClick={handleCancelEditField}
-                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSaveField}
-                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
                   >
                     Save
                   </button>
                 </div>
               ) : (
                 <>
-                  <h2 className="text-xl font-bold text-dark-text">{card.title}</h2>
+                  <h2 className="text-xl font-bold text-ink">{card.title}</h2>
                   <button
                     onClick={() => handleEditField('title')}
-                    className="flex-shrink-0 p-1 rounded hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text transition-colors"
+                    className="flex-shrink-0 p-1 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
                     title="Edit title"
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -637,34 +638,34 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     </svg>
                   </button>
                   {fieldSaveSuccess === 'title' && (
-                    <span className="text-xs text-green-400">Saved!</span>
+                    <span className="text-xs text-success-text">Saved!</span>
                   )}
                 </>
               )}
             </div>
             {editingField === 'title' && fieldSaveError && (
-              <div className="mb-2 text-xs text-red-400">{fieldSaveError}</div>
+              <div className="mb-2 text-xs text-danger-text">{fieldSaveError}</div>
             )}
 
             {/* Status and Resource Badges */}
             <div className="flex items-center gap-2 flex-wrap">
               <span className={`
                 text-xs px-2 py-1 rounded-full
-                ${card.status === 'Not Started' ? 'bg-gray-700 text-gray-300' : ''}
-                ${card.status === 'In Progress' ? 'bg-blue-700 text-blue-200' : ''}
-                ${card.status === 'Done' ? 'bg-green-700 text-green-200' : ''}
+                ${card.status === 'Not Started' ? 'bg-raised text-muted' : ''}
+                ${card.status === 'In Progress' ? 'bg-primary text-on-primary' : ''}
+                ${card.status === 'Done' ? 'bg-done text-on-done' : ''}
               `}>
                 {card.status}
               </span>
-              <span className="text-xs px-2 py-1 rounded bg-dark-bg text-dark-text-secondary">
+              <span className="text-xs px-2 py-1 rounded bg-page text-muted">
                 {resourceLabels[card.resource] || card.resource}
               </span>
               {card.complexity && (
                 <span className={`
                   text-xs px-2 py-1 rounded
-                  ${card.complexity === 'low' ? 'bg-green-900 text-green-300' : ''}
-                  ${card.complexity === 'medium' ? 'bg-yellow-900 text-yellow-300' : ''}
-                  ${card.complexity === 'high' ? 'bg-red-900 text-red-300' : ''}
+                  ${card.complexity === 'low' ? 'bg-pal-mint text-card-ink' : ''}
+                  ${card.complexity === 'medium' ? 'bg-pal-marigold text-card-ink' : ''}
+                  ${card.complexity === 'high' ? 'bg-pal-coral text-card-ink' : ''}
                 `}>
                   {card.complexity} complexity
                 </span>
@@ -675,16 +676,17 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
           {/* Delete Button */}
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="flex-shrink-0 p-2 rounded hover:bg-red-900/40 text-dark-text-secondary hover:text-red-400 transition-colors mr-1"
+            className="flex-shrink-0 p-2 rounded hover:bg-danger/10 text-muted hover:text-danger-text transition-colors mr-1"
             title="Delete card"
+            aria-label="Delete card"
           >
-            <span className="text-lg">🗑</span>
+            <Trash2 className="w-5 h-5" />
           </button>
 
           {/* Close Button */}
           <button
             onClick={onClose}
-            className="flex-shrink-0 p-2 rounded hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text transition-colors"
+            className="flex-shrink-0 p-2 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
             title="Close (Esc)"
           >
             <span className="text-xl">x</span>
@@ -693,21 +695,21 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
         {/* Start Session / Mark as Done failure (on success the view closes instead) */}
         {sessionNotification && (
-          <div className="mx-6 mt-4 p-3 bg-red-900/50 border border-red-600 rounded-lg flex items-center gap-2">
-            <span className="text-red-400">!</span>
-            <span className="text-red-200 text-sm">{sessionNotification}</span>
+          <div className="mx-6 mt-4 p-3 bg-danger/10 border border-danger-text rounded-lg flex items-center gap-2">
+            <span className="text-danger-text">!</span>
+            <span className="text-danger-text text-sm">{sessionNotification}</span>
           </div>
         )}
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto scrollbar-dark p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto scrollbar-themed p-6 space-y-6">
           {/* Description */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-dark-text-secondary">Description</h3>
+                <h3 className="text-sm font-semibold text-muted">Description</h3>
                 {fieldSaveSuccess === 'description' && (
-                  <span className="text-xs text-green-400">Saved!</span>
+                  <span className="text-xs text-success-text">Saved!</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -715,13 +717,13 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   <>
                     <button
                       onClick={handleCancelEditField}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleSaveField}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
                     >
                       Save
                     </button>
@@ -729,7 +731,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 ) : (
                   <button
                     onClick={() => handleEditField('description')}
-                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                     title={card.description ? 'Edit description' : 'Add description'}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -741,22 +743,22 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               </div>
             </div>
             {editingField === 'description' && fieldSaveError && (
-              <div className="mb-2 text-xs text-red-400">{fieldSaveError}</div>
+              <div className="mb-2 text-xs text-danger-text">{fieldSaveError}</div>
             )}
             {editingField === 'description' ? (
               <textarea
                 value={editedFieldValue}
                 onChange={(e) => setEditedFieldValue(e.target.value)}
-                className="w-full h-32 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text resize-none focus:outline-none scrollbar-dark"
+                className="w-full h-32 p-3 bg-page border border-primary rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
                 placeholder="Describe what this card involves..."
                 autoFocus
               />
             ) : card.description ? (
-              <p className="text-sm text-dark-text whitespace-pre-wrap bg-dark-bg p-3 rounded">
+              <p className="text-sm text-ink whitespace-pre-wrap bg-page p-3 rounded">
                 {card.description}
               </p>
             ) : (
-              <p className="text-sm text-dark-text-secondary italic bg-dark-bg p-3 rounded">
+              <p className="text-sm text-muted italic bg-page p-3 rounded">
                 No description
               </p>
             )}
@@ -766,9 +768,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-dark-text-secondary">Success Criteria</h3>
+                <h3 className="text-sm font-semibold text-muted">Success Criteria</h3>
                 {fieldSaveSuccess === 'success_criteria' && (
-                  <span className="text-xs text-green-400">Saved!</span>
+                  <span className="text-xs text-success-text">Saved!</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -776,13 +778,13 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   <>
                     <button
                       onClick={handleCancelEditField}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleSaveField}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
                     >
                       Save
                     </button>
@@ -790,7 +792,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 ) : (
                   <button
                     onClick={() => handleEditField('success_criteria')}
-                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                     title={card.success_criteria ? 'Edit success criteria' : 'Add success criteria'}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -802,22 +804,22 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               </div>
             </div>
             {editingField === 'success_criteria' && fieldSaveError && (
-              <div className="mb-2 text-xs text-red-400">{fieldSaveError}</div>
+              <div className="mb-2 text-xs text-danger-text">{fieldSaveError}</div>
             )}
             {editingField === 'success_criteria' ? (
               <textarea
                 value={editedFieldValue}
                 onChange={(e) => setEditedFieldValue(e.target.value)}
-                className="w-full h-32 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text resize-none focus:outline-none scrollbar-dark"
+                className="w-full h-32 p-3 bg-page border border-primary rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
                 placeholder="How will you know this card is done?"
                 autoFocus
               />
             ) : card.success_criteria ? (
-              <p className="text-sm text-dark-text whitespace-pre-wrap bg-dark-bg p-3 rounded">
+              <p className="text-sm text-ink whitespace-pre-wrap bg-page p-3 rounded">
                 {card.success_criteria}
               </p>
             ) : (
-              <p className="text-sm text-dark-text-secondary italic bg-dark-bg p-3 rounded">
+              <p className="text-sm text-muted italic bg-page p-3 rounded">
                 No success criteria
               </p>
             )}
@@ -829,16 +831,16 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               it is picked from real cards only; an external link may point at
               a project not imported yet, so that editor keeps a free-text
               fallback. Do not harmonise them. */}
-          <div className="border border-dark-border rounded-lg p-4 space-y-5">
-          <h3 className="text-sm font-semibold text-dark-text">Dependencies</h3>
+          <div className="border border-line rounded-lg p-4 space-y-5">
+          <h3 className="text-sm font-semibold text-ink">Dependencies</h3>
 
           {/* Same-board dependencies - editing follows the same pattern as Notes */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-dark-text-secondary">This Board</h3>
+                <h3 className="text-sm font-semibold text-muted">This Board</h3>
                 {depsSaveSuccess && (
-                  <span className="text-xs text-green-400">Saved!</span>
+                  <span className="text-xs text-success-text">Saved!</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -846,13 +848,13 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   <>
                     <button
                       onClick={handleCancelEditDeps}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleSaveDeps}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
                     >
                       Save
                     </button>
@@ -860,7 +862,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 ) : (
                   <button
                     onClick={handleEditDeps}
-                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                     title={card.depends_on_cards?.length ? 'Edit dependencies on this board' : 'Add a dependency on another card'}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -873,7 +875,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             </div>
 
             {depsSaveError && (
-              <div className="mb-2 text-xs text-red-400">{depsSaveError}</div>
+              <div className="mb-2 text-xs text-danger-text">{depsSaveError}</div>
             )}
 
             {(() => {
@@ -883,17 +885,17 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 const target = boardCardsByLetter.get(letter);
                 // A dependency on a Done card is legal and already satisfied
                 const tone = !target
-                  ? { box: 'bg-red-900/25 border-red-600', badge: 'bg-red-700 text-red-100', label: 'no such card' }
+                  ? { box: 'bg-danger/10 border-danger-text', badge: 'bg-danger text-on-danger', label: 'no such card' }
                   : target.status === 'Done'
-                    ? { box: 'bg-green-900/20 border-green-700/60', badge: 'bg-green-700 text-green-100', label: 'Done - satisfied' }
-                    : { box: 'bg-amber-900/20 border-amber-700/60', badge: 'bg-amber-700 text-amber-100', label: target.status };
+                    ? { box: 'bg-progress/25 border-success-text', badge: 'bg-done text-on-done', label: 'Done - satisfied' }
+                    : { box: 'bg-pal-marigold/25 border-warn-text', badge: 'bg-pal-marigold text-card-ink', label: target.status };
 
                 return (
                   <div key={letter} className={`text-sm px-3 py-2 rounded border ${tone.box}`}>
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-dark-text min-w-0 truncate">
+                      <span className="font-medium text-ink min-w-0 truncate">
                         Session {letter}
-                        {target && <span className="text-dark-text-secondary"> · {target.title}</span>}
+                        {target && <span className="text-muted"> · {target.title}</span>}
                       </span>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${tone.badge}`}>
@@ -902,7 +904,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         {isEditingDeps && (
                           <button
                             onClick={() => handleRemoveDep(letter)}
-                            className="px-2 py-0.5 rounded text-xs font-medium bg-red-900/40 border border-red-700 text-red-300 hover:bg-red-900/70 transition-colors"
+                            className="px-2 py-0.5 rounded text-xs font-medium bg-danger/10 border border-danger-text text-danger-text hover:bg-danger/10 transition-colors"
                             title="Remove this dependency"
                           >
                             Remove
@@ -911,7 +913,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                       </div>
                     </div>
                     {!target && (
-                      <p className="text-red-300 mt-1 text-xs">
+                      <p className="text-danger-text mt-1 text-xs">
                         This board has no card {letter}, so this card stays blocked - remove it.
                       </p>
                     )}
@@ -923,8 +925,8 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 return rows.length > 0 ? (
                   <div className="space-y-2">{rows}</div>
                 ) : (
-                  <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
-                    <p className="text-sm text-dark-text-secondary italic">No dependencies on this board</p>
+                  <div className="bg-page border border-line rounded-lg p-3">
+                    <p className="text-sm text-muted italic">No dependencies on this board</p>
                   </div>
                 );
               }
@@ -937,7 +939,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               return (
                 <div className="space-y-2">
                   {rows.length === 0 && (
-                    <p className="text-sm text-dark-text-secondary italic px-3 py-2 bg-dark-bg border border-dark-border rounded-lg">
+                    <p className="text-sm text-muted italic px-3 py-2 bg-page border border-line rounded-lg">
                       No dependencies on this board - add one below
                     </p>
                   )}
@@ -946,7 +948,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     value=""
                     onChange={(e) => handleAddDep(e.target.value)}
                     disabled={candidates.length === 0}
-                    className="w-full px-2 py-1 bg-dark-bg border border-blue-500/60 rounded text-sm text-dark-text focus:outline-none focus:border-blue-500 disabled:opacity-50"
+                    className="w-full px-2 py-1 bg-page border border-primary/60 rounded text-sm text-ink focus:outline-none focus:border-primary disabled:opacity-50"
                   >
                     <option value="">
                       {candidates.length === 0 ? 'No other cards to depend on' : '+ Add dependency on...'}
@@ -967,11 +969,11 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
           <div>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <h3 className="text-sm font-semibold text-dark-text-secondary flex items-center gap-1">
-                  <span>🔗</span> External Dependencies
+                <h3 className="text-sm font-semibold text-muted flex items-center gap-1">
+                  <LinkIcon className="w-4 h-4" /> External Dependencies
                 </h3>
                 {extDepsSaveSuccess && (
-                  <span className="text-xs text-green-400">Saved!</span>
+                  <span className="text-xs text-success-text">Saved!</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -979,13 +981,13 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   <>
                     <button
                       onClick={handleCancelEditExtDeps}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleSaveExtDeps}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
                     >
                       Save
                     </button>
@@ -993,7 +995,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 ) : (
                   <button
                     onClick={handleEditExtDeps}
-                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                     title={hasExternalDeps ? "Edit external dependencies" : "Add an external dependency"}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1006,13 +1008,13 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             </div>
 
             {extDepsSaveError && (
-              <div className="mb-2 text-xs text-red-400">{extDepsSaveError}</div>
+              <div className="mb-2 text-xs text-danger-text">{extDepsSaveError}</div>
             )}
 
             {isEditingExtDeps ? (
               <div className="space-y-2">
                 {editedExtDeps.length === 0 && (
-                  <p className="text-sm text-dark-text-secondary italic px-3 py-2 bg-dark-bg border border-dark-border rounded-lg">
+                  <p className="text-sm text-muted italic px-3 py-2 bg-page border border-line rounded-lg">
                     No external dependencies - add one below
                   </p>
                 )}
@@ -1023,12 +1025,12 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   const usePicker = cardsReady && targetCards.length > 0 && !dep.manual;
 
                   return (
-                    <div key={idx} className="p-3 bg-dark-bg border border-blue-500/60 rounded-lg space-y-2">
+                    <div key={idx} className="p-3 bg-page border border-primary/60 rounded-lg space-y-2">
                       <div className="flex items-center gap-2">
                         <select
                           value={dep.project_slug}
                           onChange={(e) => handleExtDepProjectChange(idx, e.target.value)}
-                          className="flex-1 min-w-0 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
+                          className="flex-1 min-w-0 px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-primary"
                         >
                           <option value="">Select project...</option>
                           {availableProjects
@@ -1039,7 +1041,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         </select>
                         <button
                           onClick={() => handleRemoveExtDep(idx)}
-                          className="px-2 py-1 rounded text-xs font-medium bg-red-900/40 border border-red-700 text-red-300 hover:bg-red-900/70 transition-colors flex-shrink-0"
+                          className="px-2 py-1 rounded text-xs font-medium bg-danger/10 border border-danger-text text-danger-text hover:bg-danger/10 transition-colors flex-shrink-0"
                           title="Remove this dependency"
                         >
                           Remove
@@ -1049,11 +1051,11 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                       {/* Letter: picked from the target project's real cards where
                           possible, free text only as a deliberate fallback */}
                       {!dep.project_slug ? (
-                        <p className="text-xs text-dark-text-secondary italic">
+                        <p className="text-xs text-muted italic">
                           Choose a project to pick its card
                         </p>
                       ) : cardsLoading ? (
-                        <p className="text-xs text-dark-text-secondary italic">Loading cards...</p>
+                        <p className="text-xs text-muted italic">Loading cards...</p>
                       ) : usePicker ? (
                         <div className="flex items-center gap-2">
                           <select
@@ -1065,7 +1067,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                                 handleExtDepChange(idx, 'card_letter', e.target.value);
                               }
                             }}
-                            className="flex-1 min-w-0 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
+                            className="flex-1 min-w-0 px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-primary"
                           >
                             <option value="">Select card...</option>
                             {targetCards.map(c => (
@@ -1082,10 +1084,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                             type="text"
                             value={dep.card_letter}
                             onChange={(e) => handleExtDepChange(idx, 'card_letter', e.target.value.toUpperCase())}
-                            className="w-28 px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text font-bold uppercase focus:outline-none focus:border-blue-500"
+                            className="w-28 px-2 py-1 bg-panel border border-line rounded text-sm text-ink font-bold uppercase focus:outline-none focus:border-primary"
                             placeholder="Letter"
                           />
-                          <span className="text-xs text-dark-text-secondary">
+                          <span className="text-xs text-muted">
                             {cardsReady && targetCards.length === 0
                               ? 'That project has no cards yet'
                               : 'Typing a letter that does not exist yet'}
@@ -1093,7 +1095,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                           {cardsReady && targetCards.length > 0 && (
                             <button
                               onClick={() => handleToggleManualLetter(idx, false)}
-                              className="text-xs px-2 py-1 rounded font-medium bg-dark-surface border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                              className="text-xs px-2 py-1 rounded font-medium bg-panel border border-line hover:bg-hover text-muted hover:text-ink"
                             >
                               Pick from list
                             </button>
@@ -1105,7 +1107,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         type="text"
                         value={dep.description}
                         onChange={(e) => handleExtDepChange(idx, 'description', e.target.value)}
-                        className="w-full px-2 py-1 bg-dark-surface border border-dark-border rounded text-sm text-dark-text focus:outline-none focus:border-blue-500"
+                        className="w-full px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-primary"
                         placeholder="Why this card depends on it (optional)"
                       />
                     </div>
@@ -1113,7 +1115,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 })}
                 <button
                   onClick={handleAddExtDep}
-                  className="text-xs px-3 py-1.5 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                  className="text-xs px-3 py-1.5 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                 >
                   + Add dependency
                 </button>
@@ -1130,59 +1132,59 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
                   const tone = dep.resolved
                     ? {
-                        box: 'bg-green-900/20 border-green-700/60',
-                        badge: 'bg-green-700 text-green-100',
+                        box: 'bg-progress/25 border-success-text',
+                        badge: 'bg-done text-on-done',
                         label: 'Resolved',
                       }
                     : projectMissing
                       ? {
-                          box: 'bg-slate-800/40 border-slate-600 border-dashed',
-                          badge: 'bg-slate-600 text-slate-100',
+                          box: 'bg-blocked border-dash border-dashed',
+                          badge: 'bg-raised text-ink',
                           label: 'project not imported yet',
                         }
                       : cardMissing
                         ? {
-                            box: 'bg-red-900/25 border-red-600',
-                            badge: 'bg-red-700 text-red-100',
+                            box: 'bg-danger/10 border-danger-text',
+                            badge: 'bg-danger text-on-danger',
                             label: 'no such card',
                           }
                         : {
-                            box: 'bg-amber-900/20 border-amber-700/60',
-                            badge: 'bg-amber-700 text-amber-100',
+                            box: 'bg-pal-marigold/25 border-warn-text',
+                            badge: 'bg-pal-marigold text-card-ink',
                             label: dep.status,
                           };
 
                   return (
                     <div key={idx} className={`text-sm px-3 py-2 rounded border ${tone.box}`}>
                       <div className="flex items-center justify-between gap-2">
-                        <span className="font-medium text-dark-text">
+                        <span className="font-medium text-ink">
                           {dep.project_name || dep.project_slug}
-                          <span className="text-dark-text-secondary"> · Session {dep.card_letter}</span>
+                          <span className="text-muted"> · Session {dep.card_letter}</span>
                         </span>
                         <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${tone.badge}`}>
                           {tone.label}
                         </span>
                       </div>
                       {cardMissing && (
-                        <p className="text-red-300 mt-1 text-xs">
+                        <p className="text-danger-text mt-1 text-xs">
                           {dep.project_name} has no card {dep.card_letter} - check the letter.
                         </p>
                       )}
                       {projectMissing && (
-                        <p className="text-slate-400 mt-1 text-xs">
+                        <p className="text-muted mt-1 text-xs">
                           Waiting for "{dep.project_slug}" to be imported.
                         </p>
                       )}
                       {dep.description && (
-                        <p className="text-dark-text-secondary mt-1">{dep.description}</p>
+                        <p className="text-muted mt-1">{dep.description}</p>
                       )}
                     </div>
                   );
                 })}
               </div>
             ) : (
-              <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
-                <p className="text-sm text-dark-text-secondary italic">No external dependencies</p>
+              <div className="bg-page border border-line rounded-lg p-3">
+                <p className="text-sm text-muted italic">No external dependencies</p>
               </div>
             )}
           </div>
@@ -1197,9 +1199,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-dark-text-secondary">Claude Code Prompt</h3>
+                  <h3 className="text-sm font-semibold text-muted">Claude Code Prompt</h3>
                   {promptGuideSaveSuccess && (
-                    <span className="text-xs text-green-400">Saved!</span>
+                    <span className="text-xs text-success-text">Saved!</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -1207,13 +1209,13 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     <>
                       <button
                         onClick={handleCancelEditPromptGuide}
-                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSavePromptGuide}
-                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
                       >
                         Save
                       </button>
@@ -1222,7 +1224,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     <>
                       <button
                         onClick={handleEditPromptGuide}
-                        className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                        className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                         title="Edit prompt"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1234,8 +1236,8 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         className={`
                           text-xs px-3 py-1 rounded font-medium transition-colors
                           ${promptGuideCopySuccess
-                            ? 'bg-green-700 text-white'
-                            : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text'}
+                            ? 'bg-done text-cream'
+                            : 'bg-page border border-line hover:bg-hover text-muted hover:text-ink'}
                         `}
                       >
                         {promptGuideCopySuccess ? 'Copied!' : 'Copy'}
@@ -1245,26 +1247,26 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 </div>
               </div>
               {promptGuideSaveError && (
-                <div className="mb-2 text-xs text-red-400">{promptGuideSaveError}</div>
+                <div className="mb-2 text-xs text-danger-text">{promptGuideSaveError}</div>
               )}
               {isEditingPromptGuide ? (
                 <textarea
                   value={editedPromptGuide}
                   onChange={(e) => setEditedPromptGuide(e.target.value)}
-                  className="w-full h-64 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text font-mono resize-none focus:outline-none scrollbar-dark"
+                  className="w-full h-64 p-3 bg-page border border-primary rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
                   placeholder="The prompt to paste into a Claude Code session for this card..."
                   autoFocus
                 />
               ) : hasPromptGuide ? (
-                <div className="bg-dark-bg border border-dark-border rounded-lg p-3 max-h-64 overflow-y-auto scrollbar-dark">
-                  <pre className="text-sm text-dark-text whitespace-pre-wrap font-mono">{card.prompt_guide}</pre>
+                <div className="bg-page border border-line rounded-lg p-3 max-h-64 overflow-y-auto scrollbar-themed">
+                  <pre className="text-sm text-ink whitespace-pre-wrap">{card.prompt_guide}</pre>
                 </div>
               ) : (
-                <div className="bg-dark-bg border border-dashed border-dark-border rounded-lg p-4 flex items-center justify-between gap-3">
-                  <p className="text-sm text-dark-text-secondary italic">No prompt yet</p>
+                <div className="bg-page border border-dashed border-line rounded-lg p-4 flex items-center justify-between gap-3">
+                  <p className="text-sm text-muted italic">No prompt yet</p>
                   <button
                     onClick={handleEditPromptGuide}
-                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
                   >
                     Add prompt
                   </button>
@@ -1278,9 +1280,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-semibold text-dark-text-secondary">Commit Message</h3>
+                  <h3 className="text-sm font-semibold text-muted">Commit Message</h3>
                   {commitMessageSaveSuccess && (
-                    <span className="text-xs text-green-400">Saved!</span>
+                    <span className="text-xs text-success-text">Saved!</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -1288,13 +1290,13 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     <>
                       <button
                         onClick={handleCancelEditCommitMessage}
-                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSaveCommitMessage}
-                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
                       >
                         Save
                       </button>
@@ -1303,7 +1305,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     <>
                       <button
                         onClick={handleEditCommitMessage}
-                        className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                        className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                         title="Edit commit message"
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1315,8 +1317,8 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         className={`
                           text-xs px-3 py-1 rounded font-medium transition-colors
                           ${commitMessageCopySuccess
-                            ? 'bg-green-700 text-white'
-                            : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text'}
+                            ? 'bg-done text-cream'
+                            : 'bg-page border border-line hover:bg-hover text-muted hover:text-ink'}
                         `}
                       >
                         {commitMessageCopySuccess ? 'Copied!' : 'Copy'}
@@ -1326,33 +1328,33 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 </div>
               </div>
               {commitMessageSaveError && (
-                <div className="mb-2 text-xs text-red-400">{commitMessageSaveError}</div>
+                <div className="mb-2 text-xs text-danger-text">{commitMessageSaveError}</div>
               )}
               {isEditingCommitMessage ? (
                 <textarea
                   value={editedCommitMessage}
                   onChange={(e) => setEditedCommitMessage(e.target.value)}
-                  className="w-full h-24 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-green-400 font-mono resize-none focus:outline-none scrollbar-dark"
+                  className="w-full h-24 p-3 bg-page border border-primary rounded-lg text-sm text-success-text resize-none focus:outline-none scrollbar-themed"
                   placeholder="Enter commit message..."
                   autoFocus
                 />
               ) : (
-                <div className="bg-dark-bg border border-dark-border rounded-lg p-3">
-                  <code className="text-sm text-green-400 whitespace-pre-wrap">{card.git_commit_message}</code>
+                <div className="bg-page border border-line rounded-lg p-3">
+                  <code className="text-sm text-success-text whitespace-pre-wrap">{card.git_commit_message}</code>
                 </div>
               )}
             </div>
           )}
 
           {/* Notes Section - visible for all cards, prominent for Done cards */}
-          <div className={`${card.status === 'Done' ? 'bg-green-900/10 border border-green-800 rounded-lg p-4' : ''}`}>
+          <div className={`${card.status === 'Done' ? 'bg-progress/25 border border-success-text rounded-lg p-4' : ''}`}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
-                <h3 className={`text-sm font-semibold ${card.status === 'Done' ? 'text-green-400' : 'text-dark-text-secondary'}`}>
+                <h3 className={`text-sm font-semibold ${card.status === 'Done' ? 'text-success-text' : 'text-muted'}`}>
                   Notes
                 </h3>
                 {notesSaveSuccess && (
-                  <span className="text-xs text-green-400">Saved!</span>
+                  <span className="text-xs text-success-text">Saved!</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -1360,13 +1362,13 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   <>
                     <button
                       onClick={handleCancelEditNotes}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleSaveNotes}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
                     >
                       Save
                     </button>
@@ -1374,7 +1376,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 ) : (
                   <button
                     onClick={handleEditNotes}
-                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                    className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                     title={card.notes ? "Edit notes" : "Add notes"}
                   >
                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1386,22 +1388,22 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               </div>
             </div>
             {notesSaveError && (
-              <div className="mb-2 text-xs text-red-400">{notesSaveError}</div>
+              <div className="mb-2 text-xs text-danger-text">{notesSaveError}</div>
             )}
             {isEditingNotes ? (
               <textarea
                 value={editedNotes}
                 onChange={(e) => setEditedNotes(e.target.value)}
-                className="w-full h-32 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text resize-none focus:outline-none scrollbar-dark"
+                className="w-full h-32 p-3 bg-page border border-primary rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
                 placeholder="Record what was built, decisions made, or anything to remember..."
                 autoFocus
               />
             ) : (
-              <div className={`bg-dark-bg border border-dark-border rounded-lg p-3 ${!card.notes ? 'min-h-[60px] flex items-center justify-center' : ''}`}>
+              <div className={`bg-page border border-line rounded-lg p-3 ${!card.notes ? 'min-h-[60px] flex items-center justify-center' : ''}`}>
                 {card.notes ? (
-                  <p className="text-sm text-dark-text whitespace-pre-wrap">{card.notes}</p>
+                  <p className="text-sm text-ink whitespace-pre-wrap">{card.notes}</p>
                 ) : (
-                  <p className="text-sm text-dark-text-secondary italic">No notes</p>
+                  <p className="text-sm text-muted italic">No notes</p>
                 )}
               </div>
             )}
@@ -1409,26 +1411,26 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
           {/* Manual Card Guidance */}
           {isManual && (
-            <div className="bg-purple-900/20 border border-purple-700 rounded-lg p-4">
+            <div className="bg-pal-lilac/30 border border-line rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-semibold text-purple-300 flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-link flex items-center gap-2">
                   <span>@</span> Manual Task Guidance
                 </h3>
                 <div className="flex items-center gap-2">
                   {promptGuideSaveSuccess && (
-                    <span className="text-xs text-green-400">Saved!</span>
+                    <span className="text-xs text-success-text">Saved!</span>
                   )}
                   {isEditingPromptGuide ? (
                     <>
                       <button
                         onClick={handleCancelEditPromptGuide}
-                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text"
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleSavePromptGuide}
-                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-blue-600 hover:bg-blue-500 text-white"
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
                       >
                         Save
                       </button>
@@ -1437,7 +1439,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     <>
                       <button
                         onClick={handleEditPromptGuide}
-                        className="text-xs px-2 py-1 rounded font-medium transition-colors bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text flex items-center gap-1"
+                        className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                         title={card.prompt_guide ? "Edit guidance" : "Add guidance"}
                       >
                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1451,8 +1453,8 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                           className={`
                             text-xs px-3 py-1 rounded font-medium transition-colors
                             ${promptGuideCopySuccess
-                              ? 'bg-green-700 text-white'
-                              : 'bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text'}
+                              ? 'bg-done text-cream'
+                              : 'bg-page border border-line hover:bg-hover text-muted hover:text-ink'}
                           `}
                         >
                           {promptGuideCopySuccess ? 'Copied!' : 'Copy'}
@@ -1463,25 +1465,25 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 </div>
               </div>
               {promptGuideSaveError && (
-                <div className="mb-2 text-xs text-red-400">{promptGuideSaveError}</div>
+                <div className="mb-2 text-xs text-danger-text">{promptGuideSaveError}</div>
               )}
-              <p className="text-sm text-dark-text mb-3">
+              <p className="text-sm text-ink mb-3">
                 This task requires manual action and cannot be automated with Claude Code.
               </p>
               {isEditingPromptGuide ? (
                 <textarea
                   value={editedPromptGuide}
                   onChange={(e) => setEditedPromptGuide(e.target.value)}
-                  className="w-full h-48 p-3 bg-dark-bg border border-blue-500 rounded-lg text-sm text-dark-text font-mono resize-none focus:outline-none scrollbar-dark"
+                  className="w-full h-48 p-3 bg-page border border-primary rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
                   placeholder="Enter task guidance or instructions..."
                   autoFocus
                 />
               ) : card.prompt_guide ? (
-                <div className="bg-dark-bg p-3 rounded">
-                  <p className="text-sm text-dark-text whitespace-pre-wrap">{card.prompt_guide}</p>
+                <div className="bg-page p-3 rounded">
+                  <p className="text-sm text-ink whitespace-pre-wrap">{card.prompt_guide}</p>
                 </div>
               ) : (
-                <p className="text-sm text-dark-text-secondary italic">
+                <p className="text-sm text-muted italic">
                   No specific guidance provided. Review the description and success criteria above.
                 </p>
               )}
@@ -1490,16 +1492,16 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
           {/* TBC Card Guidance */}
           {isTBC && (
-            <div className="bg-orange-900/20 border border-orange-700 rounded-lg p-4">
-              <h3 className="text-sm font-semibold text-orange-300 mb-2 flex items-center gap-2">
+            <div className="bg-pal-apricot/25 border border-warn-text rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-warn-text mb-2 flex items-center gap-2">
                 <span>?</span> Task Needs Planning
               </h3>
-              <p className="text-sm text-dark-text mb-4">
+              <p className="text-sm text-ink mb-4">
                 This task hasn't been fully planned yet. Use the button below to expand this card into detailed sub-tasks.
               </p>
               <button
                 onClick={handleExpandPlan}
-                className="w-full px-4 py-3 bg-orange-700 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="w-full px-4 py-3 bg-pal-apricot hover:brightness-95 text-card-ink border border-card-line rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <span>+</span> Expand & Plan
               </button>
@@ -1512,40 +1514,40 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         {showDeleteConfirm && (() => {
           const dependents = getDependentCards();
           return (
-            <div className="flex-shrink-0 p-6 border-t border-red-800 bg-red-950/30">
-              <p className="text-white font-semibold mb-1">
+            <div className="flex-shrink-0 p-6 border-t border-danger-text bg-danger/10">
+              <p className="text-ink font-semibold mb-1">
                 Delete Session {card.session_letter}: {card.title}?
               </p>
-              <p className="text-sm text-dark-text-secondary mb-3">This cannot be undone.</p>
+              <p className="text-sm text-muted mb-3">This cannot be undone.</p>
 
               {card.status === 'In Progress' && (
-                <p className="text-sm text-yellow-400 mb-2">⚠ This card is currently in progress.</p>
+                <p className="text-sm text-warn-text mb-2 flex items-center gap-1.5"><TriangleAlert className="w-4 h-4 flex-shrink-0" /> Warning: this card is currently in progress.</p>
               )}
               {card.status === 'Done' && (
-                <p className="text-sm text-yellow-400 mb-2">⚠ This card is marked complete. Deleting may affect project history.</p>
+                <p className="text-sm text-warn-text mb-2 flex items-center gap-1.5"><TriangleAlert className="w-4 h-4 flex-shrink-0" /> Warning: this card is marked complete. Deleting may affect project history.</p>
               )}
               {dependents.length > 0 && (
-                <p className="text-sm text-blue-300 mb-3">
+                <p className="text-sm text-link mb-3">
                   Note: {dependents.length} card(s) depend on this card and will be unblocked: {dependents.map(d => d.session_letter).join(', ')}
                 </p>
               )}
 
               {deleteError && (
-                <p className="text-sm text-red-400 mb-2">{deleteError}</p>
+                <p className="text-sm text-danger-text mb-2">{deleteError}</p>
               )}
 
               <div className="flex gap-3 mt-2">
                 <button
                   onClick={() => { setShowDeleteConfirm(false); setDeleteError(null); }}
                   disabled={isDeleting}
-                  className="px-4 py-2 bg-dark-bg border border-dark-border hover:bg-dark-hover text-dark-text rounded-lg font-medium transition-colors"
+                  className="px-4 py-2 bg-page border border-line hover:bg-hover text-ink rounded-lg font-medium transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleDeleteConfirm}
                   disabled={isDeleting}
-                  className="px-4 py-2 bg-red-700 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-danger hover:bg-danger text-cream rounded-lg font-medium transition-colors disabled:opacity-50"
                 >
                   {isDeleting ? 'Deleting...' : 'Delete'}
                 </button>
@@ -1555,7 +1557,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         })()}
 
         {/* Footer Actions */}
-        <div className="flex-shrink-0 p-6 border-t border-dark-border bg-dark-surface rounded-b-xl">
+        <div className="flex-shrink-0 p-6 border-t border-divider bg-panel rounded-b-xl">
           <div className="flex flex-wrap gap-3">
             {/* One-click start, only on a Not Started card: "Start Session" for
                 an engineer card with a prompt (an engineer card with an empty
@@ -1564,7 +1566,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             {card.status === 'Not Started' && (isManual || isTBC || hasPromptGuide) && (
               <button
                 onClick={handleStartSession}
-                className="flex-1 min-w-[140px] px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="flex-1 min-w-[140px] px-4 py-2 bg-primary hover:bg-primary text-cream rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <span>&gt;</span> {isManual || isTBC ? 'Mark as Started' : 'Start Session'}
               </button>
@@ -1574,7 +1576,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             {card.status !== 'Done' && (
               <button
                 onClick={handleMarkDone}
-                className="flex-1 min-w-[140px] px-4 py-2 bg-green-700 hover:bg-green-600 text-white rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="flex-1 min-w-[140px] px-4 py-2 bg-done hover:bg-done text-cream rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
                 <span>OK</span> Mark as Done
               </button>

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { copyText } from '../utils/clipboard.js';
+import { getThemeChoice, setThemeChoice } from '../utils/theme.js';
+import { Monitor, Sun, Moon, Trash2, Upload } from '../components/icons.jsx';
 
 // A stored, editable path with a copy button - the app's own repo has no
 // project row, so its directory_path lives in the settings table instead.
@@ -40,15 +42,15 @@ function StoredPathRow({ label, settingKey, placeholder, hint }) {
   };
 
   return (
-    <div className="py-2 border-b border-dark-border">
+    <div className="py-2 border-b border-divider">
       <div className="flex justify-between items-center gap-4">
-        <span className="text-dark-text-secondary whitespace-nowrap">{label}</span>
+        <span className="text-muted whitespace-nowrap">{label}</span>
         {!loaded ? (
-          <span className="text-dark-text-secondary">...</span>
+          <span className="text-muted">...</span>
         ) : showInput ? (
           <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
             {!value && !editing && (
-              <span className="text-xs text-amber-400 whitespace-nowrap">Not set</span>
+              <span className="text-xs text-warn-text whitespace-nowrap">Not set</span>
             )}
             <input
               type="text"
@@ -59,19 +61,19 @@ function StoredPathRow({ label, settingKey, placeholder, hint }) {
                 if (e.key === 'Escape' && editing) { setEditing(false); setError(null); }
               }}
               placeholder={placeholder}
-              className="flex-1 min-w-0 max-w-md px-2 py-1 bg-dark-bg border border-dark-border rounded text-sm text-dark-text font-mono focus:outline-none focus:border-blue-500"
+              className="flex-1 min-w-0 max-w-md px-2 py-1 bg-page border border-line rounded text-sm text-ink focus:outline-none focus:border-primary"
             />
             <button
               onClick={handleSave}
               disabled={saving || (!draft.trim() && !value)}
-              className="px-3 py-1 rounded text-xs font-medium bg-blue-600 hover:bg-blue-500 text-white disabled:opacity-50"
+              className="px-3 py-1 rounded text-xs font-medium bg-primary hover:bg-primary text-cream disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
             {editing && (
               <button
                 onClick={() => { setEditing(false); setError(null); }}
-                className="px-3 py-1 rounded text-xs font-medium bg-dark-bg border border-dark-border text-dark-text-secondary hover:text-dark-text"
+                className="px-3 py-1 rounded text-xs font-medium bg-page border border-line text-muted hover:text-ink"
               >
                 Cancel
               </button>
@@ -79,7 +81,7 @@ function StoredPathRow({ label, settingKey, placeholder, hint }) {
           </div>
         ) : (
           <div className="flex items-center gap-2 min-w-0">
-            <span className="text-dark-text font-mono text-right break-all">{value}</span>
+            <span className="text-ink text-right break-all">{value}</span>
             <button
               onClick={async () => {
                 try {
@@ -90,7 +92,7 @@ function StoredPathRow({ label, settingKey, placeholder, hint }) {
                   console.error('Failed to copy path:', err);
                 }
               }}
-              className={`flex-shrink-0 transition-colors ${copied ? 'text-green-400' : 'text-dark-text-secondary hover:text-dark-text'}`}
+              className={`flex-shrink-0 transition-colors ${copied ? 'text-success-text' : 'text-muted hover:text-ink'}`}
               title={copied ? 'Copied!' : 'Copy path to clipboard'}
             >
               {copied ? (
@@ -105,7 +107,7 @@ function StoredPathRow({ label, settingKey, placeholder, hint }) {
             </button>
             <button
               onClick={() => { setDraft(value); setEditing(true); setError(null); }}
-              className="flex-shrink-0 text-dark-text-secondary hover:text-dark-text transition-colors"
+              className="flex-shrink-0 text-muted hover:text-ink transition-colors"
               title={`Change ${label}`}
             >
               <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -115,8 +117,8 @@ function StoredPathRow({ label, settingKey, placeholder, hint }) {
           </div>
         )}
       </div>
-      {error && <p className="mt-1 text-xs text-red-400 text-right">{error}</p>}
-      {hint && showInput && <p className="mt-1 text-xs text-dark-text-secondary text-right">{hint}</p>}
+      {error && <p className="mt-1 text-xs text-danger-text text-right">{error}</p>}
+      {hint && showInput && <p className="mt-1 text-xs text-muted text-right">{hint}</p>}
     </div>
   );
 }
@@ -140,6 +142,8 @@ function SettingsPage({ onProjectsChange }) {
 
   // App info state
   const [appInfo, setAppInfo] = useState(null);
+
+  const [themeChoice, setThemeChoiceState] = useState(getThemeChoice);
 
   // Load initial data
   useEffect(() => {
@@ -251,14 +255,42 @@ function SettingsPage({ onProjectsChange }) {
   };
 
   return (
-    <div className="h-full overflow-auto scrollbar-dark">
+    <div className="h-full overflow-auto scrollbar-themed">
       <div className="max-w-3xl mx-auto p-6 space-y-8">
-        <h1 className="text-3xl font-bold text-dark-text">Settings</h1>
+        <h1 className="text-3xl font-bold text-ink">Settings</h1>
+
+        {/* Appearance - stored in this browser only, not the database */}
+        <section className="bg-panel rounded-lg border border-line p-6">
+          <h2 className="text-xl font-semibold mb-4 text-ink">Appearance</h2>
+          <p className="text-muted mb-4 text-sm">
+            Light or dark mode. Saved on this device only.
+          </p>
+          <div role="radiogroup" aria-label="Theme" className="inline-flex rounded-lg border border-line overflow-hidden">
+            {[
+              { id: 'system', label: 'System', Icon: Monitor },
+              { id: 'light', label: 'Light', Icon: Sun },
+              { id: 'dark', label: 'Dark', Icon: Moon },
+            ].map(({ id, label, Icon }) => (
+              <button
+                key={id}
+                role="radio"
+                aria-checked={themeChoice === id}
+                onClick={() => { setThemeChoice(id); setThemeChoiceState(id); }}
+                className={`flex items-center gap-2 px-4 py-2 text-sm font-medium border-r border-line last:border-r-0 transition-colors ${
+                  themeChoice === id ? 'bg-primary text-on-primary' : 'text-ink hover:bg-hover'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                {label}
+              </button>
+            ))}
+          </div>
+        </section>
 
         {/* Default Columns Configuration */}
-        <section className="bg-dark-surface rounded-lg border border-dark-border p-6">
-          <h2 className="text-xl font-semibold mb-4 text-dark-text">Default Columns</h2>
-          <p className="text-dark-text-secondary mb-4 text-sm">
+        <section className="bg-panel rounded-lg border border-line p-6">
+          <h2 className="text-xl font-semibold mb-4 text-ink">Default Columns</h2>
+          <p className="text-muted mb-4 text-sm">
             Configure the default columns for new projects.
           </p>
 
@@ -266,13 +298,13 @@ function SettingsPage({ onProjectsChange }) {
             {defaultColumns.map((column, index) => (
               <div
                 key={index}
-                className="flex items-center gap-2 p-2 bg-dark-bg rounded-lg border border-dark-border"
+                className="flex items-center gap-2 p-2 bg-page rounded-lg border border-line"
               >
-                <span className="flex-1 text-dark-text">{column}</span>
+                <span className="flex-1 text-ink">{column}</span>
                 <button
                   onClick={() => handleMoveColumn(index, -1)}
                   disabled={index === 0}
-                  className="p-1 text-dark-text-secondary hover:text-dark-text disabled:opacity-30"
+                  className="p-1 text-muted hover:text-ink disabled:opacity-30"
                   title="Move up"
                 >
                   ^
@@ -280,7 +312,7 @@ function SettingsPage({ onProjectsChange }) {
                 <button
                   onClick={() => handleMoveColumn(index, 1)}
                   disabled={index === defaultColumns.length - 1}
-                  className="p-1 text-dark-text-secondary hover:text-dark-text disabled:opacity-30"
+                  className="p-1 text-muted hover:text-ink disabled:opacity-30"
                   title="Move down"
                 >
                   v
@@ -288,7 +320,7 @@ function SettingsPage({ onProjectsChange }) {
                 <button
                   onClick={() => handleRemoveColumn(index)}
                   disabled={defaultColumns.length <= 1}
-                  className="p-1 text-red-400 hover:text-red-300 disabled:opacity-30"
+                  className="p-1 text-danger-text hover:text-danger-text disabled:opacity-30"
                   title="Remove"
                 >
                   x
@@ -304,12 +336,12 @@ function SettingsPage({ onProjectsChange }) {
               onChange={(e) => setNewColumn(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddColumn()}
               placeholder="Add new column..."
-              className="flex-1 px-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm focus:outline-none focus:border-blue-500"
+              className="flex-1 px-4 py-2 bg-page border border-line rounded-lg text-sm focus:outline-none focus:border-primary"
             />
             <button
               onClick={handleAddColumn}
               disabled={!newColumn.trim()}
-              className="px-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm hover:border-blue-500 transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-page border border-line rounded-lg text-sm hover:border-primary transition-colors disabled:opacity-50"
             >
               Add
             </button>
@@ -317,22 +349,22 @@ function SettingsPage({ onProjectsChange }) {
         </section>
 
         {/* Data Management Section */}
-        <section className="bg-dark-surface rounded-lg border border-dark-border p-6">
-          <h2 className="text-xl font-semibold mb-4 text-dark-text">Data Management</h2>
+        <section className="bg-panel rounded-lg border border-line p-6">
+          <h2 className="text-xl font-semibold mb-4 text-ink">Data Management</h2>
 
           {dataMessage && (
             <div className={`mb-4 p-3 rounded-lg border ${
-              dataMessage.type === 'success' ? 'bg-green-900/30 border-green-700 text-green-300' :
-              dataMessage.type === 'error' ? 'bg-red-900/30 border-red-700 text-red-300' :
-              'bg-blue-900/30 border-blue-700 text-blue-300'
+              dataMessage.type === 'success' ? 'bg-progress/25 border-success-text text-success-text' :
+              dataMessage.type === 'error' ? 'bg-danger/10 border-danger-text text-danger-text' :
+              'bg-primary/15 border-primary text-link'
             }`}>
               {dataMessage.text}
             </div>
           )}
 
           {/* Delete Project */}
-          <div className="mb-6 p-4 bg-dark-bg rounded-lg border border-dark-border">
-            <h3 className="text-sm font-medium text-dark-text mb-3">Delete Project</h3>
+          <div className="mb-6 p-4 bg-page rounded-lg border border-line">
+            <h3 className="text-sm font-medium text-ink mb-3">Delete Project</h3>
             <div className="flex flex-wrap items-center gap-3">
               <select
                 value={selectedProjectId}
@@ -340,7 +372,7 @@ function SettingsPage({ onProjectsChange }) {
                   setSelectedProjectId(e.target.value);
                   setShowDeleteConfirm(false);
                 }}
-                className="flex-1 min-w-48 px-4 py-2 bg-dark-surface border border-dark-border rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                className="flex-1 min-w-48 px-4 py-2 bg-panel border border-line rounded-lg text-sm focus:outline-none focus:border-primary"
               >
                 <option value="">Select a project...</option>
                 {projects.map((project) => (
@@ -354,24 +386,24 @@ function SettingsPage({ onProjectsChange }) {
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={!selectedProjectId}
-                  className="px-4 py-2 bg-dark-surface border border-red-700 rounded-lg text-sm text-red-400 hover:bg-red-900/30 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2 bg-panel border border-danger-text rounded-lg text-sm text-danger-text hover:bg-danger/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                  <span>🗑️</span>
+                  <Trash2 className="w-4 h-4" />
                   Delete Project
                 </button>
               ) : (
-                <div className="flex items-center gap-2 p-2 bg-red-900/30 border border-red-700 rounded-lg">
-                  <span className="text-sm text-red-300">Delete this project?</span>
+                <div className="flex items-center gap-2 p-2 bg-danger/10 border border-danger-text rounded-lg">
+                  <span className="text-sm text-danger-text">Delete this project?</span>
                   <button
                     onClick={handleDeleteProject}
                     disabled={deleting}
-                    className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-sm font-medium"
+                    className="px-3 py-1 bg-danger hover:bg-danger text-cream rounded text-sm font-medium"
                   >
                     {deleting ? 'Deleting...' : 'Yes, Delete'}
                   </button>
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
-                    className="px-3 py-1 bg-dark-bg border border-dark-border rounded text-sm hover:border-dark-hover"
+                    className="px-3 py-1 bg-page border border-line rounded text-sm hover:border-line"
                   >
                     Cancel
                   </button>
@@ -379,7 +411,7 @@ function SettingsPage({ onProjectsChange }) {
               )}
             </div>
             {projects.length === 0 && (
-              <p className="mt-2 text-xs text-dark-text-secondary">No projects available</p>
+              <p className="mt-2 text-xs text-muted">No projects available</p>
             )}
           </div>
 
@@ -388,7 +420,7 @@ function SettingsPage({ onProjectsChange }) {
             <button
               onClick={handleExportAll}
               disabled={exporting}
-              className="px-4 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm hover:border-blue-500 transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-page border border-line rounded-lg text-sm hover:border-primary transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {exporting ? (
                 <>
@@ -397,7 +429,7 @@ function SettingsPage({ onProjectsChange }) {
                 </>
               ) : (
                 <>
-                  <span>📤</span>
+                  <Upload className="w-4 h-4" />
                   Export All Projects
                 </>
               )}
@@ -407,24 +439,24 @@ function SettingsPage({ onProjectsChange }) {
             {!showClearConfirm ? (
               <button
                 onClick={() => setShowClearConfirm(true)}
-                className="px-4 py-2 bg-dark-bg border border-red-700 rounded-lg text-sm text-red-400 hover:bg-red-900/30 transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-page border border-danger-text rounded-lg text-sm text-danger-text hover:bg-danger/10 transition-colors flex items-center gap-2"
               >
-                <span>🗑️</span>
+                <Trash2 className="w-4 h-4" />
                 Clear All Data
               </button>
             ) : (
-              <div className="flex items-center gap-2 p-2 bg-red-900/30 border border-red-700 rounded-lg">
-                <span className="text-sm text-red-300">Are you sure?</span>
+              <div className="flex items-center gap-2 p-2 bg-danger/10 border border-danger-text rounded-lg">
+                <span className="text-sm text-danger-text">Are you sure?</span>
                 <button
                   onClick={handleClearAll}
                   disabled={clearing}
-                  className="px-3 py-1 bg-red-600 hover:bg-red-500 text-white rounded text-sm font-medium"
+                  className="px-3 py-1 bg-danger hover:bg-danger text-cream rounded text-sm font-medium"
                 >
                   {clearing ? 'Deleting...' : 'Yes, Delete All'}
                 </button>
                 <button
                   onClick={() => setShowClearConfirm(false)}
-                  className="px-3 py-1 bg-dark-bg border border-dark-border rounded text-sm hover:border-dark-hover"
+                  className="px-3 py-1 bg-page border border-line rounded text-sm hover:border-line"
                 >
                   Cancel
                 </button>
@@ -434,29 +466,29 @@ function SettingsPage({ onProjectsChange }) {
         </section>
 
         {/* About Section */}
-        <section className="bg-dark-surface rounded-lg border border-dark-border p-6">
-          <h2 className="text-xl font-semibold mb-4 text-dark-text">About</h2>
+        <section className="bg-panel rounded-lg border border-line p-6">
+          <h2 className="text-xl font-semibold mb-4 text-ink">About</h2>
 
           <div className="space-y-3 text-sm">
-            <div className="flex justify-between py-2 border-b border-dark-border">
-              <span className="text-dark-text-secondary">Application</span>
-              <span className="text-dark-text font-medium">Kanban Manager</span>
+            <div className="flex justify-between py-2 border-b border-divider">
+              <span className="text-muted">Application</span>
+              <span className="text-ink font-medium">Kanban Manager</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-dark-border">
-              <span className="text-dark-text-secondary">Version</span>
-              <span className="text-dark-text font-mono">{appInfo?.version || '1.0.0'}</span>
+            <div className="flex justify-between py-2 border-b border-divider">
+              <span className="text-muted">Version</span>
+              <span className="text-ink">{appInfo?.version || '1.0.0'}</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-dark-border">
-              <span className="text-dark-text-secondary">Electron</span>
-              <span className="text-dark-text font-mono">{appInfo?.electron || '-'}</span>
+            <div className="flex justify-between py-2 border-b border-divider">
+              <span className="text-muted">Electron</span>
+              <span className="text-ink">{appInfo?.electron || '-'}</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-dark-border">
-              <span className="text-dark-text-secondary">Node.js</span>
-              <span className="text-dark-text font-mono">{appInfo?.node || '-'}</span>
+            <div className="flex justify-between py-2 border-b border-divider">
+              <span className="text-muted">Node.js</span>
+              <span className="text-ink">{appInfo?.node || '-'}</span>
             </div>
-            <div className="flex justify-between py-2 border-b border-dark-border">
-              <span className="text-dark-text-secondary">Platform</span>
-              <span className="text-dark-text font-mono">{appInfo?.platform || '-'} ({appInfo?.arch || '-'})</span>
+            <div className="flex justify-between py-2 border-b border-divider">
+              <span className="text-muted">Platform</span>
+              <span className="text-ink">{appInfo?.platform || '-'} ({appInfo?.arch || '-'})</span>
             </div>
             <StoredPathRow
               label="Repo - laptop (dev)"
@@ -472,18 +504,18 @@ function SettingsPage({ onProjectsChange }) {
             />
             {/* Detected, not configured: which copy of the code THIS process is
                 running. Informational only - not a path to copy. */}
-            <div className="flex justify-between gap-4 py-2 border-b border-dark-border">
-              <span className="text-dark-text-secondary whitespace-nowrap">Running from</span>
-              <span className="text-dark-text-secondary font-mono text-right break-all">{appInfo?.directory || '-'}</span>
+            <div className="flex justify-between gap-4 py-2 border-b border-divider">
+              <span className="text-muted whitespace-nowrap">Running from</span>
+              <span className="text-muted text-right break-all">{appInfo?.directory || '-'}</span>
             </div>
             <div className="flex justify-between py-2">
-              <span className="text-dark-text-secondary">GitHub</span>
-              <span className="text-blue-400 font-mono">github.com/Kezman554/Kanban_App</span>
+              <span className="text-muted">GitHub</span>
+              <span className="text-link">github.com/Kezman554/Kanban_App</span>
             </div>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-dark-border">
-            <p className="text-xs text-dark-text-secondary text-center">
+          <div className="mt-6 pt-4 border-t border-divider">
+            <p className="text-xs text-muted text-center">
               A desktop Kanban app for orchestrating Claude Code sessions.
             </p>
           </div>

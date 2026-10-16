@@ -5,6 +5,7 @@ import RoadmapPage from './pages/RoadmapPage';
 import SettingsPage from './pages/SettingsPage';
 import CardTestPage from './pages/CardTestPage';
 import ImportDialog from './components/ImportDialog';
+import { ClipboardList, LayoutGrid, MapIcon, FlaskConical, SettingsIcon } from './components/icons';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('current-project');
@@ -59,25 +60,25 @@ function App() {
   };
 
   const navItems = [
-    { id: 'current-project', label: 'Current Project', icon: '📋' },
-    { id: 'all-projects', label: 'All Projects', icon: '📑' },
-    { id: 'roadmap', label: 'Roadmap', icon: '🗺️' },
-    { id: 'card-test', label: 'Card Test', icon: '🧪' },
-    { id: 'settings', label: 'Settings', icon: '⚙️' }
+    { id: 'current-project', label: 'Current Project', Icon: ClipboardList },
+    { id: 'all-projects', label: 'All Projects', Icon: LayoutGrid },
+    { id: 'roadmap', label: 'Roadmap', Icon: MapIcon },
+    { id: 'card-test', label: 'Card Test', Icon: FlaskConical },
+    { id: 'settings', label: 'Settings', Icon: SettingsIcon }
   ];
 
   return (
     <>
-    <div className="flex h-screen bg-dark-bg text-dark-text">
+    <div className="flex h-screen bg-page text-ink">
       {/* Sidebar */}
-      <aside className={`${sidebarCollapsed ? 'w-14' : 'w-64'} bg-dark-surface border-r border-dark-border flex flex-col transition-all duration-200`}>
+      <aside className={`${sidebarCollapsed ? 'w-14' : 'w-64'} bg-sidebar border-r border-divider flex flex-col transition-all duration-200`}>
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-dark-border">
+        <div className="p-4 border-b border-divider">
           <div className="flex items-center justify-between mb-3">
             {!sidebarCollapsed && <h1 className="text-xl font-bold">Kanban Manager</h1>}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-              className={`p-1.5 rounded-lg text-dark-text-secondary hover:text-dark-text hover:bg-dark-hover transition-colors ${sidebarCollapsed ? 'mx-auto' : ''}`}
+              className={`p-1.5 rounded-lg text-muted hover:text-ink hover:bg-hover transition-colors ${sidebarCollapsed ? 'mx-auto' : ''}`}
               title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -94,18 +95,18 @@ function App() {
             <>
               {/* Project Selector Dropdown */}
               <div className="relative">
-                <label className="block text-xs text-dark-text-secondary mb-1">
+                <label className="block text-xs text-muted mb-1">
                   Current Project
                 </label>
                 {loading ? (
-                  <div className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm text-dark-text-secondary">
+                  <div className="w-full bg-page border border-line rounded px-3 py-2 text-sm text-muted">
                     Loading...
                   </div>
                 ) : (
                   <select
                     value={selectedProject || ''}
                     onChange={(e) => setSelectedProject(e.target.value ? parseInt(e.target.value) : null)}
-                    className="w-full bg-dark-bg border border-dark-border rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500 cursor-pointer"
+                    className="w-full bg-page border border-line rounded px-3 py-2 text-sm focus:outline-none focus:border-primary cursor-pointer"
                   >
                     <option value="">Select a project...</option>
                     {projects.map((project) => (
@@ -120,7 +121,7 @@ function App() {
               {/* Import Project Button */}
               <button
                 onClick={() => setIsImportDialogOpen(true)}
-                className="w-full mt-3 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm text-dark-text hover:border-blue-500 hover:text-blue-400 transition-colors flex items-center justify-center gap-2"
+                className="w-full mt-3 px-3 py-2 bg-page border border-line rounded-lg text-sm text-ink hover:border-primary hover:text-link transition-colors flex items-center justify-center gap-2"
               >
                 <span>+</span>
                 <span>Import Project</span>
@@ -139,12 +140,14 @@ function App() {
                 sidebarCollapsed ? 'justify-center px-0 py-2' : 'gap-3 px-3 py-2'
               } ${
                 currentPage === item.id
-                  ? 'bg-blue-600 text-white'
-                  : 'text-dark-text hover:bg-dark-hover'
+                  ? 'bg-primary text-cream'
+                  : 'text-ink hover:bg-hover'
               }`}
               title={sidebarCollapsed ? item.label : undefined}
+              aria-label={sidebarCollapsed ? item.label : undefined}
+              aria-current={currentPage === item.id ? 'page' : undefined}
             >
-              <span className="text-xl">{item.icon}</span>
+              <item.Icon className="w-5 h-5 flex-shrink-0" />
               {!sidebarCollapsed && <span className="text-sm font-medium">{item.label}</span>}
             </button>
           ))}
@@ -152,8 +155,8 @@ function App() {
 
         {/* Sidebar Footer */}
         {!sidebarCollapsed && (
-          <div className="p-4 border-t border-dark-border">
-            <p className="text-xs text-dark-text-secondary">
+          <div className="p-4 border-t border-divider">
+            <p className="text-xs text-muted">
               Kanban Manager v1.0.0
             </p>
           </div>
@@ -161,7 +164,7 @@ function App() {
       </aside>
 
       {/* Main Content Area */}
-      <main className="flex-1 overflow-auto scrollbar-dark">
+      <main className="flex-1 overflow-auto scrollbar-themed">
         {renderPage()}
       </main>
     </div>

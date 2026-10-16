@@ -28,7 +28,7 @@ const CardStack = ({ cards, onCardClick, onUnlockCard, onUnlockTopCard }) => {
         {hasStack && cards.slice(1, MAX_VISIBLE_EDGES + 1).map((card, index) => (
           <div
             key={card.id}
-            className="absolute left-0 right-0 h-2 bg-dark-surface border border-dark-border rounded-b-lg"
+            className="absolute left-0 right-0 h-2 bg-panel border border-line rounded-b-lg"
             style={{
               bottom: -((index + 1) * EDGE_PEEK),
               zIndex: MAX_VISIBLE_EDGES - index,
@@ -49,7 +49,7 @@ const CardStack = ({ cards, onCardClick, onUnlockCard, onUnlockTopCard }) => {
           {hasStack && (
             <button
               onClick={handleExpandClick}
-              className="absolute top-2 right-2 w-6 h-6 rounded bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center justify-center shadow-lg transition-colors z-10"
+              className="absolute top-2 right-2 w-6 h-6 rounded bg-primary hover:bg-primary text-cream text-xs font-bold flex items-center justify-center shadow-card transition-colors z-10"
               title={`View all ${cards.length} cards in stack`}
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
@@ -62,7 +62,7 @@ const CardStack = ({ cards, onCardClick, onUnlockCard, onUnlockTopCard }) => {
         {/* Stack count badge - positioned at bottom of stacked edges */}
         {hasStack && (
           <div
-            className="absolute right-2 px-2 py-0.5 rounded-full bg-blue-600 text-white text-xs font-bold shadow-lg"
+            className="absolute right-2 px-2 py-0.5 rounded-full bg-primary text-cream text-xs font-bold shadow-card"
             style={{
               bottom: -(totalStackHeight + 4),
               zIndex: MAX_VISIBLE_EDGES + 2

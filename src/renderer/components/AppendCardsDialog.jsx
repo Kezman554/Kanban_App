@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import { FolderOpen } from './icons';
 
 const BATCH_PLACEMENT_KEYS = ['add_to_phase', 'add_to_subphase', 'new_phase', 'new_subphase'];
 
@@ -346,22 +347,22 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-50"
+        className="fixed inset-0 bg-scrim z-50"
         onClick={handleClose}
       />
 
       {/* Dialog */}
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
         <div
-          className="bg-dark-surface border border-dark-border rounded-lg shadow-xl w-full max-w-lg mx-4 pointer-events-auto max-h-[80vh] flex flex-col"
+          className="bg-panel border border-line rounded-lg shadow-card w-full max-w-lg mx-4 pointer-events-auto max-h-[80vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-dark-border flex-shrink-0">
-            <h2 className="text-lg font-bold text-dark-text">Append Cards</h2>
+          <div className="flex items-center justify-between p-4 border-b border-divider flex-shrink-0">
+            <h2 className="text-lg font-bold text-ink">Append Cards</h2>
             <button
               onClick={handleClose}
-              className="p-1 rounded hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text transition-colors"
+              className="p-1 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
             >
               <span className="text-xl">x</span>
             </button>
@@ -371,22 +372,22 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
           <div className="p-4 space-y-4 overflow-y-auto flex-1">
             {/* File Picker */}
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-2">
+              <label className="block text-sm font-medium text-ink mb-2">
                 Select Append JSON File
               </label>
               <button
                 onClick={handleSelectFile}
                 disabled={!!result}
-                className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg hover:border-blue-500 transition-colors text-left flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-3 bg-page border border-line rounded-lg hover:border-primary transition-colors text-left flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                <span className="text-2xl">📁</span>
+                <FolderOpen className="w-6 h-6 text-muted flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   {selectedFile ? (
-                    <span className="text-dark-text truncate block">
+                    <span className="text-ink truncate block">
                       {selectedFile.split(/[/\\]/).pop()}
                     </span>
                   ) : (
-                    <span className="text-dark-text-secondary">
+                    <span className="text-muted">
                       Click to browse...
                     </span>
                   )}
@@ -396,63 +397,63 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
 
             {/* Error Display */}
             {error && (
-              <div className="p-3 bg-red-900/30 border border-red-700 rounded-lg">
-                <p className="text-sm text-red-300">{error}</p>
+              <div className="p-3 bg-danger/10 border border-danger-text rounded-lg">
+                <p className="text-sm text-danger-text">{error}</p>
               </div>
             )}
 
             {/* Validation Errors */}
             {validationErrors.length > 0 && (
-              <div className="p-3 bg-red-900/30 border border-red-700 rounded-lg space-y-1">
-                <p className="text-sm font-medium text-red-300">Validation Errors:</p>
+              <div className="p-3 bg-danger/10 border border-danger-text rounded-lg space-y-1">
+                <p className="text-sm font-medium text-danger-text">Validation Errors:</p>
                 {validationErrors.map((err, i) => (
-                  <p key={i} className="text-sm text-red-400 pl-2">- {err}</p>
+                  <p key={i} className="text-sm text-danger-text pl-2">- {err}</p>
                 ))}
               </div>
             )}
 
             {/* Validation Warnings */}
             {validationWarnings.length > 0 && (
-              <div className="p-3 bg-yellow-900/30 border border-yellow-700 rounded-lg space-y-1">
-                <p className="text-sm font-medium text-yellow-300">Warnings:</p>
+              <div className="p-3 bg-pal-marigold/25 border border-warn-text rounded-lg space-y-1">
+                <p className="text-sm font-medium text-warn-text">Warnings:</p>
                 {validationWarnings.map((warn, i) => (
-                  <p key={i} className="text-sm text-yellow-400 pl-2">- {warn}</p>
+                  <p key={i} className="text-sm text-warn-text pl-2">- {warn}</p>
                 ))}
               </div>
             )}
 
             {/* Preview */}
             {fileData && validationErrors.length === 0 && !result && (
-              <div className="p-4 bg-dark-bg rounded-lg border border-dark-border space-y-3">
-                <h3 className="text-sm font-medium text-dark-text-secondary">
+              <div className="p-4 bg-page rounded-lg border border-line space-y-3">
+                <h3 className="text-sm font-medium text-muted">
                   Preview
                 </h3>
 
                 {/* One group per destination */}
                 {previewGroups.map((group, gi) => (
                   <div key={gi} className="space-y-1.5">
-                    <p className="text-sm text-dark-text">
-                      Adding <span className="font-bold text-blue-400">{group.cards.length}</span> card{group.cards.length !== 1 ? 's' : ''} to{' '}
+                    <p className="text-sm text-ink">
+                      Adding <span className="font-bold text-link">{group.cards.length}</span> card{group.cards.length !== 1 ? 's' : ''} to{' '}
                       {group.target ? (
                         <>
                           <span className="font-semibold">{group.target.name}</span>
                           {group.target.note && (
-                            <span className="text-green-400"> ({group.target.note})</span>
+                            <span className="text-success-text"> ({group.target.note})</span>
                           )}
                         </>
                       ) : (
-                        <span className="font-semibold text-red-400">an unknown destination</span>
+                        <span className="font-semibold text-danger-text">an unknown destination</span>
                       )}
                     </p>
 
                     {group.cards.map((card, i) => (
                       <div key={i} className="flex items-center gap-2 text-sm pl-3">
-                        <span className="flex-shrink-0 w-8 h-6 rounded bg-dark-surface flex items-center justify-center font-mono text-xs text-blue-400 border border-dark-border">
+                        <span className="flex-shrink-0 w-8 h-6 rounded bg-panel flex items-center justify-center text-xs text-link border border-line">
                           {card.session_letter}
                         </span>
-                        <span className="text-dark-text truncate">{card.title}</span>
+                        <span className="text-ink truncate">{card.title}</span>
                         {card.status && card.status !== 'Not Started' && (
-                          <span className="text-xs text-yellow-400 flex-shrink-0">({card.status})</span>
+                          <span className="text-xs text-warn-text flex-shrink-0">({card.status})</span>
                         )}
                       </div>
                     ))}
@@ -460,19 +461,19 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
                 ))}
 
                 {previewGroups.length > 1 && (
-                  <p className="text-xs text-dark-text-secondary border-t border-dark-border pt-2">
+                  <p className="text-xs text-muted border-t border-divider pt-2">
                     {totalPreviewCards} card{totalPreviewCards !== 1 ? 's' : ''} across {previewGroups.length} destinations
                   </p>
                 )}
 
                 {/* Dependency updates */}
                 {fileData.dependency_updates && fileData.dependency_updates.length > 0 && (
-                  <div className="pt-2 border-t border-dark-border">
-                    <p className="text-xs font-medium text-dark-text-secondary mb-1.5">
+                  <div className="pt-2 border-t border-divider">
+                    <p className="text-xs font-medium text-muted mb-1.5">
                       Dependency Updates ({fileData.dependency_updates.length}):
                     </p>
                     {fileData.dependency_updates.map((update, i) => (
-                      <div key={i} className="text-xs text-dark-text-secondary pl-2">
+                      <div key={i} className="text-xs text-muted pl-2">
                         Card {update.card || update.session_letter} + deps: [{([].concat(update.add_dependencies || update.add_dependency || [])).join(', ')}]
                       </div>
                     ))}
@@ -483,15 +484,15 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
 
             {/* Success Result */}
             {result && (
-              <div className="p-4 bg-green-900/20 border border-green-700 rounded-lg space-y-2">
-                <p className="text-sm font-medium text-green-300">
+              <div className="p-4 bg-progress/25 border border-success-text rounded-lg space-y-2">
+                <p className="text-sm font-medium text-success-text">
                   Successfully appended!
                 </p>
-                <p className="text-sm text-green-400">
+                <p className="text-sm text-success-text">
                   {result.cardsAdded} card{result.cardsAdded !== 1 ? 's' : ''} added, {result.dependenciesUpdated} dependenc{result.dependenciesUpdated !== 1 ? 'ies' : 'y'} updated
                 </p>
                 {((result.createdPhases || []).length > 0 || (result.createdSubphases || []).length > 0) && (
-                  <p className="text-sm text-green-400">
+                  <p className="text-sm text-success-text">
                     Created{describeCreated(result.createdPhases, 'phase', 'phases')}
                     {(result.createdPhases || []).length > 0 && (result.createdSubphases || []).length > 0 ? ' and' : ''}
                     {describeCreated(result.createdSubphases, 'subphase', 'subphases')}
@@ -500,7 +501,7 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
                 {result.warnings && result.warnings.length > 0 && (
                   <div className="pt-1">
                     {result.warnings.map((w, i) => (
-                      <p key={i} className="text-xs text-yellow-400">- {w}</p>
+                      <p key={i} className="text-xs text-warn-text">- {w}</p>
                     ))}
                   </div>
                 )}
@@ -509,10 +510,10 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 p-4 border-t border-dark-border flex-shrink-0">
+          <div className="flex items-center justify-end gap-3 p-4 border-t border-divider flex-shrink-0">
             <button
               onClick={handleClose}
-              className="px-4 py-2 rounded-lg text-dark-text-secondary hover:text-dark-text hover:bg-dark-hover transition-colors"
+              className="px-4 py-2 rounded-lg text-muted hover:text-ink hover:bg-hover transition-colors"
             >
               {result ? 'Close' : 'Cancel'}
             </button>
@@ -523,8 +524,8 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
                 className={`
                   px-6 py-2 rounded-lg font-medium transition-colors
                   ${canAppend
-                    ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                    : 'bg-dark-border text-dark-text-secondary cursor-not-allowed'
+                    ? 'bg-primary hover:bg-primary text-cream'
+                    : 'bg-divider text-muted cursor-not-allowed'
                   }
                 `}
               >

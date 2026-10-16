@@ -2,14 +2,91 @@
 
 @source "./**/*.{js,jsx}";
 
+/* ===== Design tokens =====
+   The only place a colour value may be written. Light values live in @theme;
+   dark overrides live in the [data-theme="dark"] block below. The stock
+   Tailwind palette and font stacks are cleared, so only these names exist. */
 @theme {
-  --color-dark-bg: #1a1a1a;
-  --color-dark-surface: #242424;
-  --color-dark-hover: #2d2d2d;
-  --color-dark-border: #3a3a3a;
-  --color-dark-text: #e0e0e0;
-  --color-dark-text-secondary: #a0a0a0;
+  --color-*: initial;
+  --shadow-*: initial;
+
+  /* Fredoka only: every family utility resolves to it */
+  --font-sans: 'Fredoka', sans-serif;
+  --font-serif: 'Fredoka', sans-serif;
+  --font-mono: 'Fredoka', sans-serif;
+
+  /* Mode-dependent roles (light values) */
+  --color-page: #F4EFC9;
+  --color-sidebar: #E9E2B3;
+  --color-panel: #FFFDF0;
+  --color-raised: #FFFDF0;
+  --color-ink: #3A2F22;
+  --color-muted: #6B5D45;
+  --color-line: rgba(58, 47, 34, 0.55);
+  --color-divider: rgba(58, 47, 34, 0.35);
+  --color-dash: rgba(58, 47, 34, 0.5);
+  --color-blocked: #F7F3D8;
+  --color-scrim: rgba(58, 47, 34, 0.42);
+  --color-hover: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  --color-link: #22707B;
+  --color-success-text: #2C7450;
+  --color-warn-text: #8A600A;
+  --color-danger-text: #A8452B;
+
+  /* Same in both modes */
+  --color-card-ink: #3A2F22;
+  --color-card-line: rgba(58, 47, 34, 0.55);
+  --color-cream: #FFFDF0;
+  --color-nav-active: #8AD0D9;
+  --color-primary: #22707B;
+  --color-on-primary: #FFFDF0;
+  --color-progress: #A1DDBC;
+  --color-done: #2C7450;
+  --color-on-done: #FFFDF0;
+  --color-danger: #A8452B;
+  --color-on-danger: #FFFDF0;
+
+  /* Card palette: fill / deep shade */
+  --color-pal-coral: #F4A086;       --color-pal-coral-deep: #A8452B;
+  --color-pal-aqua: #8AD0D9;        --color-pal-aqua-deep: #22707B;
+  --color-pal-lilac: #C6B3F2;       --color-pal-lilac-deep: #5B42AE;
+  --color-pal-mint: #A1DDBC;        --color-pal-mint-deep: #2C7450;
+  --color-pal-pink: #F4B1CD;        --color-pal-pink-deep: #A23E6B;
+  --color-pal-sky: #9CC3F0;         --color-pal-sky-deep: #2F62A3;
+  --color-pal-marigold: #F5CC70;    --color-pal-marigold-deep: #8A600A;
+  --color-pal-sage: #B9D08F;        --color-pal-sage-deep: #4F6B1F;
+  --color-pal-apricot: #F7B98A;     --color-pal-apricot-deep: #9A4E12;
+  --color-pal-periwinkle: #A9B3F2;  --color-pal-periwinkle-deep: #4150B0;
+  --color-pal-seafoam: #8FD6C2;     --color-pal-seafoam-deep: #1F7562;
+  --color-pal-mauve: #D9A9D6;       --color-pal-mauve-deep: #8A3F86;
+
+  --shadow-card: 3px 3px 0 rgba(58, 47, 34, 0.22);
 }
+
+:root[data-theme="dark"] {
+  --color-page: #2A2620;
+  --color-sidebar: #221F1A;
+  --color-panel: #38322A;
+  --color-raised: #433C32;
+  --color-ink: #F2EAD3;
+  --color-muted: #BFB49A;
+  --color-line: #9A8E74;
+  --color-divider: #4A4236;
+  --color-dash: #7A6F57;
+  --color-blocked: #332E26;
+  --color-scrim: rgba(0, 0, 0, 0.55);
+  --color-link: #8AD0D9;
+  --color-success-text: #A1DDBC;
+  --color-warn-text: #F5CC70;
+  --color-danger-text: #F4A086;
+  --shadow-card: 3px 3px 0 rgba(0, 0, 0, 0.45);
+  color-scheme: dark;
+}
+
+:root[data-theme="light"] {
+  color-scheme: light;
+}
+/* ===== End of design tokens ===== */
 
 @layer base {
   * {
@@ -19,12 +96,10 @@
   }
 
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-      'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-      sans-serif;
+    font-family: var(--font-sans);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    @apply bg-dark-bg text-dark-text;
+    @apply bg-page text-ink;
   }
 
   #root {
@@ -34,21 +109,21 @@
 }
 
 @layer components {
-  /* Custom scrollbar for dark theme */
-  .scrollbar-dark::-webkit-scrollbar {
+  /* Themed scrollbar */
+  .scrollbar-themed::-webkit-scrollbar {
     width: 8px;
     height: 8px;
   }
 
-  .scrollbar-dark::-webkit-scrollbar-track {
-    @apply bg-dark-bg;
+  .scrollbar-themed::-webkit-scrollbar-track {
+    @apply bg-transparent;
   }
 
-  .scrollbar-dark::-webkit-scrollbar-thumb {
-    @apply bg-dark-border rounded;
+  .scrollbar-themed::-webkit-scrollbar-thumb {
+    @apply bg-divider rounded;
   }
 
-  .scrollbar-dark::-webkit-scrollbar-thumb:hover {
-    @apply bg-dark-hover;
+  .scrollbar-themed::-webkit-scrollbar-thumb:hover {
+    @apply bg-dash;
   }
 }

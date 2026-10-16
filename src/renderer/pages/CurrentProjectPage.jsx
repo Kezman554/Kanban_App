@@ -9,8 +9,8 @@ function CurrentProjectPage({ selectedProjectId }) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-dark-text mb-2">No Project Selected</h2>
-          <p className="text-dark-text-secondary">
+          <h2 className="text-2xl font-bold text-ink mb-2">No Project Selected</h2>
+          <p className="text-muted">
             Please select a project from the sidebar or create a new one.
           </p>
         </div>
@@ -21,15 +21,15 @@ function CurrentProjectPage({ selectedProjectId }) {
   return (
     <div className="h-full flex flex-col">
       {/* View Toggle */}
-      <div className="flex-shrink-0 px-6 py-3 bg-dark-surface border-b border-dark-border flex items-center gap-4">
-        <span className="text-sm text-dark-text-secondary">View:</span>
-        <div className="flex rounded-lg overflow-hidden border border-dark-border">
+      <div className="flex-shrink-0 px-6 py-3 bg-panel border-b border-divider flex items-center gap-4">
+        <span className="text-sm text-muted">View:</span>
+        <div className="flex rounded-lg overflow-hidden border border-line">
           <button
             onClick={() => setViewMode('kanban')}
             className={`px-4 py-1.5 text-sm font-medium transition-colors ${
               viewMode === 'kanban'
-                ? 'bg-blue-600 text-white'
-                : 'bg-dark-bg text-dark-text-secondary hover:text-dark-text'
+                ? 'bg-primary text-cream'
+                : 'bg-page text-muted hover:text-ink'
             }`}
           >
             Kanban
@@ -38,8 +38,8 @@ function CurrentProjectPage({ selectedProjectId }) {
             onClick={() => setViewMode('roadmap')}
             className={`px-4 py-1.5 text-sm font-medium transition-colors ${
               viewMode === 'roadmap'
-                ? 'bg-blue-600 text-white'
-                : 'bg-dark-bg text-dark-text-secondary hover:text-dark-text'
+                ? 'bg-primary text-cream'
+                : 'bg-page text-muted hover:text-ink'
             }`}
           >
             Roadmap

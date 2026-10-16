@@ -1,4 +1,5 @@
 import React from 'react';
+import { Bot, Wrench, Hand, CircleHelp } from '../components/icons';
 import Card from '../components/Card';
 
 function CardTestPage() {
@@ -132,7 +133,7 @@ function CardTestPage() {
     <div className="p-6">
       <div className="mb-6">
         <h1 className="text-3xl font-bold mb-2">Card Component Test View</h1>
-        <p className="text-dark-text-secondary">
+        <p className="text-muted">
           Showcasing all card states and features
         </p>
       </div>
@@ -149,46 +150,46 @@ function CardTestPage() {
       </div>
 
       {/* Legend */}
-      <div className="mt-8 p-4 bg-dark-surface rounded-lg border border-dark-border">
+      <div className="mt-8 p-4 bg-panel rounded-lg border border-line">
         <h2 className="text-xl font-bold mb-4">Legend</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h3 className="text-sm font-semibold text-dark-text-secondary mb-2">Status Colors</h3>
+            <h3 className="text-sm font-semibold text-muted mb-2">Status Colors</h3>
             <ul className="space-y-1 text-sm">
-              <li>• <span className="text-gray-300">Not Started</span> - Gray badge</li>
-              <li>• <span className="text-blue-300">In Progress</span> - Blue border & badge</li>
-              <li>• <span className="text-green-300">Done</span> - Checkmark, muted, green badge</li>
-              <li>• <span className="text-red-300">Blocked</span> - Lock icon, greyed out, red badge</li>
+              <li>• <span className="text-muted">Not Started</span> - Gray badge</li>
+              <li>• <span className="text-link">In Progress</span> - Blue border & badge</li>
+              <li>• <span className="text-success-text">Done</span> - Checkmark, muted, green badge</li>
+              <li>• <span className="text-danger-text">Blocked</span> - Lock icon, greyed out, red badge</li>
             </ul>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-dark-text-secondary mb-2">Resource Icons</h3>
+            <h3 className="text-sm font-semibold text-muted mb-2">Resource Icons</h3>
             <ul className="space-y-1 text-sm">
-              <li>🤖 Claude Subscription</li>
-              <li>🔧 Anthropic API</li>
-              <li>✋ Manual Task (no AI needed)</li>
-              <li>❓ To Be Confirmed (approach uncertain)</li>
+              <li className="flex items-center gap-2"><Bot className="w-4 h-4" /> Claude Subscription</li>
+              <li className="flex items-center gap-2"><Wrench className="w-4 h-4" /> Anthropic API</li>
+              <li className="flex items-center gap-2"><Hand className="w-4 h-4" /> Manual Task (no AI needed)</li>
+              <li className="flex items-center gap-2"><CircleHelp className="w-4 h-4" /> To Be Confirmed (approach uncertain)</li>
             </ul>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-dark-text-secondary mb-2">Complexity Levels</h3>
+            <h3 className="text-sm font-semibold text-muted mb-2">Complexity Levels</h3>
             <ul className="space-y-1 text-sm">
-              <li>• <span className="text-green-300">Low</span> - Simple task</li>
-              <li>• <span className="text-yellow-300">Medium</span> - Moderate complexity</li>
-              <li>• <span className="text-red-300">High</span> - Complex, may need breakdown</li>
+              <li>• <span className="text-success-text">Low</span> - Simple task</li>
+              <li>• <span className="text-warn-text">Medium</span> - Moderate complexity</li>
+              <li>• <span className="text-danger-text">High</span> - Complex, may need breakdown</li>
             </ul>
           </div>
 
           <div>
-            <h3 className="text-sm font-semibold text-dark-text-secondary mb-2">Special Indicators</h3>
+            <h3 className="text-sm font-semibold text-muted mb-2">Special Indicators</h3>
             <ul className="space-y-1 text-sm">
-              <li>• <span className="text-purple-300">Manual</span> - Human-only task</li>
-              <li>• <span className="text-orange-300">TBC</span> - Dashed border, needs decision</li>
-              <li>• <span className="text-yellow-300">Placeholder</span> - Will be expanded later</li>
-              <li>• <span className="text-indigo-300">May Expand</span> - Likely needs sub-tasks</li>
+              <li>• <span className="text-link">Manual</span> - Human-only task</li>
+              <li>• <span className="text-warn-text">TBC</span> - Dashed border, needs decision</li>
+              <li>• <span className="text-warn-text">Placeholder</span> - Will be expanded later</li>
+              <li>• <span className="text-link">May Expand</span> - Likely needs sub-tasks</li>
             </ul>
           </div>
         </div>

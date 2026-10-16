@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { FolderOpen } from './icons';
 
 const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -88,22 +89,22 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-50"
+        className="fixed inset-0 bg-scrim z-50"
         onClick={handleClose}
       />
 
       {/* Dialog */}
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
         <div
-          className="bg-dark-surface border border-dark-border rounded-lg shadow-xl w-full max-w-lg mx-4 pointer-events-auto"
+          className="bg-panel border border-line rounded-lg shadow-card w-full max-w-lg mx-4 pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-4 border-b border-dark-border">
-            <h2 className="text-lg font-bold text-dark-text">Import Project</h2>
+          <div className="flex items-center justify-between p-4 border-b border-divider">
+            <h2 className="text-lg font-bold text-ink">Import Project</h2>
             <button
               onClick={handleClose}
-              className="p-1 rounded hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text transition-colors"
+              className="p-1 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
             >
               <span className="text-xl">x</span>
             </button>
@@ -113,21 +114,21 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
           <div className="p-4 space-y-4">
             {/* File Picker */}
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-2">
+              <label className="block text-sm font-medium text-ink mb-2">
                 Select Kanban JSON File
               </label>
               <button
                 onClick={handleSelectFile}
-                className="w-full px-4 py-3 bg-dark-bg border border-dark-border rounded-lg hover:border-blue-500 transition-colors text-left flex items-center gap-3"
+                className="w-full px-4 py-3 bg-page border border-line rounded-lg hover:border-primary transition-colors text-left flex items-center gap-3"
               >
-                <span className="text-2xl">📁</span>
+                <FolderOpen className="w-6 h-6 text-muted flex-shrink-0" />
                 <div className="flex-1 min-w-0">
                   {selectedFile ? (
-                    <span className="text-dark-text truncate block">
+                    <span className="text-ink truncate block">
                       {selectedFile.split(/[/\\]/).pop()}
                     </span>
                   ) : (
-                    <span className="text-dark-text-secondary">
+                    <span className="text-muted">
                       Click to browse...
                     </span>
                   )}
@@ -137,25 +138,25 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
 
             {/* Error Display */}
             {error && (
-              <div className="p-3 bg-red-900/30 border border-red-700 rounded-lg">
-                <p className="text-sm text-red-300">{error}</p>
+              <div className="p-3 bg-danger/10 border border-danger-text rounded-lg">
+                <p className="text-sm text-danger-text">{error}</p>
               </div>
             )}
 
             {/* Preview */}
             {fileData && (
-              <div className="p-4 bg-dark-bg rounded-lg border border-dark-border">
-                <h3 className="text-sm font-medium text-dark-text-secondary mb-3">
+              <div className="p-4 bg-page rounded-lg border border-line">
+                <h3 className="text-sm font-medium text-muted mb-3">
                   Preview
                 </h3>
 
                 {/* Project Name */}
                 <div className="mb-4">
-                  <p className="text-xl font-bold text-dark-text">
+                  <p className="text-xl font-bold text-ink">
                     {fileData.name || 'Unnamed Project'}
                   </p>
                   {fileData.description && (
-                    <p className="text-sm text-dark-text-secondary mt-1 line-clamp-2">
+                    <p className="text-sm text-muted mt-1 line-clamp-2">
                       {fileData.description}
                     </p>
                   )}
@@ -163,30 +164,30 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
 
                 {/* Stats */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-2 bg-dark-surface rounded">
-                    <p className="text-2xl font-bold text-blue-400">
+                  <div className="text-center p-2 bg-panel rounded">
+                    <p className="text-2xl font-bold text-link">
                       {countPhases(fileData)}
                     </p>
-                    <p className="text-xs text-dark-text-secondary">Phases</p>
+                    <p className="text-xs text-muted">Phases</p>
                   </div>
-                  <div className="text-center p-2 bg-dark-surface rounded">
-                    <p className="text-2xl font-bold text-green-400">
+                  <div className="text-center p-2 bg-panel rounded">
+                    <p className="text-2xl font-bold text-success-text">
                       {countSubphases(fileData)}
                     </p>
-                    <p className="text-xs text-dark-text-secondary">Subphases</p>
+                    <p className="text-xs text-muted">Subphases</p>
                   </div>
-                  <div className="text-center p-2 bg-dark-surface rounded">
-                    <p className="text-2xl font-bold text-purple-400">
+                  <div className="text-center p-2 bg-panel rounded">
+                    <p className="text-2xl font-bold text-link">
                       {countCards(fileData)}
                     </p>
-                    <p className="text-xs text-dark-text-secondary">Cards</p>
+                    <p className="text-xs text-muted">Cards</p>
                   </div>
                 </div>
 
                 {/* Slug */}
                 {fileData.slug && (
-                  <p className="text-xs text-dark-text-secondary mt-3">
-                    Slug: <code className="bg-dark-surface px-1 rounded">{fileData.slug}</code>
+                  <p className="text-xs text-muted mt-3">
+                    Slug: <code className="bg-panel px-1 rounded">{fileData.slug}</code>
                   </p>
                 )}
               </div>
@@ -194,10 +195,10 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
           </div>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 p-4 border-t border-dark-border">
+          <div className="flex items-center justify-end gap-3 p-4 border-t border-divider">
             <button
               onClick={handleClose}
-              className="px-4 py-2 rounded-lg text-dark-text-secondary hover:text-dark-text hover:bg-dark-hover transition-colors"
+              className="px-4 py-2 rounded-lg text-muted hover:text-ink hover:bg-hover transition-colors"
             >
               Cancel
             </button>
@@ -207,8 +208,8 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
               className={`
                 px-6 py-2 rounded-lg font-medium transition-colors
                 ${fileData && !importing
-                  ? 'bg-blue-600 hover:bg-blue-500 text-white'
-                  : 'bg-dark-border text-dark-text-secondary cursor-not-allowed'
+                  ? 'bg-primary hover:bg-primary text-cream'
+                  : 'bg-divider text-muted cursor-not-allowed'
                 }
               `}
             >

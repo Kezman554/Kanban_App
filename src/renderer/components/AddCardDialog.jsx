@@ -4,10 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 // subphase created along with the card
 const NewGroupFields = ({ label, value, onChange }) => {
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
-  const input = 'px-3 py-2 bg-dark-surface border border-dark-border rounded-lg text-dark-text text-sm focus:outline-none focus:border-blue-500';
+  const input = 'px-3 py-2 bg-panel border border-line rounded-lg text-ink text-sm focus:outline-none focus:border-primary';
   return (
     <div className="space-y-2">
-      <div className="text-xs font-semibold text-dark-text-secondary">{label}</div>
+      <div className="text-xs font-semibold text-muted">{label}</div>
       <div className="flex gap-2">
         <input
           type="text"
@@ -254,44 +254,44 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
   return (
     <>
       {/* Backdrop */}
-      <div className="fixed inset-0 bg-black/60 z-40" />
+      <div className="fixed inset-0 bg-scrim z-40" />
 
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           ref={dialogRef}
-          className="w-full max-w-2xl max-h-[90vh] bg-dark-surface border border-dark-border rounded-xl shadow-2xl flex flex-col"
+          className="w-full max-w-2xl max-h-[90vh] bg-panel border border-line rounded-xl shadow-card flex flex-col"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-dark-border">
+          <div className="flex items-center justify-between p-6 border-b border-divider">
             <div>
-              <h2 className="text-xl font-bold text-dark-text">Add New Card</h2>
-              <p className="text-sm text-dark-text-secondary mt-1">
+              <h2 className="text-xl font-bold text-ink">Add New Card</h2>
+              <p className="text-sm text-muted mt-1">
                 Session letters are unique across the whole project
               </p>
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded hover:bg-dark-hover text-dark-text-secondary hover:text-dark-text transition-colors"
+              className="p-2 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
             >
               <span className="text-xl">×</span>
             </button>
           </div>
 
           {/* Form */}
-          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-dark">
+          <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-themed">
             {/* Destination - defaults to the subphase the button was clicked from.
                 Lists EVERY subphase, including those the board hides because all
                 their cards are done, so work can be filed where it belongs. Always
                 shown: on a project with no phases, "+ New phase" is the only way in. */}
             <div>
-                <label className="block text-sm font-medium text-dark-text mb-1">
-                  Destination <span className="text-red-400">*</span>
+                <label className="block text-sm font-medium text-ink mb-1">
+                  Destination <span className="text-danger-text">*</span>
                 </label>
                 <select
                   value={destination}
                   onChange={(e) => setSelectedDestination(e.target.value)}
-                  className={`w-full px-3 py-2 bg-dark-bg border rounded-lg text-dark-text focus:outline-none focus:border-blue-500 ${destination ? 'border-dark-border' : 'border-yellow-600'}`}
+                  className={`w-full px-3 py-2 bg-page border rounded-lg text-ink focus:outline-none focus:border-primary ${destination ? 'border-line' : 'border-warn-text'}`}
                 >
                   {!destination && (
                     <option value="" disabled>Choose a destination...</option>
@@ -317,13 +317,13 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                   ))}
                   <option value="newphase">+ New phase...</option>
                 </select>
-                <p className="text-xs text-dark-text-secondary mt-1">
+                <p className="text-xs text-muted mt-1">
                   Completed phases are hidden on the board but can still be chosen here
                 </p>
 
                 {/* Inline fields for a phase and/or subphase created with the card */}
                 {(isNewPhase || isNewSubphase) && (
-                  <div className="mt-3 p-3 bg-dark-bg border border-dark-border rounded-lg space-y-3">
+                  <div className="mt-3 p-3 bg-page border border-line rounded-lg space-y-3">
                     {isNewPhase && (
                       <NewGroupFields
                         label="New phase"
@@ -342,31 +342,31 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
 
             {/* Session Letter */}
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">
-                Session Letter <span className="text-red-400">*</span>
+              <label className="block text-sm font-medium text-ink mb-1">
+                Session Letter <span className="text-danger-text">*</span>
               </label>
               <input
                 type="text"
                 value={nextLetter}
                 onChange={(e) => setNextLetter(e.target.value.toUpperCase())}
-                className="w-32 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text font-bold uppercase focus:outline-none focus:border-blue-500"
+                className="w-32 px-3 py-2 bg-page border border-line rounded-lg text-ink font-bold uppercase focus:outline-none focus:border-primary"
                 placeholder="A"
               />
-              <p className="text-xs text-dark-text-secondary mt-1">
+              <p className="text-xs text-muted mt-1">
                 Suggested automatically - edit if you want a different letter
               </p>
             </div>
 
             {/* Title */}
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">
-                Title <span className="text-red-400">*</span>
+              <label className="block text-sm font-medium text-ink mb-1">
+                Title <span className="text-danger-text">*</span>
               </label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-primary"
                 placeholder="Card title..."
                 autoFocus
               />
@@ -374,26 +374,26 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
 
             {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">
+              <label className="block text-sm font-medium text-ink mb-1">
                 Description
               </label>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full h-24 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text resize-none focus:outline-none focus:border-blue-500 scrollbar-dark"
+                className="w-full h-24 px-3 py-2 bg-page border border-line rounded-lg text-ink resize-none focus:outline-none focus:border-primary scrollbar-themed"
                 placeholder="What needs to be done..."
               />
             </div>
 
             {/* Success Criteria */}
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">
+              <label className="block text-sm font-medium text-ink mb-1">
                 Success Criteria
               </label>
               <textarea
                 value={successCriteria}
                 onChange={(e) => setSuccessCriteria(e.target.value)}
-                className="w-full h-20 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text resize-none focus:outline-none focus:border-blue-500 scrollbar-dark"
+                className="w-full h-20 px-3 py-2 bg-page border border-line rounded-lg text-ink resize-none focus:outline-none focus:border-primary scrollbar-themed"
                 placeholder="How to know when it's done..."
               />
             </div>
@@ -402,13 +402,13 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
             <div className="grid grid-cols-2 gap-4">
               {/* Resource Type */}
               <div>
-                <label className="block text-sm font-medium text-dark-text mb-1">
+                <label className="block text-sm font-medium text-ink mb-1">
                   Resource Type
                 </label>
                 <select
                   value={resource}
                   onChange={(e) => setResource(e.target.value)}
-                  className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-primary"
                 >
                   {resourceOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -418,13 +418,13 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
 
               {/* Complexity */}
               <div>
-                <label className="block text-sm font-medium text-dark-text mb-1">
+                <label className="block text-sm font-medium text-ink mb-1">
                   Complexity
                 </label>
                 <select
                   value={complexity}
                   onChange={(e) => setComplexity(e.target.value)}
-                  className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text focus:outline-none focus:border-blue-500"
+                  className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-primary"
                 >
                   {complexityOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -435,14 +435,14 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
 
             {/* Dependencies */}
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">
+              <label className="block text-sm font-medium text-ink mb-1">
                 Dependencies
               </label>
-              <p className="text-xs text-dark-text-secondary mb-2">
+              <p className="text-xs text-muted mb-2">
                 Select cards that must be completed before this one
               </p>
               {existingCards && existingCards.length > 0 ? (
-                <div className="flex flex-wrap gap-2 p-3 bg-dark-bg border border-dark-border rounded-lg max-h-32 overflow-y-auto scrollbar-dark">
+                <div className="flex flex-wrap gap-2 p-3 bg-page border border-line rounded-lg max-h-32 overflow-y-auto scrollbar-themed">
                   {existingCards.map(card => (
                     <button
                       key={card.session_letter}
@@ -451,8 +451,8 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                       className={`
                         px-3 py-1 rounded text-sm font-medium transition-colors
                         ${dependencies.includes(card.session_letter)
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-dark-surface border border-dark-border text-dark-text hover:border-blue-500'}
+                          ? 'bg-primary text-cream'
+                          : 'bg-panel border border-line text-ink hover:border-primary'}
                       `}
                       title={card.title}
                     >
@@ -461,12 +461,12 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                   ))}
                 </div>
               ) : (
-                <p className="text-sm text-dark-text-secondary italic p-3 bg-dark-bg border border-dark-border rounded-lg">
+                <p className="text-sm text-muted italic p-3 bg-page border border-line rounded-lg">
                   No existing cards to depend on
                 </p>
               )}
               {dependencies.length > 0 && (
-                <p className="text-xs text-dark-text-secondary mt-1">
+                <p className="text-xs text-muted mt-1">
                   Selected: {dependencies.join(', ')}
                 </p>
               )}
@@ -474,46 +474,46 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
 
             {/* Prompt Guide */}
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">
-                Prompt Guide <span className="text-dark-text-secondary">(optional)</span>
+              <label className="block text-sm font-medium text-ink mb-1">
+                Prompt Guide <span className="text-muted">(optional)</span>
               </label>
               <textarea
                 value={promptGuide}
                 onChange={(e) => setPromptGuide(e.target.value)}
-                className="w-full h-24 px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text font-mono text-sm resize-none focus:outline-none focus:border-blue-500 scrollbar-dark"
+                className="w-full h-24 px-3 py-2 bg-page border border-line rounded-lg text-ink text-sm resize-none focus:outline-none focus:border-primary scrollbar-themed"
                 placeholder="Claude Code prompt for this task..."
               />
             </div>
 
             {/* Git Commit Message */}
             <div>
-              <label className="block text-sm font-medium text-dark-text mb-1">
-                Git Commit Message <span className="text-dark-text-secondary">(optional)</span>
+              <label className="block text-sm font-medium text-ink mb-1">
+                Git Commit Message <span className="text-muted">(optional)</span>
               </label>
               <input
                 type="text"
                 value={gitCommitMessage}
                 onChange={(e) => setGitCommitMessage(e.target.value)}
-                className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-dark-text font-mono text-sm focus:outline-none focus:border-blue-500"
+                className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink text-sm focus:outline-none focus:border-primary"
                 placeholder="feat: add feature X"
               />
             </div>
 
             {/* Error Message */}
             {error && (
-              <div ref={errorRef} className="p-3 bg-red-900/30 border border-red-700 rounded-lg">
-                <p className="text-sm text-red-300">{error}</p>
+              <div ref={errorRef} className="p-3 bg-danger/10 border border-danger-text rounded-lg">
+                <p className="text-sm text-danger-text">{error}</p>
               </div>
             )}
           </form>
 
           {/* Footer */}
-          <div className="flex items-center justify-end gap-3 p-6 border-t border-dark-border">
+          <div className="flex items-center justify-end gap-3 p-6 border-t border-divider">
             <button
               type="button"
               onClick={onClose}
               disabled={isLoading}
-              className="px-4 py-2 rounded-lg bg-dark-bg border border-dark-border text-dark-text hover:bg-dark-hover transition-colors disabled:opacity-50"
+              className="px-4 py-2 rounded-lg bg-page border border-line text-ink hover:bg-hover transition-colors disabled:opacity-50"
             >
               Cancel
             </button>
@@ -524,7 +524,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                 (isNewPhase && !newPhase.name.trim()) ||
                 ((isNewPhase || isNewSubphase) && !newSubphase.name.trim())
               }
-              className="px-4 py-2 rounded-lg bg-blue-600 hover:bg-blue-500 text-white font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg bg-primary hover:bg-primary text-cream font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Creating...' : 'Create Card'}
             </button>
