@@ -1,6 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { copyText } from '../utils/clipboard.js';
-import { Check, Trash2, LinkIcon, TriangleAlert } from './icons';
+import { Check, Trash2, LinkIcon, TriangleAlert, Pencil, Play, Copy, X } from './icons';
+import { paletteFor } from '../utils/palette';
+import { buildCardStatusByLetter, isCardBlocked } from '../utils/cardBlocking';
+
+// A chip in the header band: thin outline on translucent cream, or
+// outline-only on the blocked fill so it follows the theme
+const HeaderChip = ({ children, onBlocked }) => (
+  <span className={`text-xs px-2.5 py-1 rounded-full font-medium border ${
+    onBlocked ? 'border-line text-ink' : 'border-card-line bg-cream/60 text-card-ink'
+  }`}>
+    {children}
+  </span>
+);
+
+// Icon button on the header band
+const bandButton = 'flex-shrink-0 w-9 h-9 rounded-full border-[1.5px] border-card-line bg-cream/60 text-card-ink hover:bg-cream flex items-center justify-center transition-colors';
 
 const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusChange, onCardUpdated, onCardDeleted, project }) => {
   const [promptGuideCopySuccess, setPromptGuideCopySuccess] = useState(false);
@@ -111,6 +126,12 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
   const isManual = card.resource === 'none';
   const isTBC = card.resource === 'tbc';
+
+  // Header band colour: the card's palette colour, or the blocked fill -
+  // a blocked card is never coloured. Worked out here, never stored.
+  const isBlockedCard = isCardBlocked(card, buildCardStatusByLetter(project));
+  const colour = paletteFor(card.id);
+  const bandInk = isBlockedCard ? 'text-ink' : 'text-card-ink';
   const hasPromptGuide = card.prompt_guide && card.prompt_guide.trim() !== '';
   const hasExternalDeps = Array.isArray(card.external_dependencies) && card.external_dependencies.length > 0;
 
@@ -581,19 +602,34 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           ref={panelRef}
-          className="w-full max-w-3xl max-h-[90vh] bg-panel border border-line rounded-xl shadow-card flex flex-col transform transition-all duration-200 ease-out"
+          className="w-full max-w-[780px] max-h-[90vh] bg-panel border-[1.5px] border-line rounded-[20px] shadow-card flex flex-col overflow-hidden transform transition-all duration-200 ease-out"
           style={{ opacity: isOpen ? 1 : 0, transform: isOpen ? 'scale(1)' : 'scale(0.95)' }}
         >
-        {/* Header */}
-        <div className="flex items-start justify-between p-6 border-b border-divider">
-          <div className="flex-1 pr-4">
-            <div className="flex items-center gap-3 mb-2">
-              {/* Session Letter Badge */}
-              <div className={`
-                flex-shrink-0 w-10 h-10 rounded flex items-center justify-center font-bold text-lg
-                ${card.status === 'Done' ? 'bg-done text-cream' : 'bg-page text-ink'}
-              `}>
-                {card.status === 'Done' ? <Check className="w-5 h-5" /> : card.session_letter}
+        {/* Header band: filled with the card's colour (blocked fill if blocked) */}
+        <div
+          className={`flex items-start justify-between gap-3 p-6 ${bandInk} ${
+            isBlockedCard ? 'bg-blocked border-b-[1.5px] border-dashed border-dash' : 'border-b-[1.5px] border-card-line'
+          }`}
+          style={isBlockedCard ? undefined : { backgroundColor: colour.fill }}
+        >
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-3 mb-3">
+              {/* Session letter: 50px circle in the deep shade (tick when done) */}
+              <div
+                className={`flex-shrink-0 w-[50px] h-[50px] rounded-full flex items-center justify-center font-bold text-xl ${
+                  card.status === 'Done'
+                    ? 'bg-done text-on-done'
+                    : isBlockedCard ? 'border-[1.5px] border-dashed border-dash' : 'text-cream'
+                }`}
+                style={card.status === 'Done' || isBlockedCard ? undefined : { backgroundColor: colour.deep }}
+                title={card.status === 'Done' ? `Done: ${card.session_letter}` : undefined}
+              >
+                {card.status === 'Done' ? (
+                  <>
+                    <Check className="w-6 h-6" />
+                    <span className="sr-only">Done: {card.session_letter}</span>
+                  </>
+                ) : card.session_letter}
               </div>
               {editingField === 'title' ? (
                 <div className="flex-1 flex items-center gap-2">
@@ -608,96 +644,78 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         handleCancelEditField();
                       }
                     }}
-                    className="flex-1 px-2 py-1 bg-page border border-primary rounded text-xl font-bold text-ink focus:outline-none"
+                    className="flex-1 min-w-0 px-2 py-1 bg-cream border-[1.5px] border-card-line rounded-lg text-xl font-bold text-card-ink focus:outline-none"
                     placeholder="Card title..."
                     autoFocus
                   />
                   <button
                     onClick={handleCancelEditField}
-                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
+                    className="text-xs px-3 py-1 rounded-lg font-medium transition-colors bg-cream/60 border-[1.5px] border-card-line hover:bg-cream text-card-ink"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={handleSaveField}
-                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
+                    className="text-xs px-3 py-1 rounded-lg font-medium transition bg-primary hover:brightness-110 border-[1.5px] border-card-line text-on-primary"
                   >
                     Save
                   </button>
                 </div>
               ) : (
                 <>
-                  <h2 className="text-xl font-bold text-ink">{card.title}</h2>
+                  <h2 className="text-xl font-bold">{card.title}</h2>
                   <button
                     onClick={() => handleEditField('title')}
-                    className="flex-shrink-0 p-1 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
+                    className="flex-shrink-0 w-7 h-7 rounded-full border border-card-line bg-cream/60 text-card-ink hover:bg-cream flex items-center justify-center transition-colors"
                     title="Edit title"
+                    aria-label="Edit title"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <Pencil className="w-3.5 h-3.5" />
                   </button>
                   {fieldSaveSuccess === 'title' && (
-                    <span className="text-xs text-success-text">Saved!</span>
+                    <span className="text-xs font-semibold">Saved!</span>
                   )}
                 </>
               )}
             </div>
             {editingField === 'title' && fieldSaveError && (
-              <div className="mb-2 text-xs text-danger-text">{fieldSaveError}</div>
+              <div className="mb-2 text-xs font-semibold">Couldn't save: {fieldSaveError}</div>
             )}
 
-            {/* Status and Resource Badges */}
+            {/* Status, resource and complexity chips */}
             <div className="flex items-center gap-2 flex-wrap">
-              <span className={`
-                text-xs px-2 py-1 rounded-full
-                ${card.status === 'Not Started' ? 'bg-raised text-muted' : ''}
-                ${card.status === 'In Progress' ? 'bg-primary text-on-primary' : ''}
-                ${card.status === 'Done' ? 'bg-done text-on-done' : ''}
-              `}>
-                {card.status}
-              </span>
-              <span className="text-xs px-2 py-1 rounded bg-page text-muted">
-                {resourceLabels[card.resource] || card.resource}
-              </span>
+              <HeaderChip onBlocked={isBlockedCard}>{isBlockedCard ? 'Blocked' : card.status}</HeaderChip>
+              <HeaderChip onBlocked={isBlockedCard}>{resourceLabels[card.resource] || card.resource}</HeaderChip>
               {card.complexity && (
-                <span className={`
-                  text-xs px-2 py-1 rounded
-                  ${card.complexity === 'low' ? 'bg-pal-mint text-card-ink' : ''}
-                  ${card.complexity === 'medium' ? 'bg-pal-marigold text-card-ink' : ''}
-                  ${card.complexity === 'high' ? 'bg-pal-coral text-card-ink' : ''}
-                `}>
-                  {card.complexity} complexity
-                </span>
+                <HeaderChip onBlocked={isBlockedCard}>{card.complexity} complexity</HeaderChip>
               )}
             </div>
           </div>
 
-          {/* Delete Button */}
+          {/* Delete and close: icon buttons on translucent cream */}
           <button
             onClick={() => setShowDeleteConfirm(true)}
-            className="flex-shrink-0 p-2 rounded hover:bg-danger/10 text-muted hover:text-danger-text transition-colors mr-1"
+            className={bandButton}
             title="Delete card"
             aria-label="Delete card"
           >
-            <Trash2 className="w-5 h-5" />
+            <Trash2 className="w-4 h-4" />
           </button>
-
-          {/* Close Button */}
           <button
             onClick={onClose}
-            className="flex-shrink-0 p-2 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
+            className={bandButton}
             title="Close (Esc)"
+            aria-label="Close"
           >
-            <span className="text-xl">x</span>
+            <X className="w-4 h-4" />
           </button>
         </div>
 
         {/* Start Session / Mark as Done failure (on success the view closes instead) */}
         {sessionNotification && (
-          <div className="mx-6 mt-4 p-3 bg-danger/10 border border-danger-text rounded-lg flex items-center gap-2">
-            <span className="text-danger-text">!</span>
-            <span className="text-danger-text text-sm">{sessionNotification}</span>
+          <div className="mx-6 mt-4 p-3 bg-danger/10 border-[1.5px] border-danger-text rounded-lg flex items-center gap-2 text-danger-text">
+            <TriangleAlert className="w-4 h-4 flex-shrink-0" />
+            <span className="text-sm">{sessionNotification}</span>
           </div>
         )}
 
@@ -885,13 +903,13 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 const target = boardCardsByLetter.get(letter);
                 // A dependency on a Done card is legal and already satisfied
                 const tone = !target
-                  ? { box: 'bg-danger/10 border-danger-text', badge: 'bg-danger text-on-danger', label: 'no such card' }
+                  ? { box: 'bg-panel border-danger-text', badge: 'border border-danger-text text-danger-text font-semibold', label: 'no such card' }
                   : target.status === 'Done'
-                    ? { box: 'bg-progress/25 border-success-text', badge: 'bg-done text-on-done', label: 'Done - satisfied' }
-                    : { box: 'bg-pal-marigold/25 border-warn-text', badge: 'bg-pal-marigold text-card-ink', label: target.status };
+                    ? { box: 'bg-progress/30 border-transparent', badge: 'bg-done text-on-done font-semibold', label: 'Done - satisfied' }
+                    : { box: 'bg-blocked border-dash border-dashed', badge: 'border border-line text-ink', label: target.status };
 
                 return (
-                  <div key={letter} className={`text-sm px-3 py-2 rounded border ${tone.box}`}>
+                  <div key={letter} className={`text-sm px-3 py-2 rounded-lg border-[1.5px] ${tone.box}`}>
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium text-ink min-w-0 truncate">
                         Session {letter}
@@ -1132,30 +1150,30 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
                   const tone = dep.resolved
                     ? {
-                        box: 'bg-progress/25 border-success-text',
-                        badge: 'bg-done text-on-done',
+                        box: 'bg-progress/30 border-transparent',
+                        badge: 'bg-done text-on-done font-semibold',
                         label: 'Resolved',
                       }
                     : projectMissing
                       ? {
                           box: 'bg-blocked border-dash border-dashed',
-                          badge: 'bg-raised text-ink',
+                          badge: 'border border-line text-ink',
                           label: 'project not imported yet',
                         }
                       : cardMissing
                         ? {
-                            box: 'bg-danger/10 border-danger-text',
-                            badge: 'bg-danger text-on-danger',
+                            box: 'bg-panel border-danger-text',
+                            badge: 'border border-danger-text text-danger-text font-semibold',
                             label: 'no such card',
                           }
                         : {
-                            box: 'bg-pal-marigold/25 border-warn-text',
-                            badge: 'bg-pal-marigold text-card-ink',
+                            box: 'bg-blocked border-dash border-dashed',
+                            badge: 'border border-line text-ink',
                             label: dep.status,
                           };
 
                   return (
-                    <div key={idx} className={`text-sm px-3 py-2 rounded border ${tone.box}`}>
+                    <div key={idx} className={`text-sm px-3 py-2 rounded-lg border-[1.5px] ${tone.box}`}>
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium text-ink">
                           {dep.project_name || dep.project_slug}
@@ -1221,28 +1239,14 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                       </button>
                     </>
                   ) : hasPromptGuide && (
-                    <>
-                      <button
-                        onClick={handleEditPromptGuide}
-                        className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
-                        title="Edit prompt"
-                      >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
-                      </button>
-                      <button
-                        onClick={handleCopyPromptGuide}
-                        className={`
-                          text-xs px-3 py-1 rounded font-medium transition-colors
-                          ${promptGuideCopySuccess
-                            ? 'bg-done text-cream'
-                            : 'bg-page border border-line hover:bg-hover text-muted hover:text-ink'}
-                        `}
-                      >
-                        {promptGuideCopySuccess ? 'Copied!' : 'Copy'}
-                      </button>
-                    </>
+                    <button
+                      onClick={handleEditPromptGuide}
+                      className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
+                      title="Edit prompt"
+                      aria-label="Edit prompt"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
                   )}
                 </div>
               </div>
@@ -1258,8 +1262,22 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   autoFocus
                 />
               ) : hasPromptGuide ? (
-                <div className="bg-page border border-line rounded-lg p-3 max-h-64 overflow-y-auto scrollbar-themed">
-                  <pre className="text-sm text-ink whitespace-pre-wrap">{card.prompt_guide}</pre>
+                /* Recessed box holding the prompt and its Copy button */
+                <div className="relative bg-page border-[1.5px] border-divider rounded-xl inset-shadow-recess">
+                  <button
+                    onClick={handleCopyPromptGuide}
+                    className={`absolute top-2 right-2 z-10 text-xs px-3 py-1 rounded-lg font-semibold border-[1.5px] transition flex items-center gap-1.5 ${
+                      promptGuideCopySuccess
+                        ? 'bg-done text-on-done border-card-line'
+                        : 'bg-panel text-ink border-line hover:bg-hover'
+                    }`}
+                  >
+                    {promptGuideCopySuccess ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                    {promptGuideCopySuccess ? 'Copied!' : 'Copy'}
+                  </button>
+                  <div className="p-4 pr-24 max-h-64 overflow-y-auto scrollbar-themed">
+                    <pre className="text-sm text-ink whitespace-pre-wrap">{card.prompt_guide}</pre>
+                  </div>
                 </div>
               ) : (
                 <div className="bg-page border border-dashed border-line rounded-lg p-4 flex items-center justify-between gap-3">
@@ -1514,7 +1532,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         {showDeleteConfirm && (() => {
           const dependents = getDependentCards();
           return (
-            <div className="flex-shrink-0 p-6 border-t border-danger-text bg-danger/10">
+            <div className="flex-shrink-0 p-6 border-t-[1.5px] border-danger-text bg-panel">
               <p className="text-ink font-semibold mb-1">
                 Delete Session {card.session_letter}: {card.title}?
               </p>
@@ -1547,9 +1565,10 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 <button
                   onClick={handleDeleteConfirm}
                   disabled={isDeleting}
-                  className="px-4 py-2 bg-danger hover:bg-danger text-cream rounded-lg font-medium transition-colors disabled:opacity-50"
+                  className="px-4 py-2 bg-danger hover:brightness-110 text-on-danger border-[1.5px] border-card-line rounded-lg font-semibold transition flex items-center gap-2 disabled:opacity-50"
                 >
-                  {isDeleting ? 'Deleting...' : 'Delete'}
+                  <Trash2 className="w-4 h-4" />
+                  {isDeleting ? 'Deleting...' : `Delete card ${card.session_letter}`}
                 </button>
               </div>
             </div>
@@ -1557,7 +1576,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         })()}
 
         {/* Footer Actions */}
-        <div className="flex-shrink-0 p-6 border-t border-divider bg-panel rounded-b-xl">
+        <div className="flex-shrink-0 p-6 border-t border-divider bg-panel">
           <div className="flex flex-wrap gap-3">
             {/* One-click start, only on a Not Started card: "Start Session" for
                 an engineer card with a prompt (an engineer card with an empty
@@ -1566,9 +1585,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             {card.status === 'Not Started' && (isManual || isTBC || hasPromptGuide) && (
               <button
                 onClick={handleStartSession}
-                className="flex-1 min-w-[140px] px-4 py-2 bg-primary hover:bg-primary text-cream rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="flex-1 min-w-[140px] px-4 py-2.5 bg-primary hover:brightness-110 text-on-primary border-[1.5px] border-card-line shadow-card rounded-xl font-semibold transition flex items-center justify-center gap-2"
               >
-                <span>&gt;</span> {isManual || isTBC ? 'Mark as Started' : 'Start Session'}
+                <Play className="w-4 h-4" /> {isManual || isTBC ? 'Mark as Started' : 'Start Session'}
               </button>
             )}
 
@@ -1576,9 +1595,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
             {card.status !== 'Done' && (
               <button
                 onClick={handleMarkDone}
-                className="flex-1 min-w-[140px] px-4 py-2 bg-done hover:bg-done text-cream rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                className="flex-1 min-w-[140px] px-4 py-2.5 bg-progress hover:brightness-95 text-card-ink border-[1.5px] border-card-line shadow-card rounded-xl font-semibold transition flex items-center justify-center gap-2"
               >
-                <span>OK</span> Mark as Done
+                <Check className="w-4 h-4" /> Mark as Done
               </button>
             )}
           </div>

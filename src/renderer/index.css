@@ -9,6 +9,9 @@
 @theme static {
   --color-*: initial;
   --shadow-*: initial;
+  --inset-shadow-*: initial;
+  --drop-shadow-*: initial;
+  --text-shadow-*: initial;
 
   /* Fredoka only: every family utility resolves to it */
   --font-sans: 'Fredoka', sans-serif;
@@ -60,7 +63,15 @@
   --color-pal-seafoam: #8FD6C2;     --color-pal-seafoam-deep: #1F7562;
   --color-pal-mauve: #D9A9D6;       --color-pal-mauve-deep: #8A3F86;
 
-  --shadow-card: 3px 3px 0 rgba(58, 47, 34, 0.22);
+  /* Shadow shapes; their colours are mode-dependent variables below, because
+     Tailwind bakes a literal shadow colour into the utility at build time */
+  --shadow-card: 3px 3px 0 var(--shadow-card-tint);
+  --inset-shadow-recess: inset 2px 2px 0 var(--recess-tint);
+}
+
+:root {
+  --shadow-card-tint: rgba(58, 47, 34, 0.22);
+  --recess-tint: rgba(58, 47, 34, 0.12);
 }
 
 :root[data-theme="dark"] {
@@ -79,7 +90,8 @@
   --color-success-text: #A1DDBC;
   --color-warn-text: #F5CC70;
   --color-danger-text: #F4A086;
-  --shadow-card: 3px 3px 0 rgba(18, 12, 6, 0.69);
+  --shadow-card-tint: rgba(18, 12, 6, 0.69);
+  --recess-tint: rgba(18, 12, 6, 0.45);
   color-scheme: dark;
 }
 

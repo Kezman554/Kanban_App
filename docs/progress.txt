@@ -1611,9 +1611,47 @@ index-DLbd3Qlm.js / index-CSLdTOpP.css. It emits all 24 palette
 variables, dark dash #8A7F65 and the brown dark scrim, and carries the
 "waits on", "Also done" and "click to expand" strings.
 
+Restyle, stage 3 (the card view)
+14. CardDetail: 780px wide, 20px corners, on the panel colour. Header band
+   filled with palette[card.id mod 12] (text #3A2F22): 50px letter circle
+   in the deep shade (green tick when done), title with its edit pencil,
+   status / resource / complexity chips on translucent cream, and delete
+   and close as icon buttons on translucent cream (aria-labelled). A
+   blocked card's band is never coloured: blocked fill, dashed rule and
+   letter circle, "Blocked" chip. Blocked is computed from the project
+   (cardBlocking), because the open card is refreshed from the DB
+   without the board's isBlocked flag.
+15. Sections unchanged in content. Satisfied dependencies: a soft green row
+   (mint/30) with a #2C7450 "Done - satisfied" pill. Waiting dependencies
+   are now uncoloured too (blocked fill, dashed, outlined status pill).
+   "no such card" is wording plus a danger outline, with no fill. The
+   prompt sits in a recessed box (inset-shadow-recess token) with its
+   Copy button inside it. The edit pencil stays in the section header.
+16. Footer: Start Session #22707B with cream text, Mark as Done #A1DDBC
+   with card text, both with the card outline and shadow; the ">" and
+   "OK" text glyphs became Lucide Play / Check. Delete confirmation:
+   outlined in danger on the panel, and the button now reads "Delete card
+   E" (#A8452B, cream text, outline, bin icon). The session-failure banner
+   has a warning icon instead of "!".
+17. Bug found and fixed: Tailwind bakes a literal shadow colour into the
+   utility at build time, so the dark shadow (and the new inset shadow)
+   always used the light value. The 0d19a88 deploy has this, so the live
+   dark card shadow is the light one until the next deploy. Shadow shapes
+   now reference --shadow-card-tint / --recess-tint, set per mode. Stock
+   inset/drop/text shadows (black-based) are cleared like the palette.
+
+Verification: vite build clean; no hex/rgb outside index.css, no stock
+colour utilities. Screenshots of the desktop build against the scratch
+DB: ready card (light and dark, scrolled to the prompt and notes),
+delete confirmation, blocked card H (dark). New text pairings, lowest
+first: ink on the dark satisfied row 5.12, satisfied pill 5.53, Start
+Session 5.60, Delete card 5.79, Mark as Done 8.44.
+
 Known gaps / followups
 ----------------------
 - The pre-restyle tag is local only (not pushed).
+- A blocked card still offers Start Session in the card view, as before
+  the restyle (behaviour unchanged on purpose).
 - Teal text on the light sidebar is 4.36:1 - avoid that pairing.
 - Dark-mode outline was not in the spec; chose #9A8E74 (>=3.36:1 on every
   dark surface). Light "raised" was not in the spec; equals panel.

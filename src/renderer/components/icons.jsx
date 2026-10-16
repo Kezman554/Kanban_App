@@ -22,6 +22,8 @@ import {
   Sun as SunBase,
   Moon as MoonBase,
   GripVertical as GripVerticalBase,
+  X as XBase,
+  Play as PlayBase,
   Layers as LayersBase,
   Folder as FolderBase,
   Copy as CopyBase,
@@ -59,6 +61,8 @@ export const Monitor = decorative(MonitorBase, 'Monitor');
 export const Sun = decorative(SunBase, 'Sun');
 export const Moon = decorative(MoonBase, 'Moon');
 export const GripVertical = decorative(GripVerticalBase, 'GripVertical');
+export const X = decorative(XBase, 'X');
+export const Play = decorative(PlayBase, 'Play');
 export const Layers = decorative(LayersBase, 'Layers');
 export const Folder = decorative(FolderBase, 'Folder');
 export const Copy = decorative(CopyBase, 'Copy');
