@@ -1741,6 +1741,12 @@ failed). Screenshots of All Projects, Settings, Card Test, Add Card, Append
 Cards, Edit Project, Import and the unlock confirm in both modes. No
 console errors beyond the dev CSP warning.
 
+Deployed to the Pi (f24ece8, which includes 82138a4): pulled, kanban-api
+rebuilt, smoke test OK (359 cards, API == DB). Live bundle (read-only
+fetch, nothing clicked): index-BKg-FWQD.js / index-DtOqULvA.css. It
+carries the Card States legend, six labelled Close buttons, the danger
+fill hover, and no stock palette variables.
+
 Known gaps / followups
 ----------------------
 - The pre-restyle tag is local only (not pushed).
