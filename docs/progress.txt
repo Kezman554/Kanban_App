@@ -1927,3 +1927,6 @@ Deployed to the Pi (7f624ee): pulled, kanban-api rebuilt, smoke test OK
 47. The Done pile's top card on the board is now in its palette colour
    with the green tick (colourDone), like the expanded Done view.
    CLAUDE.md's exception note updated.
+
+Deployed to the Pi (7c16be0): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). The live bundle names 7c16be0.
