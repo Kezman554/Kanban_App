@@ -1912,3 +1912,6 @@ Deployed to the Pi (d7d3b54): pulled, kanban-api rebuilt, smoke test OK
    board is unchanged: the done pile top stays on the panel colour, and
    blocked cards keep the dashed circle. Both exceptions are recorded in
    CLAUDE.md's Design section. Light and dark screenshots checked.
+
+Deployed to the Pi (7f624ee): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). The live bundle names 7f624ee.
