@@ -1774,11 +1774,15 @@ Favicon (2026-10-16)
    There was no old favicon: no files, no references, and the browser board
    404ed on /favicon.ico. No .ico is generated, since nothing references
    one and browsers don't request it when a <link rel="icon"> exists.
-   The desktop window has no icon option (it shows Electron's default), so
-   no desktop icon was generated.
    Verified: desktop and lean web builds both emit the three files.
+32. Desktop icon (Nick's go-ahead, 20c22b2): the same script now also
+   writes assets/app-icon.png (256px, transparent; outside public/ so the
+   web build doesn't serve it), and main.js sets it as the BrowserWindow
+   icon (window and taskbar). Electron's nativeImage loads it at 256x256.
+   Not packaged: there is no electron-builder config, so no .ico/.icns.
 
-Known gaps / followups
-----------------------
-- Desktop window/taskbar icon still Electron's default; would need an
-  icon option on the BrowserWindow (and a PNG/ICO from the same script).
+Deployed to the Pi (20c22b2): pulled, kanban-api rebuilt (Dockerfile now
+copies public/), smoke test OK (359 cards, API == DB). The live page has
+the three icon links. favicon.svg (image/svg+xml), favicon-32.png and
+apple-touch-icon.png are served 200; app-icon.png is not on the web (404),
+as intended.
