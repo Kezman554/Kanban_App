@@ -35,6 +35,8 @@
   --color-success-text: #2C7450;
   --color-warn-text: #8A600A;
   --color-danger-text: #A8452B;
+  /* In-progress outline: #22707B is 2.63:1 on the dark page, so dark uses aqua */
+  --color-active-ring: #22707B;
 
   /* Same in both modes */
   --color-card-ink: #3A2F22;
@@ -90,6 +92,7 @@
   --color-success-text: #A1DDBC;
   --color-warn-text: #F5CC70;
   --color-danger-text: #F4A086;
+  --color-active-ring: #8AD0D9;
   --shadow-card-tint: rgba(18, 12, 6, 0.69);
   --recess-tint: rgba(18, 12, 6, 0.45);
   color-scheme: dark;

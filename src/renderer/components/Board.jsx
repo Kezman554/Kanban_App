@@ -23,25 +23,11 @@ import {
   getBlockedReason,
   isCardBlocked as isCardBlockedShared,
 } from '../utils/cardBlocking';
-import { paletteFor } from '../utils/palette';
+import { phaseTitle, subphaseTitle } from '../utils/labels';
+import SubphaseBadge from './SubphaseBadge';
 import {
   Lock, Pencil, Plus, ClipboardCopy, Upload, Folder, Copy, Check, ChevronRight, ChevronDown,
 } from './icons';
-
-// Subphase badge: filled with palette[subphase.id mod 12]
-const SubphaseBadge = ({ subphase }) => (
-  <span
-    className="flex-shrink-0 min-w-[2.25rem] h-7 px-2 rounded-lg border-[1.5px] border-card-line text-card-ink text-sm font-bold flex items-center justify-center"
-    style={{ backgroundColor: paletteFor(subphase.id).fill }}
-  >
-    {subphase.short_name || '—'}
-  </span>
-);
-
-// "Phase 9: Testing & Release" -> "Testing & Release" when a short name is shown
-const phaseTitle = (phase) => phase.short_name
-  ? `${phase.short_name} · ${phase.name.replace(/^phase\s+[\w.]+\s*[:.\-–]\s*/i, '')}`
-  : phase.name;
 
 // Header buttons: palette fills with the card outline and offset shadow
 const headerButton = 'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border-[1.5px] border-card-line shadow-card hover:brightness-95 transition';
@@ -1064,7 +1050,7 @@ const Board = ({ projectId }) => {
                           const isAutoCollapsed = !subphaseStatus.hasActionable && subphaseStatus.blockedCount > 0;
                           const isManuallyExpanded = expandedSubphases[subphase.id];
                           const isCollapsed = isAutoCollapsed && !isManuallyExpanded;
-                          const subphaseName = subphase.name.replace(/^\d+\.\d+\s+/, '');
+                          const subphaseName = subphaseTitle(subphase);
 
                           // Collapsed row: one dashed row (never coloured - nothing to pick up)
                           if (isCollapsed) {

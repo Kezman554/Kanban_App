@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Lock, Check, ResourceIcon } from './icons';
+import { Check, Copy, Folder, Pencil, Trash2 } from './icons';
+import SubphaseBadge from './SubphaseBadge';
+import { paletteFor } from '../utils/palette';
+import { phaseTitle, subphaseTitle } from '../utils/labels';
 import CardDetail from './CardDetail';
 import { copyText } from '../utils/clipboard.js';
 import {
@@ -82,16 +85,6 @@ const RoadmapView = ({ projectId }) => {
     return { total, done, inProgress };
   };
 
-  // Calculate subphase stats
-  const getSubphaseStats = (subphase) => {
-    const cards = subphase.cards || [];
-    const total = cards.length;
-    const done = cards.filter(c => c.status === 'Done').length;
-    const inProgress = cards.filter(c => c.status === 'In Progress').length;
-
-    return { total, done, inProgress };
-  };
-
   const handleCardClick = (card) => {
     setSelectedCard(card);
     setIsDetailOpen(true);
@@ -166,20 +159,22 @@ const RoadmapView = ({ projectId }) => {
     );
   }
 
+  // Whole-project totals for the header
+  const totals = (project.phases || []).reduce((acc, phase) => {
+    const s = getPhaseStats(phase);
+    return { total: acc.total + s.total, done: acc.done + s.done, inProgress: acc.inProgress + s.inProgress };
+  }, { total: 0, done: 0, inProgress: 0 });
+  const overallPct = totals.total > 0 ? Math.round((totals.done / totals.total) * 100) : 0;
+
   return (
     <div className="h-full flex flex-col bg-page">
-      {/* Document Container */}
       <div className="flex-1 overflow-auto scrollbar-themed">
-        <div className="max-w-4xl mx-auto p-8">
-          {/* Document Title */}
+        <div className="max-w-6xl mx-auto p-8">
+          {/* Header: title, folder, overall progress, in-progress pill, key */}
           <div className="mb-8 pb-6 border-b border-divider">
-            <h1 className="text-3xl font-bold text-ink mb-2">
-              # {project.name}
-            </h1>
+            <h1 className="text-3xl font-bold text-ink">{project.name}</h1>
             {project.description && (
-              <p className="text-muted mt-2 pl-4 border-l-4 border-divider italic">
-                {project.description}
-              </p>
+              <p className="text-muted mt-1">{project.description}</p>
             )}
 
             {/* Directory Path */}
@@ -197,9 +192,7 @@ const RoadmapView = ({ projectId }) => {
                     className="flex items-center gap-1.5 text-muted hover:text-ink transition-colors"
                     title="Open in file explorer"
                   >
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                    </svg>
+                    <Folder className="w-4 h-4" />
                     <span>{project.directory_path}</span>
                   </button>
                   <button
@@ -214,16 +207,9 @@ const RoadmapView = ({ projectId }) => {
                     }}
                     className={`transition-colors ${pathCopied ? 'text-success-text' : 'text-muted hover:text-ink'}`}
                     title={pathCopied ? 'Copied!' : 'Copy path to clipboard'}
+                    aria-label={pathCopied ? 'Copied' : 'Copy path to clipboard'}
                   >
-                    {pathCopied ? (
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                    ) : (
-                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                      </svg>
-                    )}
+                    {pathCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
                   <button
                     onClick={async () => {
@@ -235,10 +221,9 @@ const RoadmapView = ({ projectId }) => {
                     }}
                     className="text-muted hover:text-ink transition-colors"
                     title="Change project folder"
+                    aria-label="Change project folder"
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <Pencil className="w-3.5 h-3.5" />
                   </button>
                 </>
               ) : (
@@ -250,230 +235,184 @@ const RoadmapView = ({ projectId }) => {
                       await loadProject();
                     }
                   }}
-                  className="flex items-center gap-1.5 text-link hover:text-link transition-colors"
+                  className="flex items-center gap-1.5 text-link hover:underline"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                  </svg>
+                  <Folder className="w-4 h-4" />
                   <span>Set project folder</span>
                 </button>
               )}
             </div>
 
-            {/* Overall Progress */}
-            {project.phases && (
-              <div className="mt-4">
-                {(() => {
-                  let totalCards = 0;
-                  let doneCards = 0;
-                  for (const phase of project.phases) {
-                    const stats = getPhaseStats(phase);
-                    totalCards += stats.total;
-                    doneCards += stats.done;
-                  }
-                  const percentage = totalCards > 0 ? Math.round((doneCards / totalCards) * 100) : 0;
-
-                  return (
-                    <div className="flex items-center gap-4">
-                      <div className="flex-1 h-2 bg-panel rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-done transition-all"
-                          style={{ width: `${percentage}%` }}
-                        />
-                      </div>
-                      <span className="text-sm text-muted">
-                        {doneCards}/{totalCards} ({percentage}%)
-                      </span>
-                    </div>
-                  );
-                })()}
+            {/* Overall progress */}
+            <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-3">
+              <div className="flex items-center gap-3 flex-1 min-w-[260px]">
+                <div
+                  className="flex-1 h-3 bg-panel border-[1.5px] border-line rounded-full overflow-hidden"
+                  role="progressbar"
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={overallPct}
+                  aria-label="Cards done"
+                >
+                  <div className="h-full bg-progress transition-all" style={{ width: `${overallPct}%` }} />
+                </div>
+                <span className="text-sm font-semibold text-ink whitespace-nowrap">
+                  {totals.done}/{totals.total} done · {overallPct}%
+                </span>
               </div>
-            )}
+              {totals.inProgress > 0 && (
+                <span className="text-xs px-3 py-1 rounded-full bg-primary text-on-primary font-semibold border-[1.5px] border-card-line">
+                  {totals.inProgress} in progress
+                </span>
+              )}
+
+              {/* Key */}
+              <ul className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted" aria-label="Key">
+                <li className="flex items-center gap-1.5">
+                  <span className="w-4 h-4 rounded-full bg-done text-on-done flex items-center justify-center">
+                    <Check className="w-3 h-3" />
+                  </span>
+                  Done
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="w-6 h-4 rounded-full border-[2.5px] border-active-ring ring-2 ring-active-ring/25 bg-pal-aqua" />
+                  In progress
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="w-6 h-4 rounded-full border-[1.5px] border-card-line bg-pal-lilac" />
+                  Ready
+                </li>
+                <li className="flex items-center gap-1.5">
+                  <span className="w-6 h-4 rounded-full border-[1.5px] border-dashed border-dash" />
+                  Blocked
+                </li>
+              </ul>
+            </div>
           </div>
 
-          {/* Phases */}
-          {project.phases && project.phases.map((phase, phaseIdx) => {
-            const phaseStats = getPhaseStats(phase);
+          {/* Phases on a timeline: a vertical line with a percentage circle per phase */}
+          <div className="relative">
+            {project.phases && project.phases.length > 0 && (
+              <div className="absolute left-[25px] top-2 bottom-2 w-[2px] bg-divider" aria-hidden="true" />
+            )}
 
-            return (
-              <div key={phase.id} className="mb-10">
-                {/* Phase Header */}
-                <div className="mb-4">
-                  <h2 className="text-2xl font-bold text-ink flex items-center gap-3">
-                    <span className="text-muted">##</span>
-                    <span>
-                      {phase.short_name ? `${phase.short_name}: ` : ''}
-                      {phase.name}
-                    </span>
-                    <span className="text-base font-normal text-muted ml-2">
-                      ({phaseStats.done}/{phaseStats.total} complete)
-                    </span>
-                    {phaseStats.total === 0 && (
-                      <button
-                        onClick={() => handleDeleteEmptyPhase(phase)}
-                        className="text-sm font-normal font-sans px-3 py-1 rounded border border-danger-text text-danger-text hover:bg-danger/10 transition-colors"
-                        title="This phase has no cards and doesn't appear on the board"
-                      >
-                        Delete empty phase
-                      </button>
-                    )}
-                  </h2>
-                  {phase.description && (
-                    <p className="text-muted mt-1 ml-8">
-                      {phase.description}
-                    </p>
-                  )}
+            {project.phases && project.phases.map((phase) => {
+              const phaseStats = getPhaseStats(phase);
+              const pct = phaseStats.total > 0 ? Math.round((phaseStats.done / phaseStats.total) * 100) : 0;
+              const isComplete = phaseStats.total > 0 && phaseStats.done === phaseStats.total;
+              const circle = isComplete
+                ? 'bg-done text-on-done border-card-line'
+                : phaseStats.done > 0
+                  ? 'bg-progress text-card-ink border-card-line'
+                  : 'bg-panel text-ink border-line';
 
-                  {/* Phase Progress Bar */}
-                  <div className="mt-2 ml-8 flex items-center gap-3">
-                    <div className="flex-1 max-w-xs h-1.5 bg-panel rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-done transition-all"
-                        style={{ width: `${phaseStats.total > 0 ? (phaseStats.done / phaseStats.total) * 100 : 0}%` }}
-                      />
-                    </div>
-                    {phaseStats.inProgress > 0 && (
-                      <span className="text-xs text-link">
-                        {phaseStats.inProgress} in progress
-                      </span>
-                    )}
+              return (
+                <section key={phase.id} className="relative flex gap-5 mb-10">
+                  {/* Phase circle */}
+                  <div
+                    className={`relative z-10 flex-shrink-0 w-[52px] h-[52px] rounded-full border-[1.5px] flex items-center justify-center text-sm font-bold ${circle}`}
+                    title={`${phaseStats.done} of ${phaseStats.total} done`}
+                  >
+                    {pct}%
                   </div>
-                </div>
 
-                {/* Subphases */}
-                {phase.subphases && phase.subphases.map((subphase, subIdx) => {
-                  const subStats = getSubphaseStats(subphase);
-
-                  return (
-                    <div key={subphase.id} className="mb-6 ml-4">
-                      {/* Subphase Header */}
-                      <h3 className="text-lg font-semibold text-ink flex items-center gap-2 mb-3">
-                        <span className="text-muted">###</span>
-                        <span>
-                          {subphase.short_name ? `${subphase.short_name}: ` : ''}
-                          {subphase.name.replace(/^\d+\.\d+\s+/, '')}
-                        </span>
-                        <span className="text-sm font-normal text-muted">
-                          ({subStats.done}/{subStats.total})
-                        </span>
-                      </h3>
-
-                      {/* Cards as Checklist */}
-                      <div className="ml-6 space-y-2">
-                        {subphase.cards && subphase.cards.map((card) => {
-                          const blocked = isCardBlocked(card);
-                          const blockedReason = getBlockedReason(card);
-                          const isDone = card.status === 'Done';
-                          const isInProgress = card.status === 'In Progress';
-
-                          return (
-                            <div
-                              key={card.id}
-                              onClick={() => handleCardClick(card)}
-                              className={`
-                                flex items-start gap-3 p-3 rounded-lg cursor-pointer transition-all
-                                ${isInProgress ? 'bg-primary/15 border border-primary ring-2 ring-primary/50' : ''}
-                                ${isDone ? 'bg-panel/50' : ''}
-                                ${blocked ? 'opacity-60' : ''}
-                                ${!isDone && !isInProgress ? 'hover:bg-panel' : ''}
-                              `}
-                            >
-                              {/* Checkbox */}
-                              <div className="flex-shrink-0 mt-0.5 text-lg">
-                                {isDone ? (
-                                  <span className="text-success-text">[x]</span>
-                                ) : blocked ? (
-                                  <span className="text-danger-text inline-flex items-center">[<Lock className="w-4 h-4" />]</span>
-                                ) : isInProgress ? (
-                                  <span className="text-link">[~]</span>
-                                ) : (
-                                  <span className="text-muted">[ ]</span>
-                                )}
-                              </div>
-
-                              {/* Session Letter */}
-                              <div className={`
-                                flex-shrink-0 w-8 h-8 rounded flex items-center justify-center font-bold text-sm
-                                ${isDone ? 'bg-done text-cream' : ''}
-                                ${isInProgress ? 'bg-primary text-cream' : ''}
-                                ${!isDone && !isInProgress ? 'bg-page text-ink border border-line' : ''}
-                              `}>
-                                {isDone ? <Check className="w-4 h-4" /> : card.session_letter}
-                              </div>
-
-                              {/* Card Content */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className={`
-                                    font-medium
-                                    ${isDone ? 'text-muted line-through' : 'text-ink'}
-                                    ${isInProgress ? 'text-link' : ''}
-                                  `}>
-                                    {card.title}
-                                  </span>
-
-                                  {/* Resource Icon */}
-                                  <span className="text-sm" title={card.resource}>
-                                    <ResourceIcon resource={card.resource} className="w-4 h-4 inline-block" />
-                                  </span>
-
-                                  {/* In Progress Badge */}
-                                  {isInProgress && (
-                                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary text-cream font-semibold animate-pulse">
-                                      IN PROGRESS
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Description preview */}
-                                {card.description && !isDone && (
-                                  <p className="text-sm text-muted mt-1 line-clamp-1">
-                                    {card.description}
-                                  </p>
-                                )}
-
-                                {/* Blocked reason */}
-                                {blocked && blockedReason && (
-                                  <p className="text-xs text-danger-text mt-1 flex items-center gap-1">
-                                    <Lock className="w-3 h-3 flex-shrink-0" /> {blockedReason}
-                                  </p>
-                                )}
-
-                                {/* Complexity badge */}
-                                {card.complexity && card.complexity !== 'medium' && !isDone && (
-                                  <span className={`
-                                    inline-block text-xs px-2 py-0.5 rounded mt-1
-                                    ${card.complexity === 'low' ? 'bg-pal-mint text-card-ink' : ''}
-                                    ${card.complexity === 'high' ? 'bg-pal-coral text-card-ink' : ''}
-                                  `}>
-                                    {card.complexity} complexity
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-
-                        {/* Empty state */}
-                        {(!subphase.cards || subphase.cards.length === 0) && (
-                          <p className="text-muted italic text-sm">
-                            No cards in this subphase
-                          </p>
+                  <div className="flex-1 min-w-0">
+                    {/* Phase title and "done/total · description" */}
+                    <div className="min-h-[52px] flex flex-col justify-center mb-3">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <h2 className="text-xl font-bold text-ink">{phaseTitle(phase)}</h2>
+                        {phaseStats.total === 0 && (
+                          <button
+                            onClick={() => handleDeleteEmptyPhase(phase)}
+                            className="text-xs px-3 py-1 rounded-full border-[1.5px] border-danger-text text-danger-text hover:bg-danger/10 transition-colors flex items-center gap-1.5"
+                            title="This phase has no cards and doesn't appear on the board"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            Delete empty phase
+                          </button>
                         )}
                       </div>
+                      <p className="text-sm text-muted">
+                        {phaseStats.done}/{phaseStats.total}
+                        {phase.description ? ` · ${phase.description}` : ''}
+                      </p>
                     </div>
-                  );
-                })}
 
-                {/* Empty subphases state */}
-                {(!phase.subphases || phase.subphases.length === 0) && (
-                  <p className="text-muted italic ml-8">
-                    No subphases in this phase
-                  </p>
-                )}
-              </div>
-            );
-          })}
+                    {/* Subphase rows: badge and name, then every card as a chip */}
+                    {phase.subphases && phase.subphases.map((subphase) => (
+                      <div key={subphase.id} className="flex gap-4 py-2 border-t border-divider first:border-t-0">
+                        <div className="w-[190px] flex-shrink-0 flex items-start gap-2 pt-1.5">
+                          <SubphaseBadge subphase={subphase} />
+                          <span className="text-sm font-semibold text-ink leading-7 min-w-0 break-words" title={subphase.name}>
+                            {subphaseTitle(subphase)}
+                          </span>
+                        </div>
+
+                        <div className="flex-1 min-w-0 flex flex-wrap gap-2">
+                          {subphase.cards && subphase.cards.map((card) => {
+                            const blocked = isCardBlocked(card);
+                            const blockedReason = getBlockedReason(card);
+                            const isDone = card.status === 'Done';
+                            const isInProgress = card.status === 'In Progress';
+                            const colour = paletteFor(card.id);
+                            const state = isDone ? 'done' : isInProgress ? 'in progress' : blocked ? 'blocked' : 'ready';
+
+                            const chip = isDone
+                              ? 'border-[1.5px] border-divider text-muted'
+                              : isInProgress
+                                ? 'border-[2.5px] border-active-ring ring-4 ring-active-ring/25 text-card-ink'
+                                : blocked
+                                  ? 'border-[1.5px] border-dashed border-dash text-ink'
+                                  : 'border-[1.5px] border-card-line shadow-card text-card-ink';
+
+                            return (
+                              <button
+                                key={card.id}
+                                type="button"
+                                onClick={() => handleCardClick(card)}
+                                className={`h-[38px] max-w-[300px] rounded-full pl-[3px] pr-3 flex items-center gap-2 text-sm font-medium hover:brightness-95 transition ${chip}`}
+                                style={isDone || blocked ? undefined : { backgroundColor: colour.fill }}
+                                title={`${card.session_letter}: ${card.title}${blocked && blockedReason ? ` — ${blockedReason}` : ''}`}
+                              >
+                                <span
+                                  className={`flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold ${
+                                    isDone
+                                      ? 'bg-done text-on-done'
+                                      : blocked
+                                        ? 'border-[1.5px] border-dashed border-dash'
+                                        : 'text-cream'
+                                  }`}
+                                  style={isDone || blocked ? undefined : { backgroundColor: colour.deep }}
+                                >
+                                  {isDone ? <Check className="w-3.5 h-3.5" /> : card.session_letter}
+                                </span>
+                                <span className={`truncate ${isDone ? 'line-through' : ''}`}>{card.title}</span>
+                                <span className="sr-only">({isDone ? `${card.session_letter}, ` : ''}{state})</span>
+                              </button>
+                            );
+                          })}
+
+                          {/* Empty state */}
+                          {(!subphase.cards || subphase.cards.length === 0) && (
+                            <p className="text-muted italic text-sm leading-[38px]">
+                              No cards in this subphase
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Empty subphases state */}
+                    {(!phase.subphases || phase.subphases.length === 0) && (
+                      <p className="text-muted italic text-sm">
+                        No subphases in this phase
+                      </p>
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
 
           {/* Empty phases state */}
           {(!project.phases || project.phases.length === 0) && (
@@ -481,13 +420,6 @@ const RoadmapView = ({ projectId }) => {
               No phases in this project
             </p>
           )}
-
-          {/* Footer */}
-          <div className="mt-12 pt-6 border-t border-divider text-center">
-            <p className="text-sm text-muted">
-              --- End of Roadmap ---
-            </p>
-          </div>
         </div>
       </div>
 

@@ -1654,9 +1654,45 @@ panel, the inset-shadow-recess utility, the "Delete card" wording, and
 the dark --shadow-card-tint #120c06b0, so the live dark shadow from item
 17 is fixed.
 
+Restyle, stage 4 (the roadmap as a timeline)
+18. RoadmapView header: title, description, folder path (Lucide icons),
+   an overall progress bar (mint) reading "11/19 done · 58%", a teal pill
+   with the in-progress count (hidden at 0), and a key for Done, In
+   progress, Ready and Blocked.
+19. Phases sit on a vertical line as 52px circles showing their
+   percentage: #2C7450 with cream text when complete, mint when partly
+   done, the panel colour when nothing is done. Beside each circle: the
+   phase title ("2 · Vault Configuration & Conventions") and "done/total ·
+   description". "Delete empty phase" is kept, now with a bin icon and an
+   outline.
+20. Subphase rows: badge and name in a 190px column, then every card as a
+   38px chip, at most 300px wide (28px letter circle + truncated title),
+   wrapping. States: done = no fill, green tick, struck-through muted
+   title; ready = the card's colour, outline and shadow; in progress =
+   the card's colour, a 2.5px outline and a soft halo; blocked = dashed,
+   no fill, letter in a dashed circle. Chips are buttons that open the
+   card view as before, with a full-title tooltip (plus the blocked reason)
+   and a screen-reader state. Card descriptions, resource icons and
+   complexity no longer show on the roadmap.
+21. In-progress outline: #22707B is 4.91:1 on the light page but 2.63:1 on
+   the dark one (and 2.78 min against the chip fills), so it is now an
+   --color-active-ring token: #22707B light, #8AD0D9 dark (8.67:1).
+   Deviation from the spec, flagged for Nick.
+22. SubphaseBadge and the phase/subphase title helpers (utils/labels.js)
+   are shared by the board and the roadmap.
+
+Verification: vite build clean; no hex/rgb outside index.css, no stock
+colour utilities. Screenshots against the scratch DB: DocuSync roadmap
+(light and dark), Obsidian Vault Setup with two in-progress cards, and a
+chip opening the card view.
+
 Known gaps / followups
 ----------------------
 - The pre-restyle tag is local only (not pushed).
+- Pre-existing bug, not visual so not fixed here: RoadmapView's
+  handleMarkDone returns nothing, and CardDetail treats that as failure.
+  Mark as Done from the roadmap stores the change but then shows "could
+  not be marked as done" instead of closing.
 - A blocked card still offers Start Session in the card view, as before
   the restyle (behaviour unchanged on purpose).
 - Teal text on the light sidebar is 4.36:1 - avoid that pairing.
