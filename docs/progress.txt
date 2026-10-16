@@ -1647,6 +1647,13 @@ delete confirmation, blocked card H (dark). New text pairings, lowest
 first: ink on the dark satisfied row 5.12, satisfied pill 5.53, Start
 Session 5.60, Delete card 5.79, Mark as Done 8.44.
 
+Deployed to the Pi (a1739bf): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). Live bundle (read-only fetch, nothing clicked):
+index-BwT3KjQ2.js / index-BjaKFT-I.css. It carries the 780px / 20px
+panel, the inset-shadow-recess utility, the "Delete card" wording, and
+the dark --shadow-card-tint #120c06b0, so the live dark shadow from item
+17 is fixed.
+
 Known gaps / followups
 ----------------------
 - The pre-restyle tag is local only (not pushed).
