@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import Card from './Card';
+import Card, { EmptyCardSlot } from './Card';
 import StackExpandModal from './StackExpandModal';
 import { FanSheets, StackControls } from './CardStack';
 
@@ -19,9 +19,7 @@ const CompletedStack = ({ cards, onCardClick, pileStyle }) => {
   if (!cards || cards.length === 0) {
     return (
       <div style={pileStyle}>
-        <div className="h-20 flex items-center justify-center border-[1.5px] border-divider rounded-[14px]">
-          <span className="text-xs text-muted">No completed cards</span>
-        </div>
+        <EmptyCardSlot>No completed cards</EmptyCardSlot>
       </div>
     );
   }
@@ -47,12 +45,13 @@ const CompletedStack = ({ cards, onCardClick, pileStyle }) => {
         <div className="relative isolate" style={{ marginBottom: depth + (hasStack ? 10 : 0) }}>
           {hasStack && <FanSheets cards={behind} offsets={DONE_FAN} blank={false} />}
 
-          {/* Top card (latest done, on the panel colour) */}
+          {/* Top card (latest done, in its palette colour with the green tick) */}
           <div className="relative" style={{ zIndex: DONE_FAN.length + 1 }}>
             <Card
               card={{ ...cards[0], isBlocked: false }}
               onClick={onCardClick}
               isStacked={false}
+              colourDone
             />
           </div>
 

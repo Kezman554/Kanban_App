@@ -1915,3 +1915,15 @@ Deployed to the Pi (d7d3b54): pulled, kanban-api rebuilt, smoke test OK
 
 Deployed to the Pi (7f624ee): pulled, kanban-api rebuilt, smoke test OK
 (359 cards, API == DB). The live bundle names 7f624ee.
+46. Equal card heights: every card always draws its chip row. A card with
+   no tags holds an invisible chip (ChipPlaceholder) there. On blocked
+   cards the "waits on X" line moved into that row, not under the title,
+   so they match too. "No cards", "All cards blocked" and "No completed
+   cards" use EmptyCardSlot (Card.jsx), built from the same border,
+   padding, letter row and chip row, so it is the size of a one-line card
+   by construction. Measured on the board: stack top card, three "No
+   cards" slots and the Done pile's top card are all 91.6px. Two-line
+   titles are still taller, as before.
+47. The Done pile's top card on the board is now in its palette colour
+   with the green tick (colourDone), like the expanded Done view.
+   CLAUDE.md's exception note updated.

@@ -9,7 +9,7 @@ import {
   useDroppable,
 } from '@dnd-kit/core';
 import { copyText } from '../utils/clipboard.js';
-import Card from './Card';
+import Card, { EmptyCardSlot } from './Card';
 import CardStack from './CardStack';
 import CompletedStack from './CompletedStack';
 import CardDetail from './CardDetail';
@@ -1242,13 +1242,9 @@ const Board = ({ projectId }) => {
                                         })}
                                       </div>
                                     ) : allBlocked ? (
-                                      <div className="h-16 flex items-center justify-center border-[1.5px] border-dashed border-dash rounded-[14px]">
-                                        <span className="text-xs text-muted">All cards blocked</span>
-                                      </div>
+                                      <EmptyCardSlot dashed>All cards blocked</EmptyCardSlot>
                                     ) : (
-                                      <div className="h-16 flex items-center justify-center border-[1.5px] border-divider rounded-[14px]">
-                                        <span className="text-xs text-muted">No cards</span>
-                                      </div>
+                                      <EmptyCardSlot>No cards</EmptyCardSlot>
                                     )}
                                   </DroppableCell>
                                 );
@@ -1276,9 +1272,7 @@ const Board = ({ projectId }) => {
                                       ))}
                                     </div>
                                   ) : (
-                                    <div className="h-16 flex items-center justify-center border-[1.5px] border-divider rounded-[14px]">
-                                      <span className="text-xs text-muted">No cards</span>
-                                    </div>
+                                    <EmptyCardSlot>No cards</EmptyCardSlot>
                                   )}
                                 </DroppableCell>
                               );

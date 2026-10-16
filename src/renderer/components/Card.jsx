@@ -10,6 +10,13 @@ const resourceLabels = {
   tbc: 'To Be Confirmed'
 };
 
+// An invisible chip: holds the chip row open on cards with no tags
+const ChipPlaceholder = () => (
+  <span aria-hidden="true" className="invisible">
+    <Chip>-</Chip>
+  </span>
+);
+
 // Small pill on a card: thin outline on a translucent cream fill. On the
 // panel-coloured done card it is outline-only so it follows the theme.
 const Chip = ({ children, title, onPanel }) => (
@@ -21,6 +28,18 @@ const Chip = ({ children, title, onPanel }) => (
   >
     {children}
   </span>
+);
+
+// An empty slot the exact size of a one-line card (same border, padding, letter
+// row and chip row), for "No cards" placeholders
+export const EmptyCardSlot = ({ children, dashed = false }) => (
+  <div className={`relative p-3 rounded-[14px] border-[1.5px] ${dashed ? 'border-dashed border-dash' : 'border-divider'}`}>
+    <div className="h-[34px]" aria-hidden="true" />
+    <div className="flex mt-2">
+      <ChipPlaceholder />
+    </div>
+    <span className="absolute inset-0 flex items-center justify-center text-xs text-muted">{children}</span>
+  </div>
 );
 
 // colourDone: a done card keeps its palette colour (the Done pile's expanded view).
@@ -88,12 +107,16 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
           </div>
           <div className="flex-1 min-w-0">
             <h3 className="text-sm font-semibold line-clamp-2">{card.title}</h3>
-            {card.waitsOn && (
-              <p className="text-xs text-muted mt-0.5 truncate" title={card.blockedReason || card.waitsOn}>
-                {card.waitsOn}
-              </p>
-            )}
           </div>
+        </div>
+
+        {/* "waits on X" sits in the chip row, so blocked cards match the others' height */}
+        <div className="flex items-center gap-1.5 mt-2 pl-[74px] min-w-0">
+          {card.waitsOn ? (
+            <p className="text-xs text-muted truncate leading-[22px]" title={card.blockedReason || card.waitsOn}>
+              {card.waitsOn}
+            </p>
+          ) : <ChipPlaceholder />}
         </div>
       </div>
     );
@@ -168,31 +191,31 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
         )}
       </div>
 
-      {/* Chips: complexity (when not medium), Manual, TBC, Placeholder, May Expand */}
-      {hasChips && (
-        <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-          {unresolvedExternalDeps.length > 0 && (
-            <Chip
-              onPanel={onPanel}
-              title={`Blocked by other project${unresolvedExternalDeps.length > 1 ? 's' : ''}:\n${externalDepTooltip}`}
-            >
-              <span className="inline-flex items-center gap-1 max-w-[12rem] align-bottom">
-                <LinkIcon className="w-3 h-3 flex-shrink-0" />
-                <span className="truncate">
-                  {unresolvedExternalDeps.length === 1
-                    ? unresolvedExternalDeps[0].project_slug
-                    : `${unresolvedExternalDeps.length} external`}
-                </span>
+      {/* Chips: complexity (when not medium), Manual, TBC, Placeholder, May Expand.
+          Always drawn, with an invisible chip when empty, so every card is the same size */}
+      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+        {!hasChips && <ChipPlaceholder />}
+        {unresolvedExternalDeps.length > 0 && (
+          <Chip
+            onPanel={onPanel}
+            title={`Blocked by other project${unresolvedExternalDeps.length > 1 ? 's' : ''}:\n${externalDepTooltip}`}
+          >
+            <span className="inline-flex items-center gap-1 max-w-[12rem] align-bottom">
+              <LinkIcon className="w-3 h-3 flex-shrink-0" />
+              <span className="truncate">
+                {unresolvedExternalDeps.length === 1
+                  ? unresolvedExternalDeps[0].project_slug
+                  : `${unresolvedExternalDeps.length} external`}
               </span>
-            </Chip>
-          )}
-          {card.complexity && card.complexity !== 'medium' && <Chip onPanel={onPanel}>{card.complexity}</Chip>}
-          {card.resource === 'none' && <Chip onPanel={onPanel}>Manual</Chip>}
-          {card.resource === 'tbc' && <Chip onPanel={onPanel} title="Approach to be confirmed">TBC</Chip>}
-          {card.is_placeholder && <Chip onPanel={onPanel}>Placeholder</Chip>}
-          {card.likely_needs_expansion && <Chip onPanel={onPanel}>May Expand</Chip>}
-        </div>
-      )}
+            </span>
+          </Chip>
+        )}
+        {card.complexity && card.complexity !== 'medium' && <Chip onPanel={onPanel}>{card.complexity}</Chip>}
+        {card.resource === 'none' && <Chip onPanel={onPanel}>Manual</Chip>}
+        {card.resource === 'tbc' && <Chip onPanel={onPanel} title="Approach to be confirmed">TBC</Chip>}
+        {card.is_placeholder && <Chip onPanel={onPanel}>Placeholder</Chip>}
+        {card.likely_needs_expansion && <Chip onPanel={onPanel}>May Expand</Chip>}
+      </div>
     </div>
   );
 };
