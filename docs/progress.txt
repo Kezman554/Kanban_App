@@ -1872,3 +1872,13 @@ the tracking-wider header labels. The only "View:" left in it is React's
 Deployed to the Pi (4c4b167): pulled, kanban-api rebuilt, smoke test OK
 (359 cards, API == DB). The live bundle names 4c4b167 and its CSS has the
 360px Done column width.
+41. Phase heading underlines use INSET_RULE too, inset 24px on both sides
+   of the left columns (measured 24 / 24, still no horizontal overflow).
+42. Column titles are coloured pills, so they read as labels and not
+   cards: rounded-full, deep solid fill, cream uppercase text, no outline,
+   no offset shadow (cards are pastel, 14px corners, offset shadow).
+   COLUMN_TONES in Board.jsx: Not Started pal-lilac-deep, In Progress
+   primary teal, Done done-green, with any custom column name falling
+   back to lilac-deep. The count sits in a cream badge. Contrast: cream on
+   lilac-deep 7.25, teal 5.60, done-green 5.53; ink on the cream badge
+   12.77. Light and dark screenshots checked.

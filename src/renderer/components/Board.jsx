@@ -55,11 +55,26 @@ const DroppableCell = ({ id, children, isOver, canDrop, isEmpty, className = '' 
   );
 };
 
-// Column header label: small uppercase, with the card count in muted text
+// Column title fills, keyed by column name. Deep, solid colours with cream
+// text so the titles read as labels, never as (pastel) cards.
+const COLUMN_TONES = {
+  'Not Started': 'bg-pal-lilac-deep',
+  'In Progress': 'bg-primary',
+  'Done': 'bg-done',
+};
+
+// Column title: a deep-coloured pill (cards are pastel, 14px corners, with an
+// offset shadow) with the card count in a cream badge
 const ColumnLabel = ({ name, count }) => (
-  <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
+  <h3
+    className={`inline-flex items-center gap-2 pl-4 pr-1.5 py-1 rounded-full text-xs font-bold uppercase tracking-wider text-cream ${
+      COLUMN_TONES[name] || 'bg-pal-lilac-deep'
+    }`}
+  >
     {name}
-    <span className="ml-2 font-semibold text-muted">{count}</span>
+    <span className="min-w-[1.5rem] px-1.5 py-0.5 rounded-full bg-cream text-card-ink text-center tracking-normal">
+      {count}
+    </span>
   </h3>
 );
 
@@ -1055,7 +1070,7 @@ const Board = ({ projectId }) => {
                   <div key={phase.id} className="pb-3">
                     {/* Phase Header (Collapsible) */}
                     <div
-                      className="group bg-page sticky top-12 z-[9] cursor-pointer border-b border-divider"
+                      className={`group bg-page sticky top-12 z-[9] cursor-pointer ${INSET_RULE} after:left-6 after:right-6`}
                       onClick={() => togglePhase(phase.id)}
                     >
                       <div className="flex items-center gap-3 px-4 py-3">
