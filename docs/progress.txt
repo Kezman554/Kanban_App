@@ -1858,3 +1858,13 @@ Deployed to the Pi (2ac9dda): pulled, kanban-api rebuilt, smoke test OK
 (359 cards, API == DB). The live bundle names commit 2ac9dda and carries
 the tracking-wider header labels. The only "View:" left in it is React's
 `defaultView:`, so the bar is gone.
+40. Column layout: Done widened 300 -> 360px (Not Started / In Progress
+   share the rest), and all three column titles are centred. The rules
+   above and below the title row are pseudo-elements (INSET_RULE in
+   Board.jsx) that stop 24px short of the page edges, matching the
+   project header's padding. Also fixed a pre-existing 32-40px sideways
+   overflow: the board row was min-w-max, and the nowrap phase
+   description counted at full length. Now the row is min-w-fit and the
+   description is flex-1 w-0 (still truncates). Measured: no horizontal
+   overflow, rules inset 24px on both sides, title offsets 0px from their
+   column centres, light and dark.

@@ -63,6 +63,10 @@ const ColumnLabel = ({ name, count }) => (
   </h3>
 );
 
+// A divider drawn as a pseudo-element so it can stop short of the page edges
+// (the caller adds after:left-* / after:right-*)
+const INSET_RULE = 'after:absolute after:bottom-0 after:h-px after:bg-divider';
+
 // How far down the visible board area the Done pile sits, as a fraction of its
 // height. It sticks there while the board scrolls; tune it here.
 const DONE_PILE_FROM_TOP = 1 / 3;
@@ -910,7 +914,7 @@ const Board = ({ projectId }) => {
     >
       <div className="h-full flex flex-col bg-page">
         {/* Board Header */}
-        <div className="flex-shrink-0 p-6 border-b border-divider">
+        <div className={`relative flex-shrink-0 p-6 ${INSET_RULE} after:left-6 after:right-6`}>
           <div className="flex items-start justify-between mb-2">
             <div>
               <div className="flex items-center gap-3 flex-wrap">
@@ -1033,13 +1037,13 @@ const Board = ({ projectId }) => {
 
         {/* Scrollable Board Content */}
         <div ref={boardScrollRef} className="flex-1 overflow-auto scrollbar-themed">
-          <div className="flex min-w-max">
+          <div className="flex min-w-fit">
             {/* Left side: Not Started + In Progress, full width */}
             <div className="flex-1">
               {/* Column Headers */}
-              <div className="sticky top-0 z-10 h-12 flex bg-page border-b border-divider">
+              <div className={`sticky top-0 z-10 h-12 flex bg-page ${INSET_RULE} after:left-6 after:right-0`}>
                 {activeColumns.map((column, idx) => (
-                  <div key={idx} className="flex-1 min-w-[300px] px-4 flex items-center">
+                  <div key={idx} className="flex-1 min-w-[300px] px-4 flex items-center justify-center">
                     <ColumnLabel name={column} count={boardDisplayData.statusCounts[column] || 0} />
                   </div>
                 ))}
@@ -1073,7 +1077,7 @@ const Board = ({ projectId }) => {
 
                         {/* Phase Description */}
                         {phase.description && (
-                          <span className="text-sm text-muted truncate" title={phase.description}>
+                          <span className="flex-1 w-0 text-sm text-muted truncate" title={phase.description}>
                             — {phase.description}
                           </span>
                         )}
@@ -1300,9 +1304,9 @@ const Board = ({ projectId }) => {
             </div>
 
             {/* Right side: Done column - single aggregated cell */}
-            <div className="w-[300px] flex-shrink-0 flex flex-col">
+            <div className="w-[360px] flex-shrink-0 flex flex-col">
               {/* Done column header */}
-              <div className="sticky top-0 z-10 h-12 px-4 flex items-center bg-page border-b border-divider">
+              <div className={`sticky top-0 z-10 h-12 px-4 flex items-center justify-center bg-page ${INSET_RULE} after:left-0 after:right-6`}>
                 <ColumnLabel name="Done" count={boardDisplayData.completedCards.length} />
               </div>
 
