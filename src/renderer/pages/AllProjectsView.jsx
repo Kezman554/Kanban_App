@@ -7,6 +7,19 @@ import {
   getBlockedReason,
 } from '../utils/cardBlocking';
 
+// Workable Cards resource picker. Claude covers both AI resources (the
+// subscription and the API); Manual is human-only; To Be Confirmed shows
+// under All only.
+const RESOURCE_FILTERS = [
+  { id: 'all', label: 'All' },
+  { id: 'claude', label: 'Claude' },
+  { id: 'manual', label: 'Manual' },
+];
+const matchesResource = (card, filter) =>
+  filter === 'all' ||
+  (filter === 'claude' && (card.resource === 'claude_sub' || card.resource === 'anthropic_api')) ||
+  (filter === 'manual' && card.resource === 'none');
+
 function AllProjectsView() {
   const [projects, setProjects] = useState([]);
   const [projectData, setProjectData] = useState({}); // Full project data with cards
@@ -15,7 +28,8 @@ function AllProjectsView() {
 
   // Filters
   const [includedProjects, setIncludedProjects] = useState(new Set()); // Empty means all
-  const [hideClaudeSub, setHideClaudeSub] = useState(false);
+  const [resourceFilter, setResourceFilter] = useState('all'); // Workable Cards tab only
+  const [activeTab, setActiveTab] = useState('projects');
 
   // Load all projects and their data
   useEffect(() => {
@@ -98,8 +112,8 @@ function AllProjectsView() {
         // Skip done cards
         if (card.status === 'Done') continue;
 
-        // Skip claude_sub if filter is active
-        if (hideClaudeSub && card.resource === 'claude_sub') continue;
+        // All / Claude / Manual picker on the Workable Cards tab
+        if (!matchesResource(card, resourceFilter)) continue;
 
         cards.push(card);
       }
@@ -107,7 +121,7 @@ function AllProjectsView() {
 
     // Sort by project order, then phase order, then subphase order
     return cards;
-  }, [projects, projectData, includedProjects, hideClaudeSub]);
+  }, [projects, projectData, includedProjects, resourceFilter]);
 
   // Calculate stats for each project
   const projectStats = useMemo(() => {
@@ -186,193 +200,230 @@ function AllProjectsView() {
     );
   }
 
+  const includedCount = includedProjects.size > 0 ? includedProjects.size : projects.length;
+
+  const tabs = [
+    { id: 'projects', label: 'Projects', count: includedCount },
+    { id: 'workable', label: 'Workable Cards', count: workableCards.length },
+  ];
+
   return (
     <div className="h-full flex flex-col p-6">
       {/* Header */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-ink mb-2">All Projects View</h1>
+      <div className="mb-5">
+        <h1 className="text-2xl font-bold text-ink mb-1">All Projects View</h1>
         <p className="text-muted">
-          Showing {workableCards.length} workable cards across {includedProjects.size > 0 ? includedProjects.size : projects.length} project{(includedProjects.size > 0 ? includedProjects.size : projects.length) !== 1 ? 's' : ''}
+          {workableCards.length} workable card{workableCards.length !== 1 ? 's' : ''} across {includedCount} project{includedCount !== 1 ? 's' : ''}
         </p>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 p-4 bg-panel rounded-[14px] border-[1.5px] border-line">
-        <h2 className="text-sm font-semibold text-ink mb-3">Filters</h2>
+      {/* Filters: apply to both tabs */}
+      <div className="mb-5 p-4 bg-sidebar rounded-[14px] border-[1.5px] border-card-line shadow-card">
+        <div className="flex items-center gap-2 mb-3">
+          <h2 className="text-sm font-semibold text-ink">Filters</h2>
+          <span className="text-xs text-muted">Projects:</span>
+          <button
+            onClick={selectAllProjects}
+            aria-pressed={includedProjects.size === 0}
+            className={`text-xs px-3 py-1 rounded-full border-[1.5px] font-semibold transition ${
+              includedProjects.size === 0
+                ? 'bg-primary text-on-primary border-card-line shadow-card'
+                : 'bg-page text-ink border-line hover:bg-hover'
+            }`}
+          >
+            All
+          </button>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {projects.map(project => {
+            const stats = projectStats[project.id] || {};
+            const isIncluded = includedProjects.size === 0 || includedProjects.has(project.id);
 
-        {/* Project Toggles */}
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-2">
-            <span className="text-xs text-muted">Projects:</span>
-            <button
-              onClick={selectAllProjects}
-              aria-pressed={includedProjects.size === 0}
-              className={`text-xs px-2.5 py-1 rounded-full border-[1.5px] font-semibold ${
-                includedProjects.size === 0
-                  ? 'bg-primary text-on-primary border-card-line'
-                  : 'bg-page text-ink border-line hover:bg-hover'
-              }`}
-            >
-              All
-            </button>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {projects.map(project => {
-              const stats = projectStats[project.id] || {};
-              const isIncluded = includedProjects.size === 0 || includedProjects.has(project.id);
-
-              return (
-                <button
-                  key={project.id}
-                  onClick={() => toggleProject(project.id)}
-                  aria-pressed={isIncluded}
-                  className={`
-                    flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border-[1.5px] transition-colors
-                    ${isIncluded
-                      ? 'bg-panel border-active-ring text-ink font-semibold'
-                      : 'bg-page border-dash border-dashed text-muted hover:bg-hover'
-                    }
-                  `}
-                >
+            // Included projects are filled with their own colour; excluded ones
+            // drop to a dashed outline, so the state reads without colour too
+            return (
+              <button
+                key={project.id}
+                onClick={() => toggleProject(project.id)}
+                aria-pressed={isIncluded}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border-[1.5px] transition ${
+                  isIncluded
+                    ? 'border-card-line text-card-ink font-semibold shadow-card hover:brightness-95'
+                    : 'bg-page border-dash border-dashed text-muted hover:bg-hover'
+                }`}
+                style={isIncluded ? { backgroundColor: paletteFor(project.id).fill } : undefined}
+              >
+                {!isIncluded && (
                   <span
                     aria-hidden="true"
                     className="w-2.5 h-2.5 rounded-full border border-card-line flex-shrink-0"
                     style={{ backgroundColor: paletteFor(project.id).fill }}
                   />
-                  <span>{project.name}</span>
-                  <span className="text-xs opacity-75">
-                    {stats.done}/{stats.total}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Resource Filter */}
-        <div className="flex items-center gap-4">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={hideClaudeSub}
-              onChange={(e) => setHideClaudeSub(e.target.checked)}
-              className="rounded border-divider bg-page text-link focus:ring-active-ring"
-            />
-            <span className="text-sm text-ink">Hide claude_sub tasks</span>
-            <span className="text-xs text-muted">(for when tokens depleted)</span>
-          </label>
-        </div>
-      </div>
-
-      {/* Project Stats Summary */}
-      <div className="mb-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {projects
-          .filter(p => includedProjects.size === 0 || includedProjects.has(p.id))
-          .map(project => {
-            const stats = projectStats[project.id] || {};
-            const percentage = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
-
-            return (
-              <div
-                key={project.id}
-                className="p-4 rounded-[14px] border-[1.5px] border-card-line shadow-card text-card-ink"
-                style={{ backgroundColor: paletteFor(project.id).fill }}
-              >
-                {/* Filled with the project's palette colour, the same as its sidebar dot */}
-                <h3 className="font-semibold mb-2 truncate" title={project.name}>
-                  {project.name}
-                </h3>
-
-                {/* Progress bar */}
-                <div className="h-2.5 bg-cream/70 border border-card-line rounded-full mb-2 overflow-hidden">
-                  <div
-                    className="h-full bg-progress border-r-[1.5px] border-card-line transition-all"
-                    style={{ width: `${percentage}%` }}
-                  />
-                </div>
-
-                <div className="flex justify-between text-xs">
-                  <span>{stats.done}/{stats.total} complete</span>
-                  <span>{percentage}%</span>
-                </div>
-
-                <div className="mt-2 flex gap-3 text-xs">
-                  <span className="font-semibold">{stats.inProgress} in progress</span>
-                  <span className="font-semibold">{stats.workable} workable</span>
-                </div>
-              </div>
+                )}
+                <span>{project.name}</span>
+                <span className="text-xs">{stats.done}/{stats.total}</span>
+              </button>
             );
           })}
+        </div>
       </div>
 
-      {/* Workable Cards List */}
-      <div className="flex-1 overflow-auto scrollbar-themed">
-        <h2 className="text-lg font-semibold text-ink mb-4">Workable Cards</h2>
+      {/* Tabs */}
+      <div role="tablist" aria-label="All Projects views" className="flex items-center gap-2 mb-4">
+        {tabs.map(tab => (
+          <button
+            key={tab.id}
+            role="tab"
+            id={`tab-${tab.id}`}
+            aria-selected={activeTab === tab.id}
+            aria-controls={`panel-${tab.id}`}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-2 pl-4 pr-1.5 py-1.5 rounded-full text-sm font-bold border-[1.5px] transition ${
+              activeTab === tab.id
+                ? 'bg-primary text-on-primary border-card-line shadow-card'
+                : 'bg-sidebar text-ink border-line hover:bg-hover'
+            }`}
+          >
+            {tab.label}
+            <span className="min-w-[1.75rem] px-1.5 py-0.5 rounded-full bg-cream text-card-ink text-xs text-center">
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
 
-        {workableCards.length === 0 ? (
-          <div className="text-center py-12">
-            <p className="text-muted">
-              {hideClaudeSub
-                ? 'No workable cards found (try disabling the claude_sub filter)'
-                : 'No workable cards found'}
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {workableCards.map(card => (
-              <div
-                key={`${card.projectId}-${card.id}`}
-                className="p-4 rounded-[14px] border-[1.5px] border-card-line shadow-card text-card-ink"
-                style={{ backgroundColor: paletteFor(card.id).fill }}
-              >
-                <div className="flex items-start gap-3">
-                  {/* Session letter in the card's deep shade */}
+      {/* Projects tab */}
+      {activeTab === 'projects' && (
+        <div role="tabpanel" id="panel-projects" aria-labelledby="tab-projects" className="flex-1 overflow-auto scrollbar-themed">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 p-1">
+            {projects
+              .filter(p => includedProjects.size === 0 || includedProjects.has(p.id))
+              .map(project => {
+                const stats = projectStats[project.id] || {};
+                const percentage = stats.total > 0 ? Math.round((stats.done / stats.total) * 100) : 0;
+
+                return (
                   <div
-                    className="flex-shrink-0 w-[34px] h-[34px] rounded-full flex items-center justify-center font-bold text-sm text-cream"
-                    style={{ backgroundColor: paletteFor(card.id).deep }}
+                    key={project.id}
+                    className="p-4 rounded-[14px] border-[1.5px] border-card-line shadow-card text-card-ink"
+                    style={{ backgroundColor: paletteFor(project.id).fill }}
                   >
-                    {card.session_letter}
-                  </div>
+                    {/* Filled with the project's palette colour, the same as its sidebar dot */}
+                    <h3 className="font-semibold mb-2 truncate" title={project.name}>
+                      {project.name}
+                    </h3>
 
-                  {/* Card Content */}
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs truncate">
-                        {card.projectName} / {card.phaseName} / {card.subphaseName}
-                      </span>
+                    {/* Progress bar */}
+                    <div className="h-2.5 bg-cream/70 border border-card-line rounded-full mb-2 overflow-hidden">
+                      <div
+                        className="h-full bg-progress border-r-[1.5px] border-card-line transition-all"
+                        style={{ width: `${percentage}%` }}
+                      />
                     </div>
 
-                    <h3 className="font-semibold mb-2">{card.title}</h3>
+                    <div className="flex justify-between text-xs">
+                      <span>{stats.done}/{stats.total} complete</span>
+                      <span>{percentage}%</span>
+                    </div>
 
-                    {card.description && (
-                      <p className="text-sm line-clamp-2 mb-2">
-                        {card.description}
-                      </p>
-                    )}
-
-                    {/* Chips */}
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className={chip}>{card.status}</span>
-
-                      <span
-                        className={`${chip} flex items-center gap-1`}
-                        title={resourceLabels[card.resource]?.label}
-                      >
-                        <ResourceIcon resource={card.resource} className="w-3.5 h-3.5" />
-                        <span>{card.resource}</span>
-                      </span>
-
-                      {card.complexity && (
-                        <span className={chip}>{card.complexity}</span>
-                      )}
+                    <div className="mt-2 flex gap-3 text-xs">
+                      <span className="font-semibold">{stats.inProgress} in progress</span>
+                      <span className="font-semibold">{stats.workable} workable</span>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                );
+              })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+
+      {/* Workable Cards tab */}
+      {activeTab === 'workable' && (
+        <div role="tabpanel" id="panel-workable" aria-labelledby="tab-workable" className="flex-1 min-h-0 flex flex-col">
+          {/* Resource: All / Claude / Manual */}
+          <div role="radiogroup" aria-label="Resource" className="flex items-center gap-2 mb-4">
+            <span className="text-xs text-muted">Show:</span>
+            <div className="inline-flex rounded-full border-[1.5px] border-line overflow-hidden">
+              {RESOURCE_FILTERS.map(({ id, label }) => (
+                <button
+                  key={id}
+                  role="radio"
+                  aria-checked={resourceFilter === id}
+                  onClick={() => setResourceFilter(id)}
+                  className={`px-4 py-1 text-sm font-semibold border-r-[1.5px] border-line last:border-r-0 transition-colors ${
+                    resourceFilter === id ? 'bg-primary text-on-primary' : 'bg-sidebar text-ink hover:bg-hover'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex-1 overflow-auto scrollbar-themed">
+            {workableCards.length === 0 ? (
+              <div className="text-center py-12">
+                <p className="text-muted">
+                  {resourceFilter === 'all'
+                    ? 'No workable cards found'
+                    : `No workable ${resourceFilter === 'manual' ? 'manual' : 'Claude'} cards found (try All)`}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 p-1">
+                {workableCards.map(card => (
+                  <div
+                    key={`${card.projectId}-${card.id}`}
+                    className="p-4 rounded-[14px] border-[1.5px] border-card-line shadow-card text-card-ink"
+                    style={{ backgroundColor: paletteFor(card.id).fill }}
+                  >
+                    <div className="flex items-start gap-3">
+                      {/* Session letter in the card's deep shade */}
+                      <div
+                        className="flex-shrink-0 w-[34px] h-[34px] rounded-full flex items-center justify-center font-bold text-sm text-cream"
+                        style={{ backgroundColor: paletteFor(card.id).deep }}
+                      >
+                        {card.session_letter}
+                      </div>
+
+                      {/* Card Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="text-xs truncate">
+                            {card.projectName} / {card.phaseName} / {card.subphaseName}
+                          </span>
+                        </div>
+
+                        <h3 className="font-semibold mb-2">{card.title}</h3>
+
+                        {card.description && (
+                          <p className="text-sm line-clamp-2 mb-2">
+                            {card.description}
+                          </p>
+                        )}
+
+                        {/* Chips */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={chip}>{card.status}</span>
+
+                          <span className={`${chip} flex items-center gap-1`}>
+                            <ResourceIcon resource={card.resource} className="w-3.5 h-3.5" />
+                            <span>{resourceLabels[card.resource]?.label || card.resource}</span>
+                          </span>
+
+                          {card.complexity && (
+                            <span className={chip}>{card.complexity}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

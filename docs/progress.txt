@@ -1930,3 +1930,19 @@ Deployed to the Pi (7f624ee): pulled, kanban-api rebuilt, smoke test OK
 
 Deployed to the Pi (7c16be0): pulled, kanban-api rebuilt, smoke test OK
 (359 cards, API == DB). The live bundle names 7c16be0.
+48. All Projects:
+   - Filters box filled with the sidebar yellow, with the card outline and
+     shadow. Included project buttons are filled with the project's palette
+     colour (outline, shadow, ink); excluded ones drop to a dashed outline
+     with a dot, so the state reads without colour too. "All" is filled
+     teal when active.
+   - Two tabs (role=tablist), Projects and Workable Cards, each with a
+     count; each tab scrolls on its own, so the workable list is no longer
+     pushed below the project cards. The project filter applies to both.
+   - Workable Cards tab: an All / Claude / Manual picker (radiogroup)
+     replaces the "Hide claude_sub tasks" checkbox. Claude = claude_sub +
+     anthropic_api, Manual = none, and TBC shows under All only. The
+     resource chip now shows its label, not the raw value.
+   Checked on the scratch DB: All 52, Claude 39, Manual 13 (every one a
+   manual task), back to 52; picking only DocuSync gives its 4, all
+   DocuSync. Light and dark screenshots.
