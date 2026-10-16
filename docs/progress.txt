@@ -1686,6 +1686,11 @@ colour utilities. Screenshots against the scratch DB: DocuSync roadmap
 (light and dark), Obsidian Vault Setup with two in-progress cards, and a
 chip opening the card view.
 
+Deployed to the Pi (7941692): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). Live bundle (read-only fetch, nothing clicked):
+index-BjuUFTVR.js / index-Duqm1sCU.css. It carries both active-ring
+values (#22707b light, #8ad0d9 dark) and the roadmap key.
+
 Known gaps / followups
 ----------------------
 - The pre-restyle tag is local only (not pushed).
