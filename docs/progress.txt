@@ -1946,3 +1946,7 @@ Deployed to the Pi (7c16be0): pulled, kanban-api rebuilt, smoke test OK
    Checked on the scratch DB: All 52, Claude 39, Manual 13 (every one a
    manual task), back to 52; picking only DocuSync gives its 4, all
    DocuSync. Light and dark screenshots.
+
+Deployed to the Pi (ee88071): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). The live bundle names ee88071 and carries the
+Workable Cards tab.
