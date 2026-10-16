@@ -255,7 +255,7 @@ const RoadmapView = ({ projectId }) => {
                   aria-valuenow={overallPct}
                   aria-label="Cards done"
                 >
-                  <div className="h-full bg-progress transition-all" style={{ width: `${overallPct}%` }} />
+                  <div className="h-full bg-progress border-r-[1.5px] border-card-line transition-all" style={{ width: `${overallPct}%` }} />
                 </div>
                 <span className="text-sm font-semibold text-ink whitespace-nowrap">
                   {totals.done}/{totals.total} done · {overallPct}%
@@ -325,7 +325,7 @@ const RoadmapView = ({ projectId }) => {
                         {phaseStats.total === 0 && (
                           <button
                             onClick={() => handleDeleteEmptyPhase(phase)}
-                            className="text-xs px-3 py-1 rounded-full border-[1.5px] border-danger-text text-danger-text hover:bg-danger/10 transition-colors flex items-center gap-1.5"
+                            className="text-xs px-3 py-1 rounded-full border-[1.5px] border-danger-text text-danger-text hover:bg-danger hover:text-on-danger transition-colors flex items-center gap-1.5"
                             title="This phase has no cards and doesn't appear on the board"
                           >
                             <Trash2 className="w-3.5 h-3.5" />

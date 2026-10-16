@@ -150,17 +150,17 @@ function CardTestPage() {
       </div>
 
       {/* Legend */}
-      <div className="mt-8 p-4 bg-panel rounded-lg border border-line">
+      <div className="mt-8 p-4 bg-panel rounded-[14px] border-[1.5px] border-line">
         <h2 className="text-xl font-bold mb-4">Legend</h2>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <h3 className="text-sm font-semibold text-muted mb-2">Status Colors</h3>
+            <h3 className="text-sm font-semibold text-muted mb-2">Card States</h3>
             <ul className="space-y-1 text-sm">
-              <li>• <span className="text-muted">Not Started</span> - Gray badge</li>
-              <li>• <span className="text-link">In Progress</span> - Blue border & badge</li>
-              <li>• <span className="text-success-text">Done</span> - Checkmark, muted, green badge</li>
-              <li>• <span className="text-danger-text">Blocked</span> - Lock icon, greyed out, red badge</li>
+              <li>• <span className="font-semibold">Ready</span> - Coloured: its palette colour comes from the card id</li>
+              <li>• <span className="font-semibold">In Progress</span> - Coloured, in the In Progress column</li>
+              <li>• <span className="font-semibold">Done</span> - Panel colour with a green tick</li>
+              <li>• <span className="font-semibold">Blocked</span> - Never coloured: dashed, lock, "waits on X"</li>
             </ul>
           </div>
 
@@ -177,19 +177,19 @@ function CardTestPage() {
           <div>
             <h3 className="text-sm font-semibold text-muted mb-2">Complexity Levels</h3>
             <ul className="space-y-1 text-sm">
-              <li>• <span className="text-success-text">Low</span> - Simple task</li>
-              <li>• <span className="text-warn-text">Medium</span> - Moderate complexity</li>
-              <li>• <span className="text-danger-text">High</span> - Complex, may need breakdown</li>
+              <li>• <span className="font-semibold">Low</span> - Simple task (chip shown)</li>
+              <li>• <span className="font-semibold">Medium</span> - Moderate complexity (no chip)</li>
+              <li>• <span className="font-semibold">High</span> - Complex, may need breakdown (chip shown)</li>
             </ul>
           </div>
 
           <div>
             <h3 className="text-sm font-semibold text-muted mb-2">Special Indicators</h3>
             <ul className="space-y-1 text-sm">
-              <li>• <span className="text-link">Manual</span> - Human-only task</li>
-              <li>• <span className="text-warn-text">TBC</span> - Dashed border, needs decision</li>
-              <li>• <span className="text-warn-text">Placeholder</span> - Will be expanded later</li>
-              <li>• <span className="text-link">May Expand</span> - Likely needs sub-tasks</li>
+              <li>• <span className="font-semibold">Manual</span> - Human-only task</li>
+              <li>• <span className="font-semibold">TBC</span> - Approach not decided yet</li>
+              <li>• <span className="font-semibold">Placeholder</span> - Will be expanded later</li>
+              <li>• <span className="font-semibold">May Expand</span> - Likely needs sub-tasks</li>
             </ul>
           </div>
         </div>

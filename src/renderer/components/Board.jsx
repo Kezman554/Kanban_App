@@ -1342,7 +1342,7 @@ const Board = ({ projectId }) => {
             className="absolute inset-0 bg-scrim backdrop-blur-sm"
             onClick={handleCancelUnlock}
           />
-          <div className="relative z-10 bg-panel border border-line rounded-lg shadow-card p-6 max-w-md">
+          <div className="relative z-10 bg-panel border-[1.5px] border-line rounded-[20px] shadow-card p-6 max-w-md">
             <h3 className="text-lg font-bold text-ink mb-4">Unlock Card?</h3>
             <p className="text-muted mb-2">
               Are you sure you want to unlock <span className="font-semibold text-ink">"{confirmUnlockCard.title}"</span>?
@@ -1351,7 +1351,7 @@ const Board = ({ projectId }) => {
               This will remove all dependencies for this card. It will become immediately actionable.
             </p>
             {unlockError && (
-              <div className="mb-4 p-3 rounded bg-danger/10 border border-danger-text text-danger-text text-sm">
+              <div className="mb-4 p-3 rounded bg-panel border border-danger-text text-danger-text text-sm">
                 {unlockError}
               </div>
             )}
@@ -1376,7 +1376,8 @@ const Board = ({ projectId }) => {
       )}
       {/* Export toast notification */}
       {exportCopied && (
-        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-pal-lilac text-card-ink text-sm font-medium rounded-lg shadow-card backdrop-blur-sm border border-card-line transition-opacity duration-300">
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2.5 bg-pal-mint text-card-ink text-sm font-semibold rounded-full shadow-card border-[1.5px] border-card-line flex items-center gap-2 transition-opacity duration-300">
+          <Check className="w-4 h-4" />
           Project context copied to clipboard
         </div>
       )}

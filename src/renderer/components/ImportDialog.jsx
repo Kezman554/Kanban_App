@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FolderOpen } from './icons';
+import { FolderOpen, X } from './icons';
 
 const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
   const [selectedFile, setSelectedFile] = useState(null);
@@ -96,7 +96,7 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
       {/* Dialog */}
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
         <div
-          className="bg-panel border border-line rounded-lg shadow-card w-full max-w-lg mx-4 pointer-events-auto"
+          className="bg-panel border-[1.5px] border-line rounded-[20px] shadow-card w-full max-w-lg mx-4 pointer-events-auto"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -104,9 +104,10 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
             <h2 className="text-lg font-bold text-ink">Import Project</h2>
             <button
               onClick={handleClose}
-              className="p-1 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
+              className="w-9 h-9 rounded-full border-[1.5px] border-line flex items-center justify-center text-ink hover:bg-hover transition-colors"
+            aria-label="Close"
             >
-              <span className="text-xl">x</span>
+              <X className="w-4 h-4" />
             </button>
           </div>
 
@@ -119,7 +120,7 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
               </label>
               <button
                 onClick={handleSelectFile}
-                className="w-full px-4 py-3 bg-page border border-line rounded-lg hover:border-primary transition-colors text-left flex items-center gap-3"
+                className="w-full px-4 py-3 bg-page border border-line rounded-lg hover:border-active-ring transition-colors text-left flex items-center gap-3"
               >
                 <FolderOpen className="w-6 h-6 text-muted flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -138,7 +139,7 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
 
             {/* Error Display */}
             {error && (
-              <div className="p-3 bg-danger/10 border border-danger-text rounded-lg">
+              <div className="p-3 bg-panel border border-danger-text rounded-lg">
                 <p className="text-sm text-danger-text">{error}</p>
               </div>
             )}
@@ -208,7 +209,7 @@ const ImportDialog = ({ isOpen, onClose, onImportSuccess }) => {
               className={`
                 px-6 py-2 rounded-lg font-medium transition-colors
                 ${fileData && !importing
-                  ? 'bg-primary hover:bg-primary text-cream'
+                  ? 'bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream'
                   : 'bg-divider text-muted cursor-not-allowed'
                 }
               `}

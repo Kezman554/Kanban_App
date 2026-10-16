@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { copyText } from '../utils/clipboard.js';
 import { getThemeChoice, setThemeChoice } from '../utils/theme.js';
-import { Monitor, Sun, Moon, Trash2, Upload } from '../components/icons.jsx';
+import { Monitor, Sun, Moon, Trash2, Upload, Check, Copy, Pencil } from '../components/icons.jsx';
 
 // A stored, editable path with a copy button - the app's own repo has no
 // project row, so its directory_path lives in the settings table instead.
@@ -61,12 +61,12 @@ function StoredPathRow({ label, settingKey, placeholder, hint }) {
                 if (e.key === 'Escape' && editing) { setEditing(false); setError(null); }
               }}
               placeholder={placeholder}
-              className="flex-1 min-w-0 max-w-md px-2 py-1 bg-page border border-line rounded text-sm text-ink focus:outline-none focus:border-primary"
+              className="flex-1 min-w-0 max-w-md px-2 py-1 bg-page border border-line rounded text-sm text-ink focus:outline-none focus:border-active-ring"
             />
             <button
               onClick={handleSave}
               disabled={saving || (!draft.trim() && !value)}
-              className="px-3 py-1 rounded text-xs font-medium bg-primary hover:bg-primary text-cream disabled:opacity-50"
+              className="px-3 py-1 rounded text-xs font-medium bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream disabled:opacity-50"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>
@@ -96,13 +96,9 @@ function StoredPathRow({ label, settingKey, placeholder, hint }) {
               title={copied ? 'Copied!' : 'Copy path to clipboard'}
             >
               {copied ? (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+                <Check className="w-3.5 h-3.5" />
               ) : (
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
+                <Copy className="w-3.5 h-3.5" />
               )}
             </button>
             <button
@@ -110,9 +106,7 @@ function StoredPathRow({ label, settingKey, placeholder, hint }) {
               className="flex-shrink-0 text-muted hover:text-ink transition-colors"
               title={`Change ${label}`}
             >
-              <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-              </svg>
+              <Pencil className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
@@ -336,12 +330,12 @@ function SettingsPage({ onProjectsChange }) {
               onChange={(e) => setNewColumn(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddColumn()}
               placeholder="Add new column..."
-              className="flex-1 px-4 py-2 bg-page border border-line rounded-lg text-sm focus:outline-none focus:border-primary"
+              className="flex-1 px-4 py-2 bg-page border border-line rounded-lg text-sm focus:outline-none focus:border-active-ring"
             />
             <button
               onClick={handleAddColumn}
               disabled={!newColumn.trim()}
-              className="px-4 py-2 bg-page border border-line rounded-lg text-sm hover:border-primary transition-colors disabled:opacity-50"
+              className="px-4 py-2 bg-page border border-line rounded-lg text-sm hover:border-active-ring transition-colors disabled:opacity-50"
             >
               Add
             </button>
@@ -354,9 +348,9 @@ function SettingsPage({ onProjectsChange }) {
 
           {dataMessage && (
             <div className={`mb-4 p-3 rounded-lg border ${
-              dataMessage.type === 'success' ? 'bg-progress/25 border-success-text text-success-text' :
-              dataMessage.type === 'error' ? 'bg-danger/10 border-danger-text text-danger-text' :
-              'bg-primary/15 border-primary text-link'
+              dataMessage.type === 'success' ? 'bg-panel border-success-text text-success-text' :
+              dataMessage.type === 'error' ? 'bg-panel border-danger-text text-danger-text' :
+              'bg-panel border-active-ring text-link'
             }`}>
               {dataMessage.text}
             </div>
@@ -372,7 +366,7 @@ function SettingsPage({ onProjectsChange }) {
                   setSelectedProjectId(e.target.value);
                   setShowDeleteConfirm(false);
                 }}
-                className="flex-1 min-w-48 px-4 py-2 bg-panel border border-line rounded-lg text-sm focus:outline-none focus:border-primary"
+                className="flex-1 min-w-48 px-4 py-2 bg-panel border border-line rounded-lg text-sm focus:outline-none focus:border-active-ring"
               >
                 <option value="">Select a project...</option>
                 {projects.map((project) => (
@@ -386,18 +380,18 @@ function SettingsPage({ onProjectsChange }) {
                 <button
                   onClick={() => setShowDeleteConfirm(true)}
                   disabled={!selectedProjectId}
-                  className="px-4 py-2 bg-panel border border-danger-text rounded-lg text-sm text-danger-text hover:bg-danger/10 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  className="px-4 py-2 bg-panel border border-danger-text rounded-lg text-sm text-danger-text hover:bg-danger hover:text-on-danger transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
                   <Trash2 className="w-4 h-4" />
                   Delete Project
                 </button>
               ) : (
-                <div className="flex items-center gap-2 p-2 bg-danger/10 border border-danger-text rounded-lg">
+                <div className="flex items-center gap-2 p-2 bg-panel border border-danger-text rounded-lg">
                   <span className="text-sm text-danger-text">Delete this project?</span>
                   <button
                     onClick={handleDeleteProject}
                     disabled={deleting}
-                    className="px-3 py-1 bg-danger hover:bg-danger text-cream rounded text-sm font-medium"
+                    className="px-3 py-1 bg-danger hover:brightness-110 border-[1.5px] border-card-line text-cream rounded text-sm font-medium"
                   >
                     {deleting ? 'Deleting...' : 'Yes, Delete'}
                   </button>
@@ -420,7 +414,7 @@ function SettingsPage({ onProjectsChange }) {
             <button
               onClick={handleExportAll}
               disabled={exporting}
-              className="px-4 py-2 bg-page border border-line rounded-lg text-sm hover:border-primary transition-colors disabled:opacity-50 flex items-center gap-2"
+              className="px-4 py-2 bg-page border border-line rounded-lg text-sm hover:border-active-ring transition-colors disabled:opacity-50 flex items-center gap-2"
             >
               {exporting ? (
                 <>
@@ -439,18 +433,18 @@ function SettingsPage({ onProjectsChange }) {
             {!showClearConfirm ? (
               <button
                 onClick={() => setShowClearConfirm(true)}
-                className="px-4 py-2 bg-page border border-danger-text rounded-lg text-sm text-danger-text hover:bg-danger/10 transition-colors flex items-center gap-2"
+                className="px-4 py-2 bg-page border border-danger-text rounded-lg text-sm text-danger-text hover:bg-danger hover:text-on-danger transition-colors flex items-center gap-2"
               >
                 <Trash2 className="w-4 h-4" />
                 Clear All Data
               </button>
             ) : (
-              <div className="flex items-center gap-2 p-2 bg-danger/10 border border-danger-text rounded-lg">
+              <div className="flex items-center gap-2 p-2 bg-panel border border-danger-text rounded-lg">
                 <span className="text-sm text-danger-text">Are you sure?</span>
                 <button
                   onClick={handleClearAll}
                   disabled={clearing}
-                  className="px-3 py-1 bg-danger hover:bg-danger text-cream rounded text-sm font-medium"
+                  className="px-3 py-1 bg-danger hover:brightness-110 border-[1.5px] border-card-line text-cream rounded text-sm font-medium"
                 >
                   {clearing ? 'Deleting...' : 'Yes, Delete All'}
                 </button>

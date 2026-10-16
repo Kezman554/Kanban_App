@@ -104,6 +104,21 @@ https://github.com/Kezman554/Kanban_App.git
 ## Progress Log
 
 After completing any significant task (feature, bug fix, investigation with findings, data repair), append a session entry to `docs/progress.txt` without being asked. Follow the existing format (`Session Progress - YYYY-MM-DD` header, numbered sections, "Known gaps / followups"). Date entries by the day the work happened. Small tweaks don't need an entry.
+## Design
+
+Tokens live in one block at the top of `src/renderer/index.css` (`@theme static` for light, `:root[data-theme="dark"]` for dark). The rules the code can't enforce:
+
+- **No black anywhere.** Darkest colour is brown (`#3A2F22` ink, `rgba(18,12,6,…)` for dark shadows and dim). Tailwind's stock shadows are cleared because they are black-based.
+- **Colour means "can be picked up".** A blocked card is never coloured: dashed `border-dash`, `bg-blocked`, lock, letter, "waits on X". The same goes for blocked rows, blocked roadmap chips, the blocked card's header band and unmet dependency rows.
+- **Card colour comes from the id and is never stored:** `paletteFor(card.id)` (`utils/palette.js`), worked out wherever a card is drawn. Subphase badges use `paletteFor(subphase.id)` and project dots `paletteFor(project.id)`.
+- **The theme choice lives in the browser** (`localStorage` key `kanban-theme`, `utils/theme.js`), never in the database or exports. Each browser picks its own.
+- **Danger is shown by wording and outline, never by colour alone.** Buttons say what they do ("Delete card E", "Sync failed"); error boxes are an outline plus words on a plain panel. The delete confirmation button may be `bg-danger` with cream text.
+- **No hex or rgb() outside the token block, and no stock Tailwind colours** (the stock palette is cleared). Palette colours used from inline styles are written as `var(--color-pal-…)`.
+- **Fredoka only**, bundled with `@fontsource/fredoka` (400–700); every font family resolves to it. Icons are Lucide via `components/icons.jsx` (aria-hidden; the label goes on the button).
+- **Nothing about the look touches the database**: no schema, export or vault-summary change for visual work.
+- Contrast: text at least 4.5:1 and non-text at least 3:1 in both modes. Coloured text on a translucent tint fails in dark mode, so message boxes use a plain panel. Teal `#22707B` is under 3:1 on the dark page, so outlines and focus borders use `active-ring` (aqua in dark).
+- Tailwind bakes a literal shadow colour into the utility, so shadow colours go through per-mode variables (`--shadow-card-tint`, `--recess-tint`).
+
 ## Removed features
 In-app AI prompt generation (and its API-key settings) and the embedded terminal (node-pty / xterm) were removed on 2026-10-12. The app reads no `.env`.
 

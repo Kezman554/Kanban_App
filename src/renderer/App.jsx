@@ -5,7 +5,7 @@ import RoadmapPage from './pages/RoadmapPage';
 import SettingsPage from './pages/SettingsPage';
 import CardTestPage from './pages/CardTestPage';
 import ImportDialog from './components/ImportDialog';
-import { ClipboardList, LayoutGrid, MapIcon, FlaskConical, SettingsIcon } from './components/icons';
+import { ClipboardList, LayoutGrid, MapIcon, FlaskConical, SettingsIcon, ChevronsLeft, ChevronsRight } from './components/icons';
 import { paletteFor } from './utils/palette';
 
 function App() {
@@ -81,14 +81,9 @@ function App() {
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
               className={`p-1.5 rounded-lg text-muted hover:text-ink hover:bg-hover transition-colors ${sidebarCollapsed ? 'mx-auto' : ''}`}
               title={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+              aria-label={sidebarCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                {sidebarCollapsed ? (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                )}
-              </svg>
+              {sidebarCollapsed ? <ChevronsRight className="w-5 h-5" /> : <ChevronsLeft className="w-5 h-5" />}
             </button>
           </div>
 

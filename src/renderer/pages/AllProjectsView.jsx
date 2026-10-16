@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { ResourceIcon } from '../components/icons';
+import { ResourceIcon, Loader } from '../components/icons';
+import { paletteFor } from '../utils/palette';
 import {
   buildCardStatusByLetter,
   isCardBlocked,
@@ -155,18 +156,14 @@ function AllProjectsView() {
     tbc: { label: 'To Be Confirmed' }
   };
 
-  // Complexity badge colors
-  const complexityColors = {
-    low: 'bg-pal-mint text-card-ink',
-    medium: 'bg-pal-marigold text-card-ink',
-    high: 'bg-pal-coral text-card-ink'
-  };
+  // Chip on a coloured card: thin outline on translucent cream
+  const chip = 'text-xs px-2 py-0.5 rounded-full border border-card-line bg-cream/60 text-card-ink font-medium';
 
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin text-4xl mb-4">⏳</div>
+          <Loader className="w-8 h-8 mx-auto mb-4 text-muted animate-spin" />
           <p className="text-muted">Loading projects...</p>
         </div>
       </div>
@@ -180,7 +177,7 @@ function AllProjectsView() {
           <p className="text-danger-text mb-4">Error: {error}</p>
           <button
             onClick={loadData}
-            className="px-4 py-2 bg-primary hover:bg-primary text-cream rounded-lg"
+            className="px-4 py-2 bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream rounded-lg"
           >
             Retry
           </button>
@@ -200,7 +197,7 @@ function AllProjectsView() {
       </div>
 
       {/* Filters */}
-      <div className="mb-6 p-4 bg-panel rounded-lg border border-line">
+      <div className="mb-6 p-4 bg-panel rounded-[14px] border-[1.5px] border-line">
         <h2 className="text-sm font-semibold text-ink mb-3">Filters</h2>
 
         {/* Project Toggles */}
@@ -209,10 +206,11 @@ function AllProjectsView() {
             <span className="text-xs text-muted">Projects:</span>
             <button
               onClick={selectAllProjects}
-              className={`text-xs px-2 py-1 rounded ${
+              aria-pressed={includedProjects.size === 0}
+              className={`text-xs px-2.5 py-1 rounded-full border-[1.5px] font-semibold ${
                 includedProjects.size === 0
-                  ? 'bg-primary text-cream'
-                  : 'bg-page text-muted hover:text-ink'
+                  ? 'bg-primary text-on-primary border-card-line'
+                  : 'bg-page text-ink border-line hover:bg-hover'
               }`}
             >
               All
@@ -227,14 +225,20 @@ function AllProjectsView() {
                 <button
                   key={project.id}
                   onClick={() => toggleProject(project.id)}
+                  aria-pressed={isIncluded}
                   className={`
-                    flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm transition-colors
+                    flex items-center gap-2 px-3 py-1.5 rounded-full text-sm border-[1.5px] transition-colors
                     ${isIncluded
-                      ? 'bg-primary/15 border border-primary text-link'
-                      : 'bg-page border border-line text-muted hover:border-line'
+                      ? 'bg-panel border-active-ring text-ink font-semibold'
+                      : 'bg-page border-dash border-dashed text-muted hover:bg-hover'
                     }
                   `}
                 >
+                  <span
+                    aria-hidden="true"
+                    className="w-2.5 h-2.5 rounded-full border border-card-line flex-shrink-0"
+                    style={{ backgroundColor: paletteFor(project.id).fill }}
+                  />
                   <span>{project.name}</span>
                   <span className="text-xs opacity-75">
                     {stats.done}/{stats.total}
@@ -252,7 +256,7 @@ function AllProjectsView() {
               type="checkbox"
               checked={hideClaudeSub}
               onChange={(e) => setHideClaudeSub(e.target.checked)}
-              className="rounded border-divider bg-page text-link focus:ring-primary"
+              className="rounded border-divider bg-page text-link focus:ring-active-ring"
             />
             <span className="text-sm text-ink">Hide claude_sub tasks</span>
             <span className="text-xs text-muted">(for when tokens depleted)</span>
@@ -271,16 +275,21 @@ function AllProjectsView() {
             return (
               <div
                 key={project.id}
-                className="p-4 bg-panel rounded-lg border border-line"
+                className="p-4 bg-panel rounded-[14px] border-[1.5px] border-line shadow-card"
               >
-                <h3 className="font-semibold text-ink mb-2 truncate" title={project.name}>
-                  {project.name}
+                <h3 className="font-semibold text-ink mb-2 flex items-center gap-2 min-w-0" title={project.name}>
+                  <span
+                    aria-hidden="true"
+                    className="w-3 h-3 rounded-full border-[1.5px] border-card-line flex-shrink-0"
+                    style={{ backgroundColor: paletteFor(project.id).fill }}
+                  />
+                  <span className="truncate">{project.name}</span>
                 </h3>
 
                 {/* Progress bar */}
-                <div className="h-2 bg-page rounded-full mb-2 overflow-hidden">
+                <div className="h-2.5 bg-page border border-line rounded-full mb-2 overflow-hidden">
                   <div
-                    className="h-full bg-done transition-all"
+                    className="h-full bg-progress border-r-[1.5px] border-card-line transition-all"
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
@@ -316,58 +325,48 @@ function AllProjectsView() {
             {workableCards.map(card => (
               <div
                 key={`${card.projectId}-${card.id}`}
-                className="p-4 bg-panel rounded-lg border border-line hover:border-line transition-colors"
+                className="p-4 rounded-[14px] border-[1.5px] border-card-line shadow-card text-card-ink"
+                style={{ backgroundColor: paletteFor(card.id).fill }}
               >
                 <div className="flex items-start gap-3">
-                  {/* Session Letter Badge */}
-                  <div className={`
-                    flex-shrink-0 w-10 h-10 rounded flex items-center justify-center font-bold
-                    ${card.status === 'In Progress' ? 'bg-primary text-cream' : 'bg-page text-ink'}
-                  `}>
+                  {/* Session letter in the card's deep shade */}
+                  <div
+                    className="flex-shrink-0 w-[34px] h-[34px] rounded-full flex items-center justify-center font-bold text-sm text-cream"
+                    style={{ backgroundColor: paletteFor(card.id).deep }}
+                  >
                     {card.session_letter}
                   </div>
 
                   {/* Card Content */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <span className="text-xs text-muted truncate">
+                      <span className="text-xs truncate">
                         {card.projectName} / {card.phaseName} / {card.subphaseName}
                       </span>
                     </div>
 
-                    <h3 className="font-semibold text-ink mb-2">{card.title}</h3>
+                    <h3 className="font-semibold mb-2">{card.title}</h3>
 
                     {card.description && (
-                      <p className="text-sm text-muted line-clamp-2 mb-2">
+                      <p className="text-sm line-clamp-2 mb-2">
                         {card.description}
                       </p>
                     )}
 
-                    {/* Badges */}
+                    {/* Chips */}
                     <div className="flex items-center gap-2 flex-wrap">
-                      {/* Status */}
-                      <span className={`
-                        text-xs px-2 py-0.5 rounded-full
-                        ${card.status === 'Not Started' ? 'bg-raised text-muted' : ''}
-                        ${card.status === 'In Progress' ? 'bg-primary text-on-primary' : ''}
-                      `}>
-                        {card.status}
-                      </span>
+                      <span className={chip}>{card.status}</span>
 
-                      {/* Resource */}
                       <span
-                        className="text-xs px-2 py-0.5 rounded bg-page text-muted flex items-center gap-1"
+                        className={`${chip} flex items-center gap-1`}
                         title={resourceLabels[card.resource]?.label}
                       >
                         <ResourceIcon resource={card.resource} className="w-3.5 h-3.5" />
                         <span>{card.resource}</span>
                       </span>
 
-                      {/* Complexity */}
                       {card.complexity && (
-                        <span className={`text-xs px-2 py-0.5 rounded ${complexityColors[card.complexity]}`}>
-                          {card.complexity}
-                        </span>
+                        <span className={chip}>{card.complexity}</span>
                       )}
                     </div>
                   </div>

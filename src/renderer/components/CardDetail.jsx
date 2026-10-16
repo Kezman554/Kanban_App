@@ -713,7 +713,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
         {/* Start Session / Mark as Done failure (on success the view closes instead) */}
         {sessionNotification && (
-          <div className="mx-6 mt-4 p-3 bg-danger/10 border-[1.5px] border-danger-text rounded-lg flex items-center gap-2 text-danger-text">
+          <div className="mx-6 mt-4 p-3 bg-panel border-[1.5px] border-danger-text rounded-lg flex items-center gap-2 text-danger-text">
             <TriangleAlert className="w-4 h-4 flex-shrink-0" />
             <span className="text-sm">{sessionNotification}</span>
           </div>
@@ -741,7 +741,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     </button>
                     <button
                       onClick={handleSaveField}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream"
                     >
                       Save
                     </button>
@@ -752,9 +752,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                     title={card.description ? 'Edit description' : 'Add description'}
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <Pencil className="w-3.5 h-3.5" />
                     <span>{card.description ? 'Edit' : 'Add'}</span>
                   </button>
                 )}
@@ -767,7 +765,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               <textarea
                 value={editedFieldValue}
                 onChange={(e) => setEditedFieldValue(e.target.value)}
-                className="w-full h-32 p-3 bg-page border border-primary rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
+                className="w-full h-32 p-3 bg-page border border-active-ring rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
                 placeholder="Describe what this card involves..."
                 autoFocus
               />
@@ -802,7 +800,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     </button>
                     <button
                       onClick={handleSaveField}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream"
                     >
                       Save
                     </button>
@@ -813,9 +811,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                     title={card.success_criteria ? 'Edit success criteria' : 'Add success criteria'}
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <Pencil className="w-3.5 h-3.5" />
                     <span>{card.success_criteria ? 'Edit' : 'Add'}</span>
                   </button>
                 )}
@@ -828,7 +824,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               <textarea
                 value={editedFieldValue}
                 onChange={(e) => setEditedFieldValue(e.target.value)}
-                className="w-full h-32 p-3 bg-page border border-primary rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
+                className="w-full h-32 p-3 bg-page border border-active-ring rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
                 placeholder="How will you know this card is done?"
                 autoFocus
               />
@@ -872,7 +868,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     </button>
                     <button
                       onClick={handleSaveDeps}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream"
                     >
                       Save
                     </button>
@@ -883,9 +879,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                     title={card.depends_on_cards?.length ? 'Edit dependencies on this board' : 'Add a dependency on another card'}
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <Pencil className="w-3.5 h-3.5" />
                     <span>{card.depends_on_cards?.length ? 'Edit' : 'Add'}</span>
                   </button>
                 )}
@@ -913,7 +907,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium text-ink min-w-0 truncate">
                         Session {letter}
-                        {target && <span className="text-muted"> · {target.title}</span>}
+                        {target && <span className="font-normal"> · {target.title}</span>}
                       </span>
                       <div className="flex items-center gap-2 flex-shrink-0">
                         <span className={`text-xs px-2 py-0.5 rounded-full ${tone.badge}`}>
@@ -922,7 +916,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         {isEditingDeps && (
                           <button
                             onClick={() => handleRemoveDep(letter)}
-                            className="px-2 py-0.5 rounded text-xs font-medium bg-danger/10 border border-danger-text text-danger-text hover:bg-danger/10 transition-colors"
+                            className="px-2 py-0.5 rounded text-xs font-medium bg-panel border border-danger-text text-danger-text hover:bg-danger hover:text-on-danger transition-colors"
                             title="Remove this dependency"
                           >
                             Remove
@@ -966,7 +960,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     value=""
                     onChange={(e) => handleAddDep(e.target.value)}
                     disabled={candidates.length === 0}
-                    className="w-full px-2 py-1 bg-page border border-primary/60 rounded text-sm text-ink focus:outline-none focus:border-primary disabled:opacity-50"
+                    className="w-full px-2 py-1 bg-page border border-active-ring/60 rounded text-sm text-ink focus:outline-none focus:border-active-ring disabled:opacity-50"
                   >
                     <option value="">
                       {candidates.length === 0 ? 'No other cards to depend on' : '+ Add dependency on...'}
@@ -1005,7 +999,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     </button>
                     <button
                       onClick={handleSaveExtDeps}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream"
                     >
                       Save
                     </button>
@@ -1016,9 +1010,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                     title={hasExternalDeps ? "Edit external dependencies" : "Add an external dependency"}
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <Pencil className="w-3.5 h-3.5" />
                     <span>{hasExternalDeps ? 'Edit' : 'Add'}</span>
                   </button>
                 )}
@@ -1043,12 +1035,12 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   const usePicker = cardsReady && targetCards.length > 0 && !dep.manual;
 
                   return (
-                    <div key={idx} className="p-3 bg-page border border-primary/60 rounded-lg space-y-2">
+                    <div key={idx} className="p-3 bg-page border border-active-ring/60 rounded-lg space-y-2">
                       <div className="flex items-center gap-2">
                         <select
                           value={dep.project_slug}
                           onChange={(e) => handleExtDepProjectChange(idx, e.target.value)}
-                          className="flex-1 min-w-0 px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-primary"
+                          className="flex-1 min-w-0 px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-active-ring"
                         >
                           <option value="">Select project...</option>
                           {availableProjects
@@ -1059,7 +1051,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         </select>
                         <button
                           onClick={() => handleRemoveExtDep(idx)}
-                          className="px-2 py-1 rounded text-xs font-medium bg-danger/10 border border-danger-text text-danger-text hover:bg-danger/10 transition-colors flex-shrink-0"
+                          className="px-2 py-1 rounded text-xs font-medium bg-panel border border-danger-text text-danger-text hover:bg-danger hover:text-on-danger transition-colors flex-shrink-0"
                           title="Remove this dependency"
                         >
                           Remove
@@ -1085,7 +1077,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                                 handleExtDepChange(idx, 'card_letter', e.target.value);
                               }
                             }}
-                            className="flex-1 min-w-0 px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-primary"
+                            className="flex-1 min-w-0 px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-active-ring"
                           >
                             <option value="">Select card...</option>
                             {targetCards.map(c => (
@@ -1102,7 +1094,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                             type="text"
                             value={dep.card_letter}
                             onChange={(e) => handleExtDepChange(idx, 'card_letter', e.target.value.toUpperCase())}
-                            className="w-28 px-2 py-1 bg-panel border border-line rounded text-sm text-ink font-bold uppercase focus:outline-none focus:border-primary"
+                            className="w-28 px-2 py-1 bg-panel border border-line rounded text-sm text-ink font-bold uppercase focus:outline-none focus:border-active-ring"
                             placeholder="Letter"
                           />
                           <span className="text-xs text-muted">
@@ -1125,7 +1117,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         type="text"
                         value={dep.description}
                         onChange={(e) => handleExtDepChange(idx, 'description', e.target.value)}
-                        className="w-full px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-primary"
+                        className="w-full px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-active-ring"
                         placeholder="Why this card depends on it (optional)"
                       />
                     </div>
@@ -1177,7 +1169,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium text-ink">
                           {dep.project_name || dep.project_slug}
-                          <span className="text-muted"> · Session {dep.card_letter}</span>
+                          <span className="font-normal"> · Session {dep.card_letter}</span>
                         </span>
                         <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${tone.badge}`}>
                           {tone.label}
@@ -1233,7 +1225,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                       </button>
                       <button
                         onClick={handleSavePromptGuide}
-                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream"
                       >
                         Save
                       </button>
@@ -1257,7 +1249,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 <textarea
                   value={editedPromptGuide}
                   onChange={(e) => setEditedPromptGuide(e.target.value)}
-                  className="w-full h-64 p-3 bg-page border border-primary rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
+                  className="w-full h-64 p-3 bg-page border border-active-ring rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
                   placeholder="The prompt to paste into a Claude Code session for this card..."
                   autoFocus
                 />
@@ -1284,7 +1276,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   <p className="text-sm text-muted italic">No prompt yet</p>
                   <button
                     onClick={handleEditPromptGuide}
-                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
+                    className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream"
                   >
                     Add prompt
                   </button>
@@ -1314,7 +1306,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                       </button>
                       <button
                         onClick={handleSaveCommitMessage}
-                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream"
                       >
                         Save
                       </button>
@@ -1326,9 +1318,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                         title="Edit commit message"
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
+                        <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button
                         onClick={handleCopyCommitMessage}
@@ -1352,7 +1342,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 <textarea
                   value={editedCommitMessage}
                   onChange={(e) => setEditedCommitMessage(e.target.value)}
-                  className="w-full h-24 p-3 bg-page border border-primary rounded-lg text-sm text-success-text resize-none focus:outline-none scrollbar-themed"
+                  className="w-full h-24 p-3 bg-page border border-active-ring rounded-lg text-sm text-success-text resize-none focus:outline-none scrollbar-themed"
                   placeholder="Enter commit message..."
                   autoFocus
                 />
@@ -1365,7 +1355,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
           )}
 
           {/* Notes Section - visible for all cards, prominent for Done cards */}
-          <div className={`${card.status === 'Done' ? 'bg-progress/25 border border-success-text rounded-lg p-4' : ''}`}>
+          <div className={`${card.status === 'Done' ? 'bg-panel border border-success-text rounded-lg p-4' : ''}`}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <h3 className={`text-sm font-semibold ${card.status === 'Done' ? 'text-success-text' : 'text-muted'}`}>
@@ -1386,7 +1376,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     </button>
                     <button
                       onClick={handleSaveNotes}
-                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
+                      className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream"
                     >
                       Save
                     </button>
@@ -1397,9 +1387,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                     title={card.notes ? "Edit notes" : "Add notes"}
                   >
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
+                    <Pencil className="w-3.5 h-3.5" />
                     <span>{card.notes ? 'Edit' : 'Add'}</span>
                   </button>
                 )}
@@ -1412,7 +1400,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               <textarea
                 value={editedNotes}
                 onChange={(e) => setEditedNotes(e.target.value)}
-                className="w-full h-32 p-3 bg-page border border-primary rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
+                className="w-full h-32 p-3 bg-page border border-active-ring rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
                 placeholder="Record what was built, decisions made, or anything to remember..."
                 autoFocus
               />
@@ -1429,7 +1417,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
           {/* Manual Card Guidance */}
           {isManual && (
-            <div className="bg-pal-lilac/30 border border-line rounded-lg p-4">
+            <div className="bg-panel border border-line rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold text-link flex items-center gap-2">
                   <span>@</span> Manual Task Guidance
@@ -1448,7 +1436,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                       </button>
                       <button
                         onClick={handleSavePromptGuide}
-                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:bg-primary text-cream"
+                        className="text-xs px-3 py-1 rounded font-medium transition-colors bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream"
                       >
                         Save
                       </button>
@@ -1460,9 +1448,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         className="text-xs px-2 py-1 rounded font-medium transition-colors bg-page border border-line hover:bg-hover text-muted hover:text-ink flex items-center gap-1"
                         title={card.prompt_guide ? "Edit guidance" : "Add guidance"}
                       >
-                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                        </svg>
+                        <Pencil className="w-3.5 h-3.5" />
                         <span>{card.prompt_guide ? 'Edit' : 'Add'}</span>
                       </button>
                       {card.prompt_guide && (
@@ -1492,7 +1478,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 <textarea
                   value={editedPromptGuide}
                   onChange={(e) => setEditedPromptGuide(e.target.value)}
-                  className="w-full h-48 p-3 bg-page border border-primary rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
+                  className="w-full h-48 p-3 bg-page border border-active-ring rounded-lg text-sm text-ink resize-none focus:outline-none scrollbar-themed"
                   placeholder="Enter task guidance or instructions..."
                   autoFocus
                 />
@@ -1510,7 +1496,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
           {/* TBC Card Guidance */}
           {isTBC && (
-            <div className="bg-pal-apricot/25 border border-warn-text rounded-lg p-4">
+            <div className="bg-panel border border-warn-text rounded-lg p-4">
               <h3 className="text-sm font-semibold text-warn-text mb-2 flex items-center gap-2">
                 <span>?</span> Task Needs Planning
               </h3>

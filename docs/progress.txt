@@ -1691,13 +1691,61 @@ Deployed to the Pi (7941692): pulled, kanban-api rebuilt, smoke test OK
 index-BjuUFTVR.js / index-Duqm1sCU.css. It carries both active-ring
 values (#22707b light, #8ad0d9 dark) and the roadmap key.
 
+23. Roadmap Mark as Done (82138a4, Nick's go-ahead): RoadmapView's
+   handleMarkDone now resolves true/false like the board's. Checked on the
+   scratch DB: the view closes, there is no error message, and the chip
+   reads done. Nick also kept the aqua in-progress ring for dark mode.
+
+Restyle, stage 5 (everything else, and the rules)
+24. Every remaining surface is on the same tokens and look. Dialogs (Add
+   Card, Append Cards, Edit Project, Import, stack view, both unlock
+   confirms) have 20px corners and the 1.5px outline. Close buttons are
+   labelled round Lucide X buttons; the last inline Heroicons (pencil,
+   copy, check, close, sidebar chevrons) are Lucide. Filled buttons lost
+   their no-op hovers and gained the card outline. Focus, editing and
+   hover borders use active-ring.
+25. All Projects: project cards with a palette dot, outline and shadow and
+   mint progress bars; filter pills with dots (aria-pressed; excluded ones
+   dashed); workable cards drawn as coloured cards (palette fill,
+   deep-shade letter circle, cream chips). The loading ⏳ became a Lucide
+   spinner.
+26. Card Test legend rewritten for the new rules (it described blue
+   borders and red badges). The export toast is a mint pill with a tick.
+27. Contrast audit (scratchpad audit script, both modes): 139 text pairs
+   and 54 non-text pairs measured.
+   - Coloured or muted text on the translucent pastel tints fell to
+     2.99-3.5:1 in dark mode. Message and guidance boxes (errors, warnings,
+     success, the manual/TBC guidance, Settings messages) now sit on a
+     plain panel with the coloured outline and wording. Only the satisfied
+     dependency row keeps its soft green, and its text is ink.
+   - Danger-outline buttons hovered to a translucent fill (4.42:1 on the
+     light page). They now fill #A8452B with cream text on hover.
+   - The progress fill (mint) is 1.33:1 against the light track, so it
+     gets a 1.5px card-line edge. Pastel fills against the page (1.3-1.7)
+     are bounded by the 1.5px outline, which is 3.14:1 or better.
+   Lowest measured, as used: text 5.12:1 (ink on the dark satisfied row);
+   non-text 3.02:1 (outline on the light sidebar). Unused pairings still
+   under 4.5 (coloured text on the light sidebar or on a hovered light
+   background) are listed in the audit and avoided.
+28. Done checks: no hex/rgb in src/renderer outside the token block, no
+   stock Tailwind colour utilities, no stock palette variables in the
+   build, no emoji. The only #0000 in the built CSS is Tailwind's
+   transparent placeholders.
+29. CLAUDE.md gains a "## Design" section with the rules the code can't
+   express.
+
+Verification: vite build clean; DB suites green under ELECTRON_RUN_AS_NODE
+(append-import 61, create-card-at 23, depends-on-cards 24, high-water 38,
+uniqueness 34, settings 14, vault-export 58, operations and schema 0
+failed). Screenshots of All Projects, Settings, Card Test, Add Card, Append
+Cards, Edit Project, Import and the unlock confirm in both modes. No
+console errors beyond the dev CSP warning.
+
 Known gaps / followups
 ----------------------
 - The pre-restyle tag is local only (not pushed).
-- Pre-existing bug, not visual so not fixed here: RoadmapView's
-  handleMarkDone returns nothing, and CardDetail treats that as failure.
-  Mark as Done from the roadmap stores the change but then shows "could
-  not be marked as done" instead of closing.
+- The Export toast was not triggered in testing (it would have overwritten
+  the system clipboard); it was checked by code only.
 - A blocked card still offers Start Session in the card view, as before
   the restyle (behaviour unchanged on purpose).
 - Teal text on the light sidebar is 4.36:1 - avoid that pairing.

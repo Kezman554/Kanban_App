@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { X } from './icons';
 import Card from './Card';
 
 const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlockCard }) => {
@@ -52,7 +53,7 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
       {/* Confirmation Dialog */}
       {confirmUnlock && (
         <div className="absolute inset-0 z-20 flex items-center justify-center">
-          <div className="bg-panel border border-line rounded-lg shadow-card p-6 max-w-md">
+          <div className="bg-panel border-[1.5px] border-line rounded-[20px] shadow-card p-6 max-w-md">
             <h3 className="text-lg font-bold text-ink mb-4">Unlock Card?</h3>
             <p className="text-muted mb-2">
               Are you sure you want to unlock <span className="font-semibold text-ink">"{confirmUnlock.title}"</span>?
@@ -61,7 +62,7 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
               This will remove all dependencies for this card. It will become immediately actionable.
             </p>
             {unlockError && (
-              <div className="mb-4 p-3 rounded bg-danger/10 border border-danger-text text-danger-text text-sm">
+              <div className="mb-4 p-3 rounded bg-panel border border-danger-text text-danger-text text-sm">
                 {unlockError}
               </div>
             )}
@@ -86,7 +87,7 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
       )}
 
       {/* Modal content */}
-      <div className="relative z-10 bg-panel border border-line rounded-lg shadow-card max-w-4xl w-full max-h-[80vh] flex flex-col">
+      <div className="relative z-10 bg-panel border-[1.5px] border-line rounded-[20px] shadow-card max-w-4xl w-full max-h-[80vh] flex flex-col">
         {/* Header with close button */}
         <div className="flex items-center justify-between p-4 border-b border-divider">
           <h3 className="text-lg font-bold text-ink">
@@ -94,12 +95,11 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
           </h3>
           <button
             onClick={onClose}
-            className="w-8 h-8 flex items-center justify-center rounded hover:bg-hover text-muted hover:text-ink transition-colors"
+            className="w-9 h-9 rounded-full border-[1.5px] border-line flex items-center justify-center text-ink hover:bg-hover transition-colors"
             title="Close"
+            aria-label="Close"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-              <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
-            </svg>
+            <X className="h-5 w-5" />
           </button>
         </div>
 

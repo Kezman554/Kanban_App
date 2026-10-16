@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { X } from './icons';
 
 // Name (required), short name and description (optional) for a phase or
 // subphase created along with the card
 const NewGroupFields = ({ label, value, onChange }) => {
   const set = (key) => (e) => onChange({ ...value, [key]: e.target.value });
-  const input = 'px-3 py-2 bg-panel border border-line rounded-lg text-ink text-sm focus:outline-none focus:border-primary';
+  const input = 'px-3 py-2 bg-panel border border-line rounded-lg text-ink text-sm focus:outline-none focus:border-active-ring';
   return (
     <div className="space-y-2">
       <div className="text-xs font-semibold text-muted">{label}</div>
@@ -260,7 +261,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           ref={dialogRef}
-          className="w-full max-w-2xl max-h-[90vh] bg-panel border border-line rounded-xl shadow-card flex flex-col"
+          className="w-full max-w-2xl max-h-[90vh] bg-panel border-[1.5px] border-line rounded-[20px] shadow-card flex flex-col"
         >
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-divider">
@@ -272,9 +273,10 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
             </div>
             <button
               onClick={onClose}
-              className="p-2 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
+              className="w-9 h-9 rounded-full border-[1.5px] border-line flex items-center justify-center text-ink hover:bg-hover transition-colors"
+            aria-label="Close"
             >
-              <span className="text-xl">×</span>
+              <X className="w-4 h-4" />
             </button>
           </div>
 
@@ -291,7 +293,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                 <select
                   value={destination}
                   onChange={(e) => setSelectedDestination(e.target.value)}
-                  className={`w-full px-3 py-2 bg-page border rounded-lg text-ink focus:outline-none focus:border-primary ${destination ? 'border-line' : 'border-warn-text'}`}
+                  className={`w-full px-3 py-2 bg-page border rounded-lg text-ink focus:outline-none focus:border-active-ring ${destination ? 'border-line' : 'border-warn-text'}`}
                 >
                   {!destination && (
                     <option value="" disabled>Choose a destination...</option>
@@ -349,7 +351,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                 type="text"
                 value={nextLetter}
                 onChange={(e) => setNextLetter(e.target.value.toUpperCase())}
-                className="w-32 px-3 py-2 bg-page border border-line rounded-lg text-ink font-bold uppercase focus:outline-none focus:border-primary"
+                className="w-32 px-3 py-2 bg-page border border-line rounded-lg text-ink font-bold uppercase focus:outline-none focus:border-active-ring"
                 placeholder="A"
               />
               <p className="text-xs text-muted mt-1">
@@ -366,7 +368,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-active-ring"
                 placeholder="Card title..."
                 autoFocus
               />
@@ -380,7 +382,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="w-full h-24 px-3 py-2 bg-page border border-line rounded-lg text-ink resize-none focus:outline-none focus:border-primary scrollbar-themed"
+                className="w-full h-24 px-3 py-2 bg-page border border-line rounded-lg text-ink resize-none focus:outline-none focus:border-active-ring scrollbar-themed"
                 placeholder="What needs to be done..."
               />
             </div>
@@ -393,7 +395,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
               <textarea
                 value={successCriteria}
                 onChange={(e) => setSuccessCriteria(e.target.value)}
-                className="w-full h-20 px-3 py-2 bg-page border border-line rounded-lg text-ink resize-none focus:outline-none focus:border-primary scrollbar-themed"
+                className="w-full h-20 px-3 py-2 bg-page border border-line rounded-lg text-ink resize-none focus:outline-none focus:border-active-ring scrollbar-themed"
                 placeholder="How to know when it's done..."
               />
             </div>
@@ -408,7 +410,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                 <select
                   value={resource}
                   onChange={(e) => setResource(e.target.value)}
-                  className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-active-ring"
                 >
                   {resourceOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -424,7 +426,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                 <select
                   value={complexity}
                   onChange={(e) => setComplexity(e.target.value)}
-                  className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-primary"
+                  className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-active-ring"
                 >
                   {complexityOptions.map(opt => (
                     <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -452,7 +454,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                         px-3 py-1 rounded text-sm font-medium transition-colors
                         ${dependencies.includes(card.session_letter)
                           ? 'bg-primary text-cream'
-                          : 'bg-panel border border-line text-ink hover:border-primary'}
+                          : 'bg-panel border border-line text-ink hover:border-active-ring'}
                       `}
                       title={card.title}
                     >
@@ -480,7 +482,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
               <textarea
                 value={promptGuide}
                 onChange={(e) => setPromptGuide(e.target.value)}
-                className="w-full h-24 px-3 py-2 bg-page border border-line rounded-lg text-ink text-sm resize-none focus:outline-none focus:border-primary scrollbar-themed"
+                className="w-full h-24 px-3 py-2 bg-page border border-line rounded-lg text-ink text-sm resize-none focus:outline-none focus:border-active-ring scrollbar-themed"
                 placeholder="Claude Code prompt for this task..."
               />
             </div>
@@ -494,14 +496,14 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                 type="text"
                 value={gitCommitMessage}
                 onChange={(e) => setGitCommitMessage(e.target.value)}
-                className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink text-sm focus:outline-none focus:border-primary"
+                className="w-full px-3 py-2 bg-page border border-line rounded-lg text-ink text-sm focus:outline-none focus:border-active-ring"
                 placeholder="feat: add feature X"
               />
             </div>
 
             {/* Error Message */}
             {error && (
-              <div ref={errorRef} className="p-3 bg-danger/10 border border-danger-text rounded-lg">
+              <div ref={errorRef} className="p-3 bg-panel border border-danger-text rounded-lg">
                 <p className="text-sm text-danger-text">{error}</p>
               </div>
             )}
@@ -524,7 +526,7 @@ const AddCardDialog = ({ isOpen, onClose, onSave, subphaseId, projectId, existin
                 (isNewPhase && !newPhase.name.trim()) ||
                 ((isNewPhase || isNewSubphase) && !newSubphase.name.trim())
               }
-              className="px-4 py-2 rounded-lg bg-primary hover:bg-primary text-cream font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isLoading ? 'Creating...' : 'Create Card'}
             </button>

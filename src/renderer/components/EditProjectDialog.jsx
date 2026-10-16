@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { X } from './icons';
 
 const SHORT_NAME_HINT = 'Short label used in summary exports. Defaults to the first word of the project name if blank.';
 
@@ -70,7 +71,7 @@ const EditProjectDialog = ({ isOpen, project, onClose, onSaved }) => {
     }
   };
 
-  const inputClass = 'w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-primary';
+  const inputClass = 'w-full px-3 py-2 bg-page border border-line rounded-lg text-ink focus:outline-none focus:border-active-ring';
 
   return (
     <>
@@ -79,16 +80,17 @@ const EditProjectDialog = ({ isOpen, project, onClose, onSaved }) => {
 
       {/* Dialog */}
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="w-full max-w-lg bg-panel border border-line rounded-xl shadow-card flex flex-col">
+        <div className="w-full max-w-lg bg-panel border-[1.5px] border-line rounded-[20px] shadow-card flex flex-col">
           {/* Header */}
           <div className="flex items-center justify-between p-6 border-b border-divider">
             <h2 className="text-xl font-bold text-ink">Edit Project</h2>
             <button
               onClick={onClose}
               disabled={saving}
-              className="p-2 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
+              className="w-9 h-9 rounded-full border-[1.5px] border-line flex items-center justify-center text-ink hover:bg-hover transition-colors"
+            aria-label="Close"
             >
-              <span className="text-xl">×</span>
+              <X className="w-4 h-4" />
             </button>
           </div>
 
@@ -131,7 +133,7 @@ const EditProjectDialog = ({ isOpen, project, onClose, onSaved }) => {
             </div>
 
             {error && (
-              <div className="p-3 bg-danger/10 border border-danger-text rounded-lg">
+              <div className="p-3 bg-panel border border-danger-text rounded-lg">
                 <p className="text-sm text-danger-text">{error}</p>
               </div>
             )}
@@ -153,7 +155,7 @@ const EditProjectDialog = ({ isOpen, project, onClose, onSaved }) => {
             <button
               onClick={handleSubmit}
               disabled={!canSave}
-              className="px-4 py-2 rounded-lg bg-primary hover:bg-primary text-cream font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 rounded-lg bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? 'Saving...' : 'Save'}
             </button>

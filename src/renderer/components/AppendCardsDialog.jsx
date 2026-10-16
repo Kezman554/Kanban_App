@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { FolderOpen } from './icons';
+import { FolderOpen, X } from './icons';
 
 const BATCH_PLACEMENT_KEYS = ['add_to_phase', 'add_to_subphase', 'new_phase', 'new_subphase'];
 
@@ -354,7 +354,7 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
       {/* Dialog */}
       <div className="fixed inset-0 flex items-center justify-center z-50 pointer-events-none">
         <div
-          className="bg-panel border border-line rounded-lg shadow-card w-full max-w-lg mx-4 pointer-events-auto max-h-[80vh] flex flex-col"
+          className="bg-panel border-[1.5px] border-line rounded-[20px] shadow-card w-full max-w-lg mx-4 pointer-events-auto max-h-[80vh] flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -362,9 +362,10 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
             <h2 className="text-lg font-bold text-ink">Append Cards</h2>
             <button
               onClick={handleClose}
-              className="p-1 rounded hover:bg-hover text-muted hover:text-ink transition-colors"
+              className="w-9 h-9 rounded-full border-[1.5px] border-line flex items-center justify-center text-ink hover:bg-hover transition-colors"
+            aria-label="Close"
             >
-              <span className="text-xl">x</span>
+              <X className="w-4 h-4" />
             </button>
           </div>
 
@@ -378,7 +379,7 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
               <button
                 onClick={handleSelectFile}
                 disabled={!!result}
-                className="w-full px-4 py-3 bg-page border border-line rounded-lg hover:border-primary transition-colors text-left flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-3 bg-page border border-line rounded-lg hover:border-active-ring transition-colors text-left flex items-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <FolderOpen className="w-6 h-6 text-muted flex-shrink-0" />
                 <div className="flex-1 min-w-0">
@@ -397,14 +398,14 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
 
             {/* Error Display */}
             {error && (
-              <div className="p-3 bg-danger/10 border border-danger-text rounded-lg">
+              <div className="p-3 bg-panel border border-danger-text rounded-lg">
                 <p className="text-sm text-danger-text">{error}</p>
               </div>
             )}
 
             {/* Validation Errors */}
             {validationErrors.length > 0 && (
-              <div className="p-3 bg-danger/10 border border-danger-text rounded-lg space-y-1">
+              <div className="p-3 bg-panel border border-danger-text rounded-lg space-y-1">
                 <p className="text-sm font-medium text-danger-text">Validation Errors:</p>
                 {validationErrors.map((err, i) => (
                   <p key={i} className="text-sm text-danger-text pl-2">- {err}</p>
@@ -414,7 +415,7 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
 
             {/* Validation Warnings */}
             {validationWarnings.length > 0 && (
-              <div className="p-3 bg-pal-marigold/25 border border-warn-text rounded-lg space-y-1">
+              <div className="p-3 bg-panel border border-warn-text rounded-lg space-y-1">
                 <p className="text-sm font-medium text-warn-text">Warnings:</p>
                 {validationWarnings.map((warn, i) => (
                   <p key={i} className="text-sm text-warn-text pl-2">- {warn}</p>
@@ -484,7 +485,7 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
 
             {/* Success Result */}
             {result && (
-              <div className="p-4 bg-progress/25 border border-success-text rounded-lg space-y-2">
+              <div className="p-4 bg-panel border border-success-text rounded-lg space-y-2">
                 <p className="text-sm font-medium text-success-text">
                   Successfully appended!
                 </p>
@@ -524,7 +525,7 @@ const AppendCardsDialog = ({ isOpen, onClose, project, onSuccess }) => {
                 className={`
                   px-6 py-2 rounded-lg font-medium transition-colors
                   ${canAppend
-                    ? 'bg-primary hover:bg-primary text-cream'
+                    ? 'bg-primary hover:brightness-110 border-[1.5px] border-card-line text-cream'
                     : 'bg-divider text-muted cursor-not-allowed'
                   }
                 `}
