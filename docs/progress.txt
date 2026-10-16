@@ -1868,3 +1868,7 @@ the tracking-wider header labels. The only "View:" left in it is React's
    description is flex-1 w-0 (still truncates). Measured: no horizontal
    overflow, rules inset 24px on both sides, title offsets 0px from their
    column centres, light and dark.
+
+Deployed to the Pi (4c4b167): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). The live bundle names 4c4b167 and its CSS has the
+360px Done column width.
