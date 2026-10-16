@@ -1882,3 +1882,7 @@ Deployed to the Pi (4c4b167): pulled, kanban-api rebuilt, smoke test OK
    back to lilac-deep. The count sits in a cream badge. Contrast: cream on
    lilac-deep 7.25, teal 5.60, done-green 5.53; ink on the cream badge
    12.77. Light and dark screenshots checked.
+
+Deployed to the Pi (7b5fc37): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). The live bundle names 7b5fc37 and its CSS carries
+the lilac-deep title pill.
