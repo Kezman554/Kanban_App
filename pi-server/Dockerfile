@@ -17,6 +17,7 @@ COPY pi-server/web-build.package-lock.json ./package-lock.json
 RUN npm ci --no-audit --no-fund
 COPY src ./src
 COPY vite.web.config.js postcss.config.js ./
+COPY public ./public
 RUN npx vite build --config vite.web.config.js
 # -> /build/dist-web
 

@@ -1759,3 +1759,26 @@ Known gaps / followups
   dark surface). Light "raised" was not in the spec; equals panel.
 - Not judged from code: the fans while dragging, the 0.84 dark dim by
   eye, colours on the laptop screen.
+
+Favicon (2026-10-16)
+30. Pushed the pre-restyle tag to GitHub (Nick's request).
+31. New app icon from a single source: public/favicon.svg (Nick's 2x2
+   palette tiles with the 5-unit ink outline). `npm run icons`
+   (scripts/build-icons.js, @resvg/resvg-js dev dependency) generates
+   public/favicon-32.png (32px, transparent) and public/apple-touch-icon.png
+   (180px, on #F4EFC9, because iOS fills transparency with black). The
+   PNGs are committed, so neither build needs resvg. index.html links the
+   SVG, the 32px PNG and the apple-touch icon. Both Vite configs set
+   publicDir to the top-level public/, keeping the icon's hex out of
+   src/renderer. The Pi Dockerfile copies public/.
+   There was no old favicon: no files, no references, and the browser board
+   404ed on /favicon.ico. No .ico is generated, since nothing references
+   one and browsers don't request it when a <link rel="icon"> exists.
+   The desktop window has no icon option (it shows Electron's default), so
+   no desktop icon was generated.
+   Verified: desktop and lean web builds both emit the three files.
+
+Known gaps / followups
+----------------------
+- Desktop window/taskbar icon still Electron's default; would need an
+  icon option on the BrowserWindow (and a PNG/ICO from the same script).

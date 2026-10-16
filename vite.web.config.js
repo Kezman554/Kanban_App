@@ -12,6 +12,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url))
 export default defineConfig({
   root: 'src/renderer',
   base: '/',
+  // Favicon files (public/favicon.svg is the single source; npm run icons)
+  publicDir: resolve(__dirname, 'public'),
   plugins: [react()],
   build: {
     outDir: resolve(__dirname, 'dist-web'),

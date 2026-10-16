@@ -118,6 +118,7 @@ Tokens live in one block at the top of `src/renderer/index.css` (`@theme static`
 - **Nothing about the look touches the database**: no schema, export or vault-summary change for visual work.
 - Contrast: text at least 4.5:1 and non-text at least 3:1 in both modes. Coloured text on a translucent tint fails in dark mode, so message boxes use a plain panel. Teal `#22707B` is under 3:1 on the dark page, so outlines and focus borders use `active-ring` (aqua in dark).
 - Tailwind bakes a literal shadow colour into the utility, so shadow colours go through per-mode variables (`--shadow-card-tint`, `--recess-tint`).
+- **App icon:** `public/favicon.svg` is the single source (four palette tiles with a thick ink outline; the 5-unit stroke keeps it readable at 16px, so don't thin it). `npm run icons` regenerates `favicon-32.png` and `apple-touch-icon.png` from it. Vite's `publicDir` is the top-level `public/`, so the icon's hex stays out of `src/renderer`.
 
 ## Removed features
 In-app AI prompt generation (and its API-key settings) and the embedded terminal (node-pty / xterm) were removed on 2026-10-12. The app reads no `.env`.
