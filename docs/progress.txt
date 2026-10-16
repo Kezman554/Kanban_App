@@ -1853,3 +1853,8 @@ Board tidy-up (2026-10-16)
    needed. Ink on the twelve fills, lowest first: coral 6.35, periwinkle
    6.47, mauve 6.58, lilac 6.92, sky 7.13, pink 7.47, aqua 7.52, apricot
    7.62, sage 7.75, seafoam 7.81, mint 8.44, marigold 8.54.
+
+Deployed to the Pi (2ac9dda): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). The live bundle names commit 2ac9dda and carries
+the tracking-wider header labels. The only "View:" left in it is React's
+`defaultView:`, so the bar is gone.
