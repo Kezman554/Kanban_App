@@ -107,16 +107,17 @@ const RoadmapView = ({ projectId }) => {
     }
   };
 
-  const handleMarkDone = async (cardId, progressNotes) => {
+  // Resolves true once the status is stored, false if it was not - CardDetail
+  // closes on true and stays open with its message on false (as on the board)
+  const handleMarkDone = async (cardId) => {
     try {
       await window.electron.updateCardStatus(cardId, 'Done');
-      await loadProject();
-      if (selectedCard?.id === cardId) {
-        setSelectedCard(prev => ({ ...prev, status: 'Done' }));
-      }
     } catch (err) {
       console.error('Failed to mark card as done:', err);
+      return false;
     }
+    await loadProject();
+    return true;
   };
 
   // Resolves true once the status is stored, false if it was not - Start
