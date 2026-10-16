@@ -1890,3 +1890,7 @@ the lilac-deep title pill.
    gap and the count badge scaled by 1.3. Measured: Not Started pill ~136
    -> 177px wide, 37px tall, inside the unchanged 48px sticky header row,
    so the phase headings and the Done pile offset are unaffected.
+
+Deployed to the Pi (d7d3b54): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). The live bundle names d7d3b54 and its CSS has the
+15.6px pill text.
