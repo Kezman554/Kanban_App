@@ -5,7 +5,7 @@ import RoadmapPage from './pages/RoadmapPage';
 import SettingsPage from './pages/SettingsPage';
 import CardTestPage from './pages/CardTestPage';
 import ImportDialog from './components/ImportDialog';
-import { ClipboardList, LayoutGrid, MapIcon, FlaskConical, SettingsIcon, ChevronsLeft, ChevronsRight } from './components/icons';
+import { ClipboardList, LayoutGrid, MapIcon, FlaskConical, SettingsIcon, ChevronsLeft, ChevronsRight, Plus } from './components/icons';
 import { paletteFor } from './utils/palette';
 import { BUILD_LABEL } from './utils/buildInfo';
 
@@ -137,9 +137,9 @@ function App() {
               {/* Import Project Button */}
               <button
                 onClick={() => setIsImportDialogOpen(true)}
-                className="w-full mt-3 px-3 py-2 bg-panel border-[1.5px] border-line rounded-lg text-sm text-ink hover:bg-hover transition-colors flex items-center justify-center gap-2"
+                className="w-full mt-3 px-3 py-2 bg-pal-apricot border-[1.5px] border-card-line shadow-card rounded-lg text-sm font-semibold text-card-ink hover:brightness-95 transition flex items-center justify-center gap-2"
               >
-                <span>+</span>
+                <Plus className="w-4 h-4" />
                 <span>Import Project</span>
               </button>
             </>

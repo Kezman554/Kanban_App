@@ -275,33 +275,30 @@ function AllProjectsView() {
             return (
               <div
                 key={project.id}
-                className="p-4 bg-panel rounded-[14px] border-[1.5px] border-line shadow-card"
+                className="p-4 rounded-[14px] border-[1.5px] border-card-line shadow-card text-card-ink"
+                style={{ backgroundColor: paletteFor(project.id).fill }}
               >
-                <h3 className="font-semibold text-ink mb-2 flex items-center gap-2 min-w-0" title={project.name}>
-                  <span
-                    aria-hidden="true"
-                    className="w-3 h-3 rounded-full border-[1.5px] border-card-line flex-shrink-0"
-                    style={{ backgroundColor: paletteFor(project.id).fill }}
-                  />
-                  <span className="truncate">{project.name}</span>
+                {/* Filled with the project's palette colour, the same as its sidebar dot */}
+                <h3 className="font-semibold mb-2 truncate" title={project.name}>
+                  {project.name}
                 </h3>
 
                 {/* Progress bar */}
-                <div className="h-2.5 bg-page border border-line rounded-full mb-2 overflow-hidden">
+                <div className="h-2.5 bg-cream/70 border border-card-line rounded-full mb-2 overflow-hidden">
                   <div
                     className="h-full bg-progress border-r-[1.5px] border-card-line transition-all"
                     style={{ width: `${percentage}%` }}
                   />
                 </div>
 
-                <div className="flex justify-between text-xs text-muted">
+                <div className="flex justify-between text-xs">
                   <span>{stats.done}/{stats.total} complete</span>
                   <span>{percentage}%</span>
                 </div>
 
                 <div className="mt-2 flex gap-3 text-xs">
-                  <span className="text-link">{stats.inProgress} in progress</span>
-                  <span className="text-success-text">{stats.workable} workable</span>
+                  <span className="font-semibold">{stats.inProgress} in progress</span>
+                  <span className="font-semibold">{stats.workable} workable</span>
                 </div>
               </div>
             );

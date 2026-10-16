@@ -1819,3 +1819,37 @@ Deployed to the Pi (56f2b74): pulled, kanban-api rebuilt, smoke test OK
 "56f2b74", so the Pi build resolved its commit from the copied .git files.
 The CSS has the isolate utility. The sidebar on the Pi will keep reading
 56f2b74 after this log-only commit is pulled, since there is no rebuild.
+
+Board tidy-up (2026-10-16)
+35. Removed the "View: Kanban | Roadmap" bar and its strip
+   (CurrentProjectPage). Nothing else depended on it: the sidebar's
+   Roadmap entry renders RoadmapView through RoadmapPage, and Current
+   Project opens the board as before.
+36. Column headers are plain labels: small uppercase, bold, tracking-
+   wider, with the card count in muted text ("NOT STARTED 21"). There
+   are no cell borders and no vertical column dividers (DroppableCell
+   lost border-r, the Done column lost border-l), just one divider under
+   the sticky header row, which is now on the page colour. Phase headings
+   still stick under it.
+37. Done pile is sticky inside the Done column, a third of the way down
+   the visible board area. Board.jsx DONE_PILE_FROM_TOP = 1/3 is the one
+   value to tune. A ResizeObserver tracks the board height. The top is
+   never above the header row, and a matching top margin puts it at the
+   same place before any scrolling. The Done drop cell now fills the
+   column (also a larger drop target). The sticky wrapper holds the pile
+   and its "Also done" line only; the expand modal stays outside it,
+   because a sticky element is its own stacking context. Checked on seven
+   boards (one with no scroll, one with 27px), at four scroll positions
+   each: the pile sits at 0.33 of the board height every time, clear of
+   the header, with the line under it. The modal is topmost. Same in
+   light and dark.
+38. Import Project (sidebar) is filled apricot with the card outline,
+   offset shadow and a Lucide Plus.
+39. All Projects: each project card takes palette[project.id mod 12]
+   (the same as its sidebar dot), with the card outline, shadow and ink
+   text; the progress track is cream on the fill. There are no session
+   cards inside the project cards (the workable cards are a separate list
+   below and keep their own colours), so the inner-card fallback was not
+   needed. Ink on the twelve fills, lowest first: coral 6.35, periwinkle
+   6.47, mauve 6.58, lilac 6.92, sky 7.13, pink 7.47, aqua 7.52, apricot
+   7.62, sage 7.75, seafoam 7.81, mint 8.44, marigold 8.54.

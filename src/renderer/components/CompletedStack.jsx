@@ -10,13 +10,18 @@ const DONE_FAN = [
 ];
 const LETTERS_LISTED = 5; // letters named beneath the pile before "+N more"
 
-const CompletedStack = ({ cards, onCardClick }) => {
+// pileStyle places the pile (e.g. sticky in the Done column). It wraps the pile
+// and its "Also done" line only: a sticky element is its own stacking context,
+// so the expand modal stays outside it and still opens above everything.
+const CompletedStack = ({ cards, onCardClick, pileStyle }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   if (!cards || cards.length === 0) {
     return (
-      <div className="h-20 flex items-center justify-center border-[1.5px] border-divider rounded-[14px]">
-        <span className="text-xs text-muted">No completed cards</span>
+      <div style={pileStyle}>
+        <div className="h-20 flex items-center justify-center border-[1.5px] border-divider rounded-[14px]">
+          <span className="text-xs text-muted">No completed cards</span>
+        </div>
       </div>
     );
   }
@@ -37,37 +42,39 @@ const CompletedStack = ({ cards, onCardClick }) => {
 
   return (
     <>
-      {/* isolate: the fan, pill and button layer only within this pile */}
-      <div className="relative isolate" style={{ marginBottom: depth + (hasStack ? 10 : 0) }}>
-        {hasStack && <FanSheets cards={behind} offsets={DONE_FAN} blank={false} />}
+      <div style={pileStyle}>
+        {/* isolate: the fan, pill and button layer only within this pile */}
+        <div className="relative isolate" style={{ marginBottom: depth + (hasStack ? 10 : 0) }}>
+          {hasStack && <FanSheets cards={behind} offsets={DONE_FAN} blank={false} />}
 
-        {/* Top card (latest done, on the panel colour) */}
-        <div className="relative" style={{ zIndex: DONE_FAN.length + 1 }}>
-          <Card
-            card={{ ...cards[0], isBlocked: false }}
-            onClick={onCardClick}
-            isStacked={false}
-          />
+          {/* Top card (latest done, on the panel colour) */}
+          <div className="relative" style={{ zIndex: DONE_FAN.length + 1 }}>
+            <Card
+              card={{ ...cards[0], isBlocked: false }}
+              onClick={onCardClick}
+              isStacked={false}
+            />
+          </div>
+
+          {hasStack && (
+            <StackControls
+              count={cards.length}
+              depth={depth}
+              onExpand={handleExpandClick}
+              expandTitle={`View all ${cards.length} completed cards`}
+              countTitle={`${cards.length} completed cards`}
+            />
+          )}
         </div>
 
-        {hasStack && (
-          <StackControls
-            count={cards.length}
-            depth={depth}
-            onExpand={handleExpandClick}
-            expandTitle={`View all ${cards.length} completed cards`}
-            countTitle={`${cards.length} completed cards`}
-          />
+        {/* The next few letters under the pile */}
+        {listed.length > 0 && (
+          <p className="text-xs text-muted mt-1 px-1">
+            Also done: {listed.join(', ')}
+            {more > 0 && ` +${more} more`}
+          </p>
         )}
       </div>
-
-      {/* The next few letters under the pile */}
-      {listed.length > 0 && (
-        <p className="text-xs text-muted mt-1 px-1">
-          Also done: {listed.join(', ')}
-          {more > 0 && ` +${more} more`}
-        </p>
-      )}
 
       {/* Expand Modal */}
       <StackExpandModal

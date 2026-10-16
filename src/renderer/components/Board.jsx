@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -33,7 +33,7 @@ import {
 const headerButton = 'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border-[1.5px] border-card-line shadow-card hover:brightness-95 transition';
 
 // Droppable Cell Component
-const DroppableCell = ({ id, children, isOver, canDrop, isEmpty }) => {
+const DroppableCell = ({ id, children, isOver, canDrop, isEmpty, className = '' }) => {
   const { setNodeRef } = useDroppable({ id });
 
   let dropIndicatorClass = '';
@@ -48,12 +48,28 @@ const DroppableCell = ({ id, children, isOver, canDrop, isEmpty }) => {
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 min-w-[300px] p-3 border-r border-divider transition-colors ${dropIndicatorClass}`}
+      className={`flex-1 min-w-[300px] p-3 transition-colors ${className} ${dropIndicatorClass}`}
     >
       {children}
     </div>
   );
 };
+
+// Column header label: small uppercase, with the card count in muted text
+const ColumnLabel = ({ name, count }) => (
+  <h3 className="text-xs font-bold uppercase tracking-wider text-ink">
+    {name}
+    <span className="ml-2 font-semibold text-muted">{count}</span>
+  </h3>
+);
+
+// How far down the visible board area the Done pile sits, as a fraction of its
+// height. It sticks there while the board scrolls; tune it here.
+const DONE_PILE_FROM_TOP = 1 / 3;
+// Height of the sticky column header row (h-12) and the drop cell's padding
+// (p-3): the pile never sits higher than just under the header
+const COLUMN_HEADER_PX = 48;
+const DONE_CELL_PADDING_PX = 12;
 
 const Board = ({ projectId }) => {
   const [project, setProject] = useState(null);
@@ -77,6 +93,9 @@ const Board = ({ projectId }) => {
   const [isAppendCardsDialogOpen, setIsAppendCardsDialogOpen] = useState(false);
   const [pathCopied, setPathCopied] = useState(false);
   const [isEditProjectOpen, setIsEditProjectOpen] = useState(false);
+  // Visible height of the scrolling board area, for placing the Done pile
+  const boardScrollRef = useRef(null);
+  const [boardHeight, setBoardHeight] = useState(0);
 
   // Configure sensors for drag and drop
   const sensors = useSensors(
@@ -86,6 +105,14 @@ const Board = ({ projectId }) => {
       },
     })
   );
+
+  useEffect(() => {
+    const el = boardScrollRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver(([entry]) => setBoardHeight(entry.contentRect.height));
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loading, project === null]);
 
   useEffect(() => {
     if (!projectId) {
@@ -552,7 +579,7 @@ const Board = ({ projectId }) => {
 
   // Compute active phases (with non-completed cards) and all completed cards
   const boardDisplayData = useMemo(() => {
-    if (!project) return { completedCards: [], activePhases: [], firstActiveSubphaseId: null };
+    if (!project) return { completedCards: [], activePhases: [], firstActiveSubphaseId: null, statusCounts: {} };
 
     const completedCards = [];
     const activePhases = [];
@@ -599,7 +626,15 @@ const Board = ({ projectId }) => {
       return dateB - dateA;
     });
 
-    return { completedCards, activePhases, firstActiveSubphaseId };
+    // Card counts for the column headers
+    const statusCounts = {};
+    for (const phase of project.phases) {
+      for (const subphase of phase.subphases) {
+        for (const card of subphase.cards) statusCounts[card.status] = (statusCounts[card.status] || 0) + 1;
+      }
+    }
+
+    return { completedCards, activePhases, firstActiveSubphaseId, statusCounts };
   }, [project]);
 
   const canDropCard = (cardId, newStatus) => {
@@ -854,6 +889,13 @@ const Board = ({ projectId }) => {
     );
   }
 
+  // Where the Done pile sticks: a fraction of the visible board, never above
+  // the header row
+  const donePileTop = Math.max(
+    COLUMN_HEADER_PX + DONE_CELL_PADDING_PX,
+    Math.round(boardHeight * DONE_PILE_FROM_TOP)
+  );
+
   const columns = project.columns || ['Not Started', 'In Progress', 'Done'];
   // Filter out 'Done' for per-row rendering - it gets its own aggregated column
   const activeColumns = columns.filter(col => col !== 'Done');
@@ -990,18 +1032,15 @@ const Board = ({ projectId }) => {
         </div>
 
         {/* Scrollable Board Content */}
-        <div className="flex-1 overflow-auto scrollbar-themed">
+        <div ref={boardScrollRef} className="flex-1 overflow-auto scrollbar-themed">
           <div className="flex min-w-max">
             {/* Left side: Not Started + In Progress, full width */}
             <div className="flex-1">
               {/* Column Headers */}
-              <div className="sticky top-0 z-10 h-12 flex bg-panel border-b border-divider">
+              <div className="sticky top-0 z-10 h-12 flex bg-page border-b border-divider">
                 {activeColumns.map((column, idx) => (
-                  <div
-                    key={idx}
-                    className="flex-1 min-w-[300px] px-4 flex items-center border-r border-divider"
-                  >
-                    <h3 className="text-sm font-bold text-ink">{column}</h3>
+                  <div key={idx} className="flex-1 min-w-[300px] px-4 flex items-center">
+                    <ColumnLabel name={column} count={boardDisplayData.statusCounts[column] || 0} />
                   </div>
                 ))}
               </div>
@@ -1261,13 +1300,14 @@ const Board = ({ projectId }) => {
             </div>
 
             {/* Right side: Done column - single aggregated cell */}
-            <div className="w-[300px] flex-shrink-0 border-l border-divider">
+            <div className="w-[300px] flex-shrink-0 flex flex-col">
               {/* Done column header */}
-              <div className="sticky top-0 z-10 h-12 px-4 flex items-center bg-panel border-b border-divider">
-                <h3 className="text-sm font-bold text-ink">Done</h3>
+              <div className="sticky top-0 z-10 h-12 px-4 flex items-center bg-page border-b border-divider">
+                <ColumnLabel name="Done" count={boardDisplayData.completedCards.length} />
               </div>
 
-              {/* Done column content - single aggregated stack */}
+              {/* Done column content - one drop cell the height of the column,
+                  so the pile can stick a third of the way down the board */}
               <DroppableCell
                 id="done-column"
                 isOver={dropTarget?.status === 'Done'}
@@ -1277,6 +1317,11 @@ const Board = ({ projectId }) => {
                 <CompletedStack
                   cards={boardDisplayData.completedCards}
                   onCardClick={handleCardClick}
+                  pileStyle={{
+                    position: 'sticky',
+                    top: donePileTop,
+                    marginTop: donePileTop - COLUMN_HEADER_PX - DONE_CELL_PADDING_PX,
+                  }}
                 />
               </DroppableCell>
             </div>
