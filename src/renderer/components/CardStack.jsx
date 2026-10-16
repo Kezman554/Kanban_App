@@ -107,6 +107,7 @@ const CardStack = ({ cards, onCardClick, onUnlockCard, onUnlockTopCard }) => {
         onCardClick={onCardClick}
         onUnlockCard={onUnlockCard}
         title={`${cards.length} Cards in Stack`}
+        cardProps={{ fillLetter: true }}
       />
     </>
   );

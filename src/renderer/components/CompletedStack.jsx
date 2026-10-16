@@ -83,6 +83,7 @@ const CompletedStack = ({ cards, onCardClick, pileStyle }) => {
         onClose={() => setIsModalOpen(false)}
         onCardClick={onCardClick}
         title={`${cards.length} Completed Cards`}
+        cardProps={{ colourDone: true }}
       />
     </>
   );

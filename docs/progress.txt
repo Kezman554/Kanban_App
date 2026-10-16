@@ -1894,3 +1894,21 @@ the lilac-deep title pill.
 Deployed to the Pi (d7d3b54): pulled, kanban-api rebuilt, smoke test OK
 (359 cards, API == DB). The live bundle names d7d3b54 and its CSS has the
 15.6px pill text.
+44. Card view: no more near-white. The body is on the sidebar yellow and
+   the inner boxes (description, criteria, dependency rows, prompt,
+   message and guidance boxes, the delete confirmation) are on the page
+   yellow, so coloured text inside them still passes. The footer matches
+   the body. "Saved!" sits directly on the body, where success green is
+   4.30:1 on the sidebar yellow, so it is now ink semibold; danger text on
+   the body measures 4.50 and stays. In dark mode the body is the darker
+   sidebar brown with page-brown boxes.
+45. Expanded stack views (StackExpandModal): the header (above the line)
+   is the sidebar yellow and the body (below) the page yellow, in both
+   the Done and Not Started views, and the unlock confirm inside it is on
+   the page colour. Done pile view: cards drawn in their palette colour
+   with the green tick (Card colourDone). Not Started stack view: a
+   blocked card's letter circle is filled with its deep shade, cream
+   letter (Card fillLetter), and the card itself stays uncoloured. The
+   board is unchanged: the done pile top stays on the panel colour, and
+   blocked cards keep the dashed circle. Both exceptions are recorded in
+   CLAUDE.md's Design section. Light and dark screenshots checked.

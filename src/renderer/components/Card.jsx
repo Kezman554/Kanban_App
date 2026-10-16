@@ -23,7 +23,10 @@ const Chip = ({ children, title, onPanel }) => (
   </span>
 );
 
-const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, tilt = false }) => {
+// colourDone: a done card keeps its palette colour (the Done pile's expanded view).
+// fillLetter: a blocked card's letter circle takes its deep shade (the expanded
+// Not Started stack); the card itself stays uncoloured.
+const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, tilt = false, colourDone = false, fillLetter = false }) => {
   // Disable drag for stacked cards OR blocked cards (even if at top of stack)
   const isDragDisabled = isStacked || card.isBlocked;
 
@@ -49,6 +52,8 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
   // Determine if card is blocked - trust the passed isBlocked value if set
   const isBlocked = card.isBlocked === true;
   const isDone = card.status === 'Done';
+  // Drawn on the panel colour: a done card, unless the view asks for its colour
+  const onPanel = isDone && !colourDone;
 
   // Blocked: never coloured. Dashed outline, blocked fill, lock, letter, title, "waits on X"
   if (isBlocked) {
@@ -73,7 +78,12 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
           >
             <Lock className="w-4 h-4" />
           </div>
-          <div className="flex-shrink-0 w-[34px] h-[34px] rounded-full border-[1.5px] border-dashed border-dash flex items-center justify-center font-bold text-sm">
+          <div
+            className={`flex-shrink-0 w-[34px] h-[34px] rounded-full flex items-center justify-center font-bold text-sm ${
+              fillLetter ? 'text-cream' : 'border-[1.5px] border-dashed border-dash'
+            }`}
+            style={fillLetter ? { backgroundColor: paletteFor(card.id).deep } : undefined}
+          >
             {card.session_letter}
           </div>
           <div className="flex-1 min-w-0">
@@ -103,9 +113,9 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
   return (
     <div
       ref={setNodeRef}
-      style={isDone ? style : { ...style, backgroundColor: colour.fill }}
+      style={onPanel ? style : { ...style, backgroundColor: colour.fill }}
       className={`
-        ${isDone ? 'bg-panel text-ink border-line' : 'text-card-ink border-card-line'}
+        ${onPanel ? 'bg-panel text-ink border-line' : 'text-card-ink border-card-line'}
         border-[1.5px] rounded-[14px] p-3 shadow-card
         ${isStacked ? 'cursor-default' : 'cursor-pointer hover:brightness-[0.97]'}
         ${isDragging ? 'opacity-50' : ''}
@@ -163,7 +173,7 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
         <div className="flex items-center gap-1.5 mt-2 flex-wrap">
           {unresolvedExternalDeps.length > 0 && (
             <Chip
-              onPanel={isDone}
+              onPanel={onPanel}
               title={`Blocked by other project${unresolvedExternalDeps.length > 1 ? 's' : ''}:\n${externalDepTooltip}`}
             >
               <span className="inline-flex items-center gap-1 max-w-[12rem] align-bottom">
@@ -176,11 +186,11 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
               </span>
             </Chip>
           )}
-          {card.complexity && card.complexity !== 'medium' && <Chip onPanel={isDone}>{card.complexity}</Chip>}
-          {card.resource === 'none' && <Chip onPanel={isDone}>Manual</Chip>}
-          {card.resource === 'tbc' && <Chip onPanel={isDone} title="Approach to be confirmed">TBC</Chip>}
-          {card.is_placeholder && <Chip onPanel={isDone}>Placeholder</Chip>}
-          {card.likely_needs_expansion && <Chip onPanel={isDone}>May Expand</Chip>}
+          {card.complexity && card.complexity !== 'medium' && <Chip onPanel={onPanel}>{card.complexity}</Chip>}
+          {card.resource === 'none' && <Chip onPanel={onPanel}>Manual</Chip>}
+          {card.resource === 'tbc' && <Chip onPanel={onPanel} title="Approach to be confirmed">TBC</Chip>}
+          {card.is_placeholder && <Chip onPanel={onPanel}>Placeholder</Chip>}
+          {card.likely_needs_expansion && <Chip onPanel={onPanel}>May Expand</Chip>}
         </div>
       )}
     </div>

@@ -602,7 +602,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
         <div
           ref={panelRef}
-          className="w-full max-w-[780px] max-h-[90vh] bg-panel border-[1.5px] border-line rounded-[20px] shadow-card flex flex-col overflow-hidden transform transition-all duration-200 ease-out"
+          className="w-full max-w-[780px] max-h-[90vh] bg-sidebar border-[1.5px] border-line rounded-[20px] shadow-card flex flex-col overflow-hidden transform transition-all duration-200 ease-out"
           style={{ opacity: isOpen ? 1 : 0, transform: isOpen ? 'scale(1)' : 'scale(0.95)' }}
         >
         {/* Header band: filled with the card's colour (blocked fill if blocked) */}
@@ -713,7 +713,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
         {/* Start Session / Mark as Done failure (on success the view closes instead) */}
         {sessionNotification && (
-          <div className="mx-6 mt-4 p-3 bg-panel border-[1.5px] border-danger-text rounded-lg flex items-center gap-2 text-danger-text">
+          <div className="mx-6 mt-4 p-3 bg-page border-[1.5px] border-danger-text rounded-lg flex items-center gap-2 text-danger-text">
             <TriangleAlert className="w-4 h-4 flex-shrink-0" />
             <span className="text-sm">{sessionNotification}</span>
           </div>
@@ -727,7 +727,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold text-muted">Description</h3>
                 {fieldSaveSuccess === 'description' && (
-                  <span className="text-xs text-success-text">Saved!</span>
+                  <span className="text-xs font-semibold text-ink">Saved!</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -786,7 +786,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold text-muted">Success Criteria</h3>
                 {fieldSaveSuccess === 'success_criteria' && (
-                  <span className="text-xs text-success-text">Saved!</span>
+                  <span className="text-xs font-semibold text-ink">Saved!</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -854,7 +854,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
               <div className="flex items-center gap-2">
                 <h3 className="text-sm font-semibold text-muted">This Board</h3>
                 {depsSaveSuccess && (
-                  <span className="text-xs text-success-text">Saved!</span>
+                  <span className="text-xs font-semibold text-ink">Saved!</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -897,7 +897,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 const target = boardCardsByLetter.get(letter);
                 // A dependency on a Done card is legal and already satisfied
                 const tone = !target
-                  ? { box: 'bg-panel border-danger-text', badge: 'border border-danger-text text-danger-text font-semibold', label: 'no such card' }
+                  ? { box: 'bg-page border-danger-text', badge: 'border border-danger-text text-danger-text font-semibold', label: 'no such card' }
                   : target.status === 'Done'
                     ? { box: 'bg-progress/30 border-transparent', badge: 'bg-done text-on-done font-semibold', label: 'Done - satisfied' }
                     : { box: 'bg-blocked border-dash border-dashed', badge: 'border border-line text-ink', label: target.status };
@@ -916,7 +916,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         {isEditingDeps && (
                           <button
                             onClick={() => handleRemoveDep(letter)}
-                            className="px-2 py-0.5 rounded text-xs font-medium bg-panel border border-danger-text text-danger-text hover:bg-danger hover:text-on-danger transition-colors"
+                            className="px-2 py-0.5 rounded text-xs font-medium bg-page border border-danger-text text-danger-text hover:bg-danger hover:text-on-danger transition-colors"
                             title="Remove this dependency"
                           >
                             Remove
@@ -985,7 +985,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   <LinkIcon className="w-4 h-4" /> External Dependencies
                 </h3>
                 {extDepsSaveSuccess && (
-                  <span className="text-xs text-success-text">Saved!</span>
+                  <span className="text-xs font-semibold text-ink">Saved!</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -1040,7 +1040,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         <select
                           value={dep.project_slug}
                           onChange={(e) => handleExtDepProjectChange(idx, e.target.value)}
-                          className="flex-1 min-w-0 px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-active-ring"
+                          className="flex-1 min-w-0 px-2 py-1 bg-page border border-line rounded text-sm text-ink focus:outline-none focus:border-active-ring"
                         >
                           <option value="">Select project...</option>
                           {availableProjects
@@ -1051,7 +1051,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         </select>
                         <button
                           onClick={() => handleRemoveExtDep(idx)}
-                          className="px-2 py-1 rounded text-xs font-medium bg-panel border border-danger-text text-danger-text hover:bg-danger hover:text-on-danger transition-colors flex-shrink-0"
+                          className="px-2 py-1 rounded text-xs font-medium bg-page border border-danger-text text-danger-text hover:bg-danger hover:text-on-danger transition-colors flex-shrink-0"
                           title="Remove this dependency"
                         >
                           Remove
@@ -1077,7 +1077,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                                 handleExtDepChange(idx, 'card_letter', e.target.value);
                               }
                             }}
-                            className="flex-1 min-w-0 px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-active-ring"
+                            className="flex-1 min-w-0 px-2 py-1 bg-page border border-line rounded text-sm text-ink focus:outline-none focus:border-active-ring"
                           >
                             <option value="">Select card...</option>
                             {targetCards.map(c => (
@@ -1094,7 +1094,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                             type="text"
                             value={dep.card_letter}
                             onChange={(e) => handleExtDepChange(idx, 'card_letter', e.target.value.toUpperCase())}
-                            className="w-28 px-2 py-1 bg-panel border border-line rounded text-sm text-ink font-bold uppercase focus:outline-none focus:border-active-ring"
+                            className="w-28 px-2 py-1 bg-page border border-line rounded text-sm text-ink font-bold uppercase focus:outline-none focus:border-active-ring"
                             placeholder="Letter"
                           />
                           <span className="text-xs text-muted">
@@ -1105,7 +1105,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                           {cardsReady && targetCards.length > 0 && (
                             <button
                               onClick={() => handleToggleManualLetter(idx, false)}
-                              className="text-xs px-2 py-1 rounded font-medium bg-panel border border-line hover:bg-hover text-muted hover:text-ink"
+                              className="text-xs px-2 py-1 rounded font-medium bg-page border border-line hover:bg-hover text-muted hover:text-ink"
                             >
                               Pick from list
                             </button>
@@ -1117,7 +1117,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         type="text"
                         value={dep.description}
                         onChange={(e) => handleExtDepChange(idx, 'description', e.target.value)}
-                        className="w-full px-2 py-1 bg-panel border border-line rounded text-sm text-ink focus:outline-none focus:border-active-ring"
+                        className="w-full px-2 py-1 bg-page border border-line rounded text-sm text-ink focus:outline-none focus:border-active-ring"
                         placeholder="Why this card depends on it (optional)"
                       />
                     </div>
@@ -1154,7 +1154,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                         }
                       : cardMissing
                         ? {
-                            box: 'bg-panel border-danger-text',
+                            box: 'bg-page border-danger-text',
                             badge: 'border border-danger-text text-danger-text font-semibold',
                             label: 'no such card',
                           }
@@ -1211,7 +1211,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold text-muted">Claude Code Prompt</h3>
                   {promptGuideSaveSuccess && (
-                    <span className="text-xs text-success-text">Saved!</span>
+                    <span className="text-xs font-semibold text-ink">Saved!</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -1261,7 +1261,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                     className={`absolute top-2 right-2 z-10 text-xs px-3 py-1 rounded-lg font-semibold border-[1.5px] transition flex items-center gap-1.5 ${
                       promptGuideCopySuccess
                         ? 'bg-done text-on-done border-card-line'
-                        : 'bg-panel text-ink border-line hover:bg-hover'
+                        : 'bg-page text-ink border-line hover:bg-hover'
                     }`}
                   >
                     {promptGuideCopySuccess ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
@@ -1292,7 +1292,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 <div className="flex items-center gap-2">
                   <h3 className="text-sm font-semibold text-muted">Commit Message</h3>
                   {commitMessageSaveSuccess && (
-                    <span className="text-xs text-success-text">Saved!</span>
+                    <span className="text-xs font-semibold text-ink">Saved!</span>
                   )}
                 </div>
                 <div className="flex items-center gap-2">
@@ -1355,14 +1355,14 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
           )}
 
           {/* Notes Section - visible for all cards, prominent for Done cards */}
-          <div className={`${card.status === 'Done' ? 'bg-panel border border-success-text rounded-lg p-4' : ''}`}>
+          <div className={`${card.status === 'Done' ? 'bg-page border border-success-text rounded-lg p-4' : ''}`}>
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <h3 className={`text-sm font-semibold ${card.status === 'Done' ? 'text-success-text' : 'text-muted'}`}>
                   Notes
                 </h3>
                 {notesSaveSuccess && (
-                  <span className="text-xs text-success-text">Saved!</span>
+                  <span className="text-xs font-semibold text-ink">Saved!</span>
                 )}
               </div>
               <div className="flex items-center gap-2">
@@ -1417,14 +1417,14 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
           {/* Manual Card Guidance */}
           {isManual && (
-            <div className="bg-panel border border-line rounded-lg p-4">
+            <div className="bg-page border border-line rounded-lg p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-sm font-semibold text-link flex items-center gap-2">
                   <span>@</span> Manual Task Guidance
                 </h3>
                 <div className="flex items-center gap-2">
                   {promptGuideSaveSuccess && (
-                    <span className="text-xs text-success-text">Saved!</span>
+                    <span className="text-xs font-semibold text-ink">Saved!</span>
                   )}
                   {isEditingPromptGuide ? (
                     <>
@@ -1496,7 +1496,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
           {/* TBC Card Guidance */}
           {isTBC && (
-            <div className="bg-panel border border-warn-text rounded-lg p-4">
+            <div className="bg-page border border-warn-text rounded-lg p-4">
               <h3 className="text-sm font-semibold text-warn-text mb-2 flex items-center gap-2">
                 <span>?</span> Task Needs Planning
               </h3>
@@ -1518,7 +1518,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         {showDeleteConfirm && (() => {
           const dependents = getDependentCards();
           return (
-            <div className="flex-shrink-0 p-6 border-t-[1.5px] border-danger-text bg-panel">
+            <div className="flex-shrink-0 p-6 border-t-[1.5px] border-danger-text bg-page">
               <p className="text-ink font-semibold mb-1">
                 Delete Session {card.session_letter}: {card.title}?
               </p>
@@ -1562,7 +1562,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         })()}
 
         {/* Footer Actions */}
-        <div className="flex-shrink-0 p-6 border-t border-divider bg-panel">
+        <div className="flex-shrink-0 p-6 border-t border-divider bg-sidebar">
           <div className="flex flex-wrap gap-3">
             {/* One-click start, only on a Not Started card: "Start Session" for
                 an engineer card with a prompt (an engineer card with an empty

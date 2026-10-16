@@ -2,7 +2,9 @@ import React, { useState } from 'react';
 import { X } from './icons';
 import Card from './Card';
 
-const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlockCard }) => {
+// cardProps are passed to every Card (e.g. colourDone for the Done pile,
+// fillLetter for a dependency stack)
+const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlockCard, cardProps = {} }) => {
   const [confirmUnlock, setConfirmUnlock] = useState(null);
   const [unlockError, setUnlockError] = useState(null);
   const [isUnlocking, setIsUnlocking] = useState(false);
@@ -53,7 +55,7 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
       {/* Confirmation Dialog */}
       {confirmUnlock && (
         <div className="absolute inset-0 z-20 flex items-center justify-center">
-          <div className="bg-panel border-[1.5px] border-line rounded-[20px] shadow-card p-6 max-w-md">
+          <div className="bg-page border-[1.5px] border-line rounded-[20px] shadow-card p-6 max-w-md">
             <h3 className="text-lg font-bold text-ink mb-4">Unlock Card?</h3>
             <p className="text-muted mb-2">
               Are you sure you want to unlock <span className="font-semibold text-ink">"{confirmUnlock.title}"</span>?
@@ -87,9 +89,9 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
       )}
 
       {/* Modal content */}
-      <div className="relative z-10 bg-panel border-[1.5px] border-line rounded-[20px] shadow-card max-w-4xl w-full max-h-[80vh] flex flex-col">
+      <div className="relative z-10 bg-page border-[1.5px] border-line rounded-[20px] shadow-card max-w-4xl w-full max-h-[80vh] flex flex-col overflow-hidden">
         {/* Header with close button */}
-        <div className="flex items-center justify-between p-4 border-b border-divider">
+        <div className="flex items-center justify-between p-4 bg-sidebar border-b border-divider">
           <h3 className="text-lg font-bold text-ink">
             {title || `${cards.length} Cards`}
           </h3>
@@ -113,6 +115,7 @@ const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlock
                   onClick={onCardClick}
                   isStacked={false}
                   onUnlock={card.isBlocked && onUnlockCard ? handleUnlockClick : undefined}
+                  {...cardProps}
                 />
               </div>
             ))}
