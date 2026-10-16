@@ -1962,3 +1962,7 @@ Workable Cards tab.
    complete it."). Checked on blocked card H: both buttons are disabled,
    clicking them leaves the view open and the card Blocked. On ready card
    E both are still enabled.
+
+Deployed to the Pi (9d1ba6b): pulled, kanban-api rebuilt, smoke test OK
+(359 cards, API == DB). The live bundle names 9d1ba6b and carries the To
+Be Confirmed option and the blocked-card footer line.
