@@ -1,27 +1,34 @@
 import React, { useState } from 'react';
 import Card from './Card';
 import StackExpandModal from './StackExpandModal';
+import { FanSheets, StackControls } from './CardStack';
 
-const EDGE_PEEK = 8; // pixels of edge visible for each stacked card
-const MAX_VISIBLE_EDGES = 5; // max stacked card edges to show
+// Two palette-coloured cards fan out behind the latest done card
+const DONE_FAN = [
+  { x: 7, y: 9, r: 3 },
+  { x: -6, y: 17, r: -2 },
+];
+const LETTERS_LISTED = 5; // letters named beneath the pile before "+N more"
 
 const CompletedStack = ({ cards, onCardClick }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   if (!cards || cards.length === 0) {
     return (
-      <div className="h-20 flex items-center justify-center border-2 border-dashed border-line rounded-lg">
+      <div className="h-20 flex items-center justify-center border-[1.5px] border-divider rounded-[14px]">
         <span className="text-xs text-muted">No completed cards</span>
       </div>
     );
   }
 
   // Cards should already be sorted by completed_at DESC (most recent first)
-  // cards[0] is the most recently completed (top of stack)
-  // cards[n] is the oldest completed (showing only edge underneath)
+  // cards[0] is the most recently completed (top of the pile)
   const hasStack = cards.length > 1;
-  const visibleEdges = Math.min(cards.length - 1, MAX_VISIBLE_EDGES);
-  const totalStackHeight = visibleEdges * EDGE_PEEK;
+  const behind = cards.slice(1, DONE_FAN.length + 1);
+  const depth = behind.length ? DONE_FAN[behind.length - 1].y : 0;
+  const rest = cards.slice(1);
+  const listed = rest.slice(0, LETTERS_LISTED).map(c => c.session_letter);
+  const more = rest.length - listed.length;
 
   const handleExpandClick = (e) => {
     e.stopPropagation();
@@ -30,55 +37,36 @@ const CompletedStack = ({ cards, onCardClick }) => {
 
   return (
     <>
-      <div className="relative" style={{ marginBottom: hasStack ? totalStackHeight : 0 }}>
-        {/* Stacked card edges (only showing border rims, overlapping bottom of top card) */}
-        {hasStack && cards.slice(1, MAX_VISIBLE_EDGES + 1).map((card, index) => (
-          <div
-            key={card.id}
-            className="absolute left-0 right-0 h-2 bg-panel border border-success-text rounded-b-lg"
-            style={{
-              bottom: -((index + 1) * EDGE_PEEK),
-              zIndex: MAX_VISIBLE_EDGES - index,
-            }}
-          />
-        ))}
+      <div className="relative" style={{ marginBottom: depth + (hasStack ? 10 : 0) }}>
+        {hasStack && <FanSheets cards={behind} offsets={DONE_FAN} blank={false} />}
 
-        {/* Top card (fully visible) */}
-        <div className="relative" style={{ zIndex: MAX_VISIBLE_EDGES + 1 }}>
+        {/* Top card (latest done, on the panel colour) */}
+        <div className="relative" style={{ zIndex: DONE_FAN.length + 1 }}>
           <Card
             card={{ ...cards[0], isBlocked: false }}
             onClick={onCardClick}
             isStacked={false}
           />
-
-          {/* Expand button - only shown when there's a stack */}
-          {hasStack && (
-            <button
-              onClick={handleExpandClick}
-              className="absolute top-2 right-2 w-6 h-6 rounded bg-done hover:bg-done text-cream text-xs font-bold flex items-center justify-center shadow-card transition-colors z-10"
-              title={`View all ${cards.length} completed cards`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-              </svg>
-            </button>
-          )}
         </div>
 
-        {/* Stack count badge - positioned at bottom of stacked edges */}
         {hasStack && (
-          <div
-            className="absolute right-2 px-2 py-0.5 rounded-full bg-done text-cream text-xs font-bold shadow-card"
-            style={{
-              bottom: -(totalStackHeight + 4),
-              zIndex: MAX_VISIBLE_EDGES + 2
-            }}
-            title={`${cards.length} completed cards`}
-          >
-            {cards.length}
-          </div>
+          <StackControls
+            count={cards.length}
+            depth={depth}
+            onExpand={handleExpandClick}
+            expandTitle={`View all ${cards.length} completed cards`}
+            countTitle={`${cards.length} completed cards`}
+          />
         )}
       </div>
+
+      {/* The next few letters under the pile */}
+      {listed.length > 0 && (
+        <p className="text-xs text-muted mt-1 px-1">
+          Also done: {listed.join(', ')}
+          {more > 0 && ` +${more} more`}
+        </p>
+      )}
 
       {/* Expand Modal */}
       <StackExpandModal

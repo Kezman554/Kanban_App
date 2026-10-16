@@ -1542,13 +1542,74 @@ lean-set build. It carries the light/dark token blocks, 12 Fredoka faces
 key, and no stock palette variables. The theme choice is per browser,
 so the laptop and the phone each keep their own.
 
+Token follow-ups (Nick's call, 7dd8083)
+5. Dark shadow and dim now use the darkest brown (18,12,6) instead of
+   black. At the requested 0.45 / 0.6 alpha both measured weaker than the
+   black versions (shadow 1.15 vs 1.21, dim 1.19 vs 1.25 against the
+   page), so alpha was raised to match: shadow 0.69, dim 0.84 (page-matched;
+   the panel-matched values would be 0.61 / 0.75).
+6. Dashed outline: light rgba(58,47,34,.6), dark #8A7F65. Measured on
+   every surface it sits on. Light: page 3.57, sidebar 3.41, panel 3.75,
+   blocked fill 3.63, hover-on-page 3.38. Dark: page 3.80, sidebar 4.15,
+   panel 3.20, blocked fill 3.40, hover-on-page 3.05. Lowest: 3.05 (dark,
+   collapsed blocked row while hovered). Dark raised (#433C32) would be
+   2.75 and hover-on-panel 2.56, so no dashed outline is placed on either.
+
+Restyle, stage 2 (the board view)
+7. Cards (Card.jsx): 14px corners, fill palette[card.id mod 12]
+   (utils/palette.js, CSS variables only, never stored), 1.5px card-line
+   outline, offset shadow, 34px letter circle in the deep shade with cream
+   letter. Chips are cream/60 pills with a thin outline: complexity when
+   not medium, Manual, TBC, Placeholder, May Expand, plus the existing
+   external-dependency chip. The status pill is gone (the column says it).
+   TBC cards are no longer dashed, since dashed now means blocked.
+   Standalone cards tilt under 1 degree (stable per id). Stack tops don't.
+8. Blocked cards are never coloured: dashed outline, blocked fill, lock
+   (still the unlock control), letter in a dashed circle, title, and
+   "waits on X", adding the blocker's subphase when it is in another one,
+   e.g. "waits on G (1.3)" (cardBlocking.getWaitsOnLabel). External
+   blockers read "waits on <project> <letter>".
+9. Stacks (CardStack.jsx): up to four full-size sheets fanned behind the
+   top card at the spec'd offsets, each in its own palette colour (blank
+   dashed sheets when the top card is blocked). Teal count pill bottom
+   right, teal expand button top right (opens the existing stack view).
+10. Done pile (CompletedStack.jsx): the latest done card on the panel
+   colour with the green tick, two palette sheets behind it (3 / -2
+   degrees), count and expand kept, and "Also done: C, B, A +N more"
+   underneath.
+11. Layout (Board.jsx): the left subphase column is gone. Each subphase has
+   a tab above its row (badge in palette[subphase.id mod 12], name, faint
+   rule, add-card button). Not Started / In Progress take the full width,
+   Done stays on the right. Phase headings read "1 · App Shell & Viewing"
+   (a leading "Phase N:" is dropped when a short name is shown) with
+   "x of y done", counting every card in the phase. The auto-collapsed
+   all-blocked row is one dashed row: chevron, badge, name, lock,
+   "N blocked cards — click to expand".
+12. Header and sidebar: Edit lilac, Append Cards marigold, Export project
+   JSON mint, Sync to Vault teal, all with the card outline and shadow
+   (a failed sync says "Sync failed" and swaps to a danger outline on
+   the panel). Active nav item filled #8AD0D9. The project <select> is now
+   a list with a palette[project.id mod 12] dot per project. The blank
+   "Select a project..." option is gone; the app auto-selects as before.
+13. Tailwind 4 drops theme variables that no utility uses, so palette
+   colours used only from inline styles were missing. The token block is
+   now @theme static.
+
+Verification: vite build clean; DB suites green under ELECTRON_RUN_AS_NODE
+(append-import 61, create-card-at 23, depends-on-cards 24,
+session-letter-high-water 38, uniqueness 34, settings 14, vault-export
+58, operations and schema 0 failed). The renderer has no hex/rgb values
+outside index.css and no stock colour utilities. Desktop app booted
+hidden against a scratch DB copy and screenshotted light and dark:
+board, expanded blocked rows ("waits on G (1.3)"), the stack modal.
+Lowest text contrast of the new pairings: 5.44:1 (cream letter on the
+deepest-shade circles; card text on every fill is higher).
+
 Known gaps / followups
 ----------------------
 - The pre-restyle tag is local only (not pushed).
-- Spec'd dark scrim and card shadow are rgba(0,0,0,...), which conflicts
-  with the "no black anywhere" rule - needs Nick's call.
-- Light dashed rgba(58,47,34,.5) is 2.77:1 on the page (<3:1); revisit in
-  stage 5. Teal text on the light sidebar is 4.36:1 - avoid that pairing.
+- Teal text on the light sidebar is 4.36:1 - avoid that pairing.
 - Dark-mode outline was not in the spec; chose #9A8E74 (>=3.36:1 on every
   dark surface). Light "raised" was not in the spec; equals panel.
-- Layout and card look are unchanged until stage 2.
+- Not judged from code: the fans while dragging, the 0.84 dark dim by
+  eye, colours on the laptop screen.

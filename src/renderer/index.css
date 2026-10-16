@@ -6,7 +6,7 @@
    The only place a colour value may be written. Light values live in @theme;
    dark overrides live in the [data-theme="dark"] block below. The stock
    Tailwind palette and font stacks are cleared, so only these names exist. */
-@theme {
+@theme static {
   --color-*: initial;
   --shadow-*: initial;
 

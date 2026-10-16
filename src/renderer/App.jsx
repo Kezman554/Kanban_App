@@ -6,6 +6,7 @@ import SettingsPage from './pages/SettingsPage';
 import CardTestPage from './pages/CardTestPage';
 import ImportDialog from './components/ImportDialog';
 import { ClipboardList, LayoutGrid, MapIcon, FlaskConical, SettingsIcon } from './components/icons';
+import { paletteFor } from './utils/palette';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('current-project');
@@ -93,35 +94,54 @@ function App() {
 
           {!sidebarCollapsed && (
             <>
-              {/* Project Selector Dropdown */}
+              {/* Project list: each project's dot is palette[project.id mod 12] */}
               <div className="relative">
-                <label className="block text-xs text-muted mb-1">
+                <h2 id="project-list-label" className="block text-xs text-muted mb-1">
                   Current Project
-                </label>
+                </h2>
                 {loading ? (
-                  <div className="w-full bg-page border border-line rounded px-3 py-2 text-sm text-muted">
+                  <div className="w-full px-3 py-2 text-sm text-muted">
                     Loading...
                   </div>
+                ) : projects.length === 0 ? (
+                  <div className="w-full px-3 py-2 text-sm text-muted">No projects yet</div>
                 ) : (
-                  <select
-                    value={selectedProject || ''}
-                    onChange={(e) => setSelectedProject(e.target.value ? parseInt(e.target.value) : null)}
-                    className="w-full bg-page border border-line rounded px-3 py-2 text-sm focus:outline-none focus:border-primary cursor-pointer"
+                  <ul
+                    aria-labelledby="project-list-label"
+                    className="max-h-64 overflow-y-auto scrollbar-themed -mx-1 space-y-0.5"
                   >
-                    <option value="">Select a project...</option>
-                    {projects.map((project) => (
-                      <option key={project.id} value={project.id}>
-                        {project.name}
-                      </option>
-                    ))}
-                  </select>
+                    {projects.map((project) => {
+                      const isSelected = project.id === selectedProject;
+                      return (
+                        <li key={project.id}>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedProject(project.id)}
+                            aria-current={isSelected ? 'true' : undefined}
+                            className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left text-sm transition-colors ${
+                              isSelected
+                                ? 'bg-panel border-[1.5px] border-line font-semibold text-ink'
+                                : 'border-[1.5px] border-transparent text-ink hover:bg-hover'
+                            }`}
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="flex-shrink-0 w-3 h-3 rounded-full border-[1.5px] border-card-line"
+                              style={{ backgroundColor: paletteFor(project.id).fill }}
+                            />
+                            <span className="truncate">{project.name}</span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
               </div>
 
               {/* Import Project Button */}
               <button
                 onClick={() => setIsImportDialogOpen(true)}
-                className="w-full mt-3 px-3 py-2 bg-page border border-line rounded-lg text-sm text-ink hover:border-primary hover:text-link transition-colors flex items-center justify-center gap-2"
+                className="w-full mt-3 px-3 py-2 bg-panel border-[1.5px] border-line rounded-lg text-sm text-ink hover:bg-hover transition-colors flex items-center justify-center gap-2"
               >
                 <span>+</span>
                 <span>Import Project</span>
@@ -140,8 +160,8 @@ function App() {
                 sidebarCollapsed ? 'justify-center px-0 py-2' : 'gap-3 px-3 py-2'
               } ${
                 currentPage === item.id
-                  ? 'bg-primary text-cream'
-                  : 'text-ink hover:bg-hover'
+                  ? 'bg-nav-active text-card-ink border-[1.5px] border-card-line font-semibold'
+                  : 'border-[1.5px] border-transparent text-ink hover:bg-hover'
               }`}
               title={sidebarCollapsed ? item.label : undefined}
               aria-label={sidebarCollapsed ? item.label : undefined}

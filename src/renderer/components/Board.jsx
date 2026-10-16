@@ -16,8 +16,35 @@ import CardDetail from './CardDetail';
 import AddCardDialog from './AddCardDialog';
 import AppendCardsDialog from './AppendCardsDialog';
 import EditProjectDialog from './EditProjectDialog';
-import { buildCardStatusByLetter, isCardBlocked as isCardBlockedShared } from '../utils/cardBlocking';
-import { Lock } from './icons';
+import {
+  buildCardStatusByLetter,
+  buildCardInfoByLetter,
+  getWaitsOnLabel,
+  getBlockedReason,
+  isCardBlocked as isCardBlockedShared,
+} from '../utils/cardBlocking';
+import { paletteFor } from '../utils/palette';
+import {
+  Lock, Pencil, Plus, ClipboardCopy, Upload, Folder, Copy, Check, ChevronRight, ChevronDown,
+} from './icons';
+
+// Subphase badge: filled with palette[subphase.id mod 12]
+const SubphaseBadge = ({ subphase }) => (
+  <span
+    className="flex-shrink-0 min-w-[2.25rem] h-7 px-2 rounded-lg border-[1.5px] border-card-line text-card-ink text-sm font-bold flex items-center justify-center"
+    style={{ backgroundColor: paletteFor(subphase.id).fill }}
+  >
+    {subphase.short_name || '—'}
+  </span>
+);
+
+// "Phase 9: Testing & Release" -> "Testing & Release" when a short name is shown
+const phaseTitle = (phase) => phase.short_name
+  ? `${phase.short_name} · ${phase.name.replace(/^phase\s+[\w.]+\s*[:.\-–]\s*/i, '')}`
+  : phase.name;
+
+// Header buttons: palette fills with the card outline and offset shadow
+const headerButton = 'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border-[1.5px] border-card-line shadow-card hover:brightness-95 transition';
 
 // Droppable Cell Component
 const DroppableCell = ({ id, children, isOver, canDrop, isEmpty }) => {
@@ -35,7 +62,7 @@ const DroppableCell = ({ id, children, isOver, canDrop, isEmpty }) => {
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 min-w-[300px] p-3 border-r border-divider transition-all ${dropIndicatorClass}`}
+      className={`flex-1 min-w-[300px] p-3 border-r border-divider transition-colors ${dropIndicatorClass}`}
     >
       {children}
     </div>
@@ -353,6 +380,19 @@ const Board = ({ projectId }) => {
   // Blocked check shared with RoadmapView / AllProjectsView (utils/cardBlocking)
   const cardStatusByLetter = useMemo(() => buildCardStatusByLetter(project), [project]);
   const isCardBlocked = (card) => isCardBlockedShared(card, cardStatusByLetter);
+  const cardInfoByLetter = useMemo(() => buildCardInfoByLetter(project), [project]);
+
+  // A card as drawn on the board: its blocked state and, when blocked, the
+  // short "waits on X (2.1)" label naming blockers in other subphases
+  const withBlockedState = (card, subphaseId) => {
+    const isBlocked = isCardBlocked(card);
+    return {
+      ...card,
+      isBlocked,
+      waitsOn: isBlocked ? getWaitsOnLabel(card, cardInfoByLetter, subphaseId) : null,
+      blockedReason: isBlocked ? getBlockedReason(card, cardStatusByLetter) : null,
+    };
+  };
 
   // Build dependency stacks for "Not Started" column
   // Returns: { stacks: Map<rootCardId, Card[]>, claimedCardIds: Set<cardId> }
@@ -555,7 +595,14 @@ const Board = ({ projectId }) => {
       }
 
       if (activeSubphases.length > 0) {
-        activePhases.push({ ...phase, subphases: activeSubphases });
+        // "x of y done" counts every card in the phase, done subphases included
+        const phaseCards = phase.subphases.flatMap(s => s.cards);
+        activePhases.push({
+          ...phase,
+          subphases: activeSubphases,
+          doneCount: phaseCards.filter(c => c.status === 'Done').length,
+          totalCount: phaseCards.length,
+        });
       }
     }
 
@@ -857,47 +904,40 @@ const Board = ({ projectId }) => {
             <div className="flex items-center gap-2 flex-shrink-0">
               <button
                 onClick={() => setIsEditProjectOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-primary/15 text-link hover:bg-primary/15 border border-primary/60 transition-colors"
+                className={`${headerButton} bg-pal-lilac text-card-ink`}
                 title="Edit name, short name, description and file path"
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                </svg>
+                <Pencil className="w-3.5 h-3.5" />
                 Edit
               </button>
               <button
                 onClick={() => setIsAppendCardsDialogOpen(true)}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-progress/25 text-success-text hover:bg-progress/25 border border-success-text transition-colors"
+                className={`${headerButton} bg-pal-marigold text-card-ink`}
                 title="Append cards from JSON file"
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
+                <Plus className="w-3.5 h-3.5" />
                 Append Cards
               </button>
               <button
                 onClick={handleExportForClaude}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md bg-pal-lilac/30 text-ink hover:bg-pal-lilac/50 border border-line transition-colors"
+                className={`${headerButton} bg-pal-mint text-card-ink`}
                 title="Copy project context for Claude"
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
-                </svg>
+                <ClipboardCopy className="w-3.5 h-3.5" />
                 {exportCopied ? 'Copied!' : 'Export project JSON'}
               </button>
+              {/* A failed sync says so in words and swaps to a danger outline */}
               <button
                 onClick={handleSyncToVault}
                 disabled={vaultSyncStatus.phase === 'running'}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md border transition-colors disabled:opacity-60 disabled:cursor-wait ${
+                className={`${headerButton} disabled:opacity-60 disabled:cursor-wait ${
                   vaultSyncStatus.phase === 'error'
-                    ? 'bg-danger/10 text-danger-text border-danger-text hover:bg-danger/10'
-                    : 'bg-progress/25 text-success-text border-success-text hover:bg-progress/25'
+                    ? 'bg-panel text-danger-text !border-danger-text'
+                    : 'bg-primary text-on-primary'
                 }`}
                 title={vaultSyncStatus.message || 'Export all projects to Obsidian vault'}
               >
-                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
-                </svg>
+                <Upload className="w-3.5 h-3.5" />
                 {vaultSyncStatus.phase === 'running'
                   ? 'Syncing…'
                   : vaultSyncStatus.phase === 'done'
@@ -932,9 +972,7 @@ const Board = ({ projectId }) => {
                   className="flex items-center gap-1.5 text-muted hover:text-ink transition-colors"
                   title="Open in file explorer"
                 >
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                  </svg>
+                  <Folder className="w-4 h-4" />
                   <span>{project.directory_path}</span>
                 </button>
                 <button
@@ -950,15 +988,7 @@ const Board = ({ projectId }) => {
                   className={`transition-colors ${pathCopied ? 'text-success-text' : 'text-muted hover:text-ink'}`}
                   title={pathCopied ? 'Copied!' : 'Copy path to clipboard'}
                 >
-                  {pathCopied ? (
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  ) : (
-                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                    </svg>
-                  )}
+                  {pathCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                 </button>
               </>
             ) : (
@@ -966,9 +996,7 @@ const Board = ({ projectId }) => {
                 onClick={() => setIsEditProjectOpen(true)}
                 className="flex items-center gap-1.5 text-link hover:text-link transition-colors"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
-                </svg>
+                <Folder className="w-4 h-4" />
                 <span>Set project folder</span>
               </button>
             )}
@@ -978,54 +1006,49 @@ const Board = ({ projectId }) => {
         {/* Scrollable Board Content */}
         <div className="flex-1 overflow-auto scrollbar-themed">
           <div className="flex min-w-max">
-            {/* Left side: Row headers + Not Started + In Progress columns */}
+            {/* Left side: Not Started + In Progress, full width */}
             <div className="flex-1">
               {/* Column Headers */}
-              <div className="sticky top-0 z-10 bg-panel border-b border-divider">
-                <div className="flex">
-                  {/* Row header spacer */}
-                  <div className="w-48 flex-shrink-0 p-4 border-r border-divider">
-                    <span className="text-xs font-semibold text-muted uppercase">
-                      Subphase
-                    </span>
+              <div className="sticky top-0 z-10 h-12 flex bg-panel border-b border-divider">
+                {activeColumns.map((column, idx) => (
+                  <div
+                    key={idx}
+                    className="flex-1 min-w-[300px] px-4 flex items-center border-r border-divider"
+                  >
+                    <h3 className="text-sm font-bold text-ink">{column}</h3>
                   </div>
-
-                  {/* Active column headers (Not Started, In Progress) */}
-                  {activeColumns.map((column, idx) => (
-                    <div
-                      key={idx}
-                      className="flex-1 min-w-[300px] p-4 border-r border-divider"
-                    >
-                      <h3 className="text-sm font-bold text-ink">{column}</h3>
-                    </div>
-                  ))}
-                </div>
+                ))}
               </div>
 
               {/* Phase Sections - only render active phases (those with non-Done cards) */}
               {boardDisplayData.activePhases.length > 0 ? (
                 boardDisplayData.activePhases.map((phase) => (
-                  <div key={phase.id} className="border-b border-divider">
+                  <div key={phase.id} className="pb-3">
                     {/* Phase Header (Collapsible) */}
                     <div
-                      className="bg-panel sticky top-[57px] z-[9] cursor-pointer hover:bg-hover transition-colors"
+                      className="group bg-page sticky top-12 z-[9] cursor-pointer border-b border-divider"
                       onClick={() => togglePhase(phase.id)}
                     >
-                      <div className="flex items-center gap-3 p-4 border-b border-divider">
+                      <div className="flex items-center gap-3 px-4 py-3">
                         {/* Collapse/Expand Icon */}
-                        <span className="text-muted text-sm">
-                          {collapsedPhases[phase.id] ? '▶' : '▼'}
+                        <span className="text-muted group-hover:text-ink transition-colors">
+                          {collapsedPhases[phase.id]
+                            ? <ChevronRight className="w-5 h-5" />
+                            : <ChevronDown className="w-5 h-5" />}
                         </span>
 
-                        {/* Phase Name */}
-                        <h2 className="text-lg font-bold text-ink">
-                          {phase.short_name ? `${phase.short_name}: ` : ''}
-                          {phase.name}
+                        {/* Phase Name: "9 · Testing & Release" */}
+                        <h2 className="text-lg font-bold text-ink whitespace-nowrap">
+                          {phaseTitle(phase)}
                         </h2>
+
+                        <span className="text-sm text-muted whitespace-nowrap">
+                          {phase.doneCount} of {phase.totalCount} done
+                        </span>
 
                         {/* Phase Description */}
                         {phase.description && (
-                          <span className="text-sm text-muted ml-2">
+                          <span className="text-sm text-muted truncate" title={phase.description}>
                             — {phase.description}
                           </span>
                         )}
@@ -1041,102 +1064,77 @@ const Board = ({ projectId }) => {
                           const isAutoCollapsed = !subphaseStatus.hasActionable && subphaseStatus.blockedCount > 0;
                           const isManuallyExpanded = expandedSubphases[subphase.id];
                           const isCollapsed = isAutoCollapsed && !isManuallyExpanded;
+                          const subphaseName = subphase.name.replace(/^\d+\.\d+\s+/, '');
 
-                          // Render collapsed row
+                          // Collapsed row: one dashed row (never coloured - nothing to pick up)
                           if (isCollapsed) {
                             return (
-                              <div
-                                key={subphase.id}
-                                className="flex border-b border-divider hover:bg-panel/50 transition-colors cursor-pointer"
-                                onClick={() => toggleSubphaseExpanded(subphase.id)}
-                              >
-                                {/* Collapsed Row Header */}
-                                <div className="w-48 flex-shrink-0 p-3 border-r border-divider bg-panel/50">
-                                  <div className="flex items-center gap-2">
-                                    {/* Chevron */}
-                                    <span className="text-muted text-sm flex-shrink-0">▶</span>
-
-                                    {/* Subphase short name badge */}
-                                    <div className="flex-shrink-0 w-8 h-8 rounded bg-page/50 flex items-center justify-center font-bold text-xs text-muted border border-line">
-                                      {subphase.short_name || '—'}
-                                    </div>
-
-                                    {/* Subphase name */}
-                                    <div className="flex-1 min-w-0">
-                                      <div className="text-sm text-muted truncate" title={subphase.name}>
-                                        {subphase.name.replace(/^\d+\.\d+\s+/, '')}
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Collapsed content area spans all columns */}
-                                <div className="flex-1 p-3 flex items-center">
-                                  <div className="flex items-center gap-2 text-muted">
-                                    <Lock className="w-4 h-4" />
-                                    <span className="text-sm">
-                                      {subphaseStatus.blockedCount} blocked {subphaseStatus.blockedCount === 1 ? 'card' : 'cards'}
-                                    </span>
-                                    <span className="text-xs opacity-60">— click to expand</span>
-                                  </div>
-                                </div>
+                              <div key={subphase.id} className="px-3 pt-3">
+                                <button
+                                  type="button"
+                                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-[14px] border-[1.5px] border-dashed border-dash text-left hover:bg-hover transition-colors"
+                                  onClick={() => toggleSubphaseExpanded(subphase.id)}
+                                  aria-expanded="false"
+                                >
+                                  <ChevronRight className="w-4 h-4 text-muted flex-shrink-0" />
+                                  <SubphaseBadge subphase={subphase} />
+                                  <span className="text-sm font-semibold text-ink truncate" title={subphase.name}>
+                                    {subphaseName}
+                                  </span>
+                                  <Lock className="w-4 h-4 text-muted flex-shrink-0" />
+                                  <span className="text-sm text-muted whitespace-nowrap">
+                                    {subphaseStatus.blockedCount} blocked {subphaseStatus.blockedCount === 1 ? 'card' : 'cards'} — click to expand
+                                  </span>
+                                </button>
                               </div>
                             );
                           }
 
-                          // Render expanded row (normal or manually expanded)
+                          // Expanded row (normal or manually expanded): tab, then the cells
                           return (
-                          <div key={subphase.id} className="flex border-b border-divider hover:bg-panel/30 transition-colors">
-                            {/* Row Header */}
-                            <div className="w-48 flex-shrink-0 p-4 border-r border-divider bg-panel">
-                              <div className="flex items-center gap-2">
-                                {/* Collapse chevron for manually expanded rows */}
-                                {isAutoCollapsed && isManuallyExpanded && (
-                                  <span
-                                    className="text-muted text-sm flex-shrink-0 cursor-pointer hover:text-ink"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      toggleSubphaseExpanded(subphase.id);
-                                    }}
-                                    title="Collapse row"
-                                  >
-                                    ▼
-                                  </span>
-                                )}
-
-                                {/* Subphase short name badge */}
-                                <div className="flex-shrink-0 w-10 h-10 rounded bg-page flex items-center justify-center font-bold text-sm text-ink border border-line">
-                                  {subphase.short_name || '—'}
-                                </div>
-
-                                {/* Subphase name */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-semibold text-ink truncate" title={subphase.name}>
-                                    {subphase.name.replace(/^\d+\.\d+\s+/, '')}
-                                  </div>
-                                  {subphase.description && (
-                                    <div className="text-xs text-muted truncate mt-1" title={subphase.description}>
-                                      {subphase.description}
-                                    </div>
-                                  )}
-                                </div>
-
-                                {/* Add Card Button */}
+                          <div key={subphase.id} className="pt-3">
+                            {/* Subphase tab: badge, name, then a faint rule to the right */}
+                            <div className="flex items-center gap-2 px-4">
+                              {/* Collapse chevron for manually expanded rows */}
+                              {isAutoCollapsed && isManuallyExpanded && (
                                 <button
+                                  type="button"
+                                  className="text-muted hover:text-ink flex-shrink-0"
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    handleOpenAddCard(subphase.id);
+                                    toggleSubphaseExpanded(subphase.id);
                                   }}
-                                  className="flex-shrink-0 w-7 h-7 rounded bg-page border border-line hover:border-primary hover:bg-primary/15 flex items-center justify-center text-muted hover:text-link transition-colors"
-                                  title="Add card to this subphase"
+                                  title="Collapse row"
+                                  aria-label="Collapse row"
+                                  aria-expanded="true"
                                 >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                                  </svg>
+                                  <ChevronDown className="w-4 h-4" />
                                 </button>
-                              </div>
+                              )}
+                              <SubphaseBadge subphase={subphase} />
+                              <span
+                                className="text-sm font-semibold text-ink whitespace-nowrap"
+                                title={subphase.description ? `${subphase.name} — ${subphase.description}` : subphase.name}
+                              >
+                                {subphaseName}
+                              </span>
+                              <span className="flex-1 h-px bg-divider ml-1" aria-hidden="true" />
+
+                              {/* Add Card Button */}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleOpenAddCard(subphase.id);
+                                }}
+                                className="flex-shrink-0 w-7 h-7 rounded-full border-[1.5px] border-line flex items-center justify-center text-muted hover:text-ink hover:bg-hover transition-colors"
+                                title="Add card to this subphase"
+                                aria-label={`Add card to ${subphaseName}`}
+                              >
+                                <Plus className="w-4 h-4" />
+                              </button>
                             </div>
 
+                            <div className="flex">
                             {/* Cells for active columns only (Not Started, In Progress) */}
                             {activeColumns.map((column, colIdx) => {
                               const cards = getCardsForCell(subphase.id, column);
@@ -1173,27 +1171,20 @@ const Board = ({ projectId }) => {
                                     isEmpty={!hasContent}
                                   >
                                     {hasContent ? (
-                                      <div className="space-y-4">
+                                      <div className="flex flex-col gap-4">
                                         {/* Render dependency stacks */}
-                                        {stacksForCell.map((stack) => {
-                                          // Mark each card with its blocked status
-                                          const cardsWithBlockedStatus = stack.map(card => ({
-                                            ...card,
-                                            isBlocked: isCardBlocked(card)
-                                          }));
-                                          return (
-                                            <CardStack
-                                              key={stack[0].id}
-                                              cards={cardsWithBlockedStatus}
-                                              onCardClick={handleCardClick}
-                                              onUnlockCard={handleUnlockCard}
-                                              onUnlockTopCard={handleUnlockClick}
-                                            />
-                                          );
-                                        })}
+                                        {stacksForCell.map((stack) => (
+                                          <CardStack
+                                            key={stack[0].id}
+                                            cards={stack.map(card => withBlockedState(card, subphase.id))}
+                                            onCardClick={handleCardClick}
+                                            onUnlockCard={handleUnlockCard}
+                                            onUnlockTopCard={handleUnlockClick}
+                                          />
+                                        ))}
                                         {/* Render standalone cards */}
                                         {standaloneCards.map((card) => {
-                                          const cardWithBlocked = { ...card, isBlocked: isCardBlocked(card) };
+                                          const cardWithBlocked = withBlockedState(card, subphase.id);
                                           return (
                                             <Card
                                               key={card.id}
@@ -1201,16 +1192,17 @@ const Board = ({ projectId }) => {
                                               isDragging={activeCard?.id === card.id}
                                               onClick={handleCardClick}
                                               onUnlock={cardWithBlocked.isBlocked ? handleUnlockClick : undefined}
+                                              tilt
                                             />
                                           );
                                         })}
                                       </div>
                                     ) : allBlocked ? (
-                                      <div className="h-20 flex items-center justify-center border-2 border-dashed border-line rounded-lg opacity-50">
+                                      <div className="h-16 flex items-center justify-center border-[1.5px] border-dashed border-dash rounded-[14px]">
                                         <span className="text-xs text-muted">All cards blocked</span>
                                       </div>
                                     ) : (
-                                      <div className="h-20 flex items-center justify-center border-2 border-dashed border-line rounded-lg">
+                                      <div className="h-16 flex items-center justify-center border-[1.5px] border-divider rounded-[14px]">
                                         <span className="text-xs text-muted">No cards</span>
                                       </div>
                                     )}
@@ -1228,24 +1220,26 @@ const Board = ({ projectId }) => {
                                   isEmpty={cards.length === 0}
                                 >
                                   {cards.length > 0 ? (
-                                    <div className="space-y-2">
+                                    <div className="flex flex-col gap-3">
                                       {cards.map((card) => (
                                         <Card
                                           key={card.id}
                                           card={{ ...card, isBlocked: false }}
                                           isDragging={activeCard?.id === card.id}
                                           onClick={handleCardClick}
+                                          tilt
                                         />
                                       ))}
                                     </div>
                                   ) : (
-                                    <div className="h-20 flex items-center justify-center border-2 border-dashed border-line rounded-lg">
+                                    <div className="h-16 flex items-center justify-center border-[1.5px] border-divider rounded-[14px]">
                                       <span className="text-xs text-muted">No cards</span>
                                     </div>
                                   )}
                                 </DroppableCell>
                               );
                             })}
+                            </div>
                           </div>
                           );
                         })}
@@ -1271,7 +1265,7 @@ const Board = ({ projectId }) => {
                   <div className="mt-4">
                     <button
                       onClick={() => handleOpenAddCard(null)}
-                      className="px-4 py-2 rounded-lg bg-primary hover:bg-primary text-cream text-sm font-medium transition-colors"
+                      className="px-4 py-2 rounded-lg bg-primary text-on-primary border-[1.5px] border-card-line shadow-card hover:brightness-110 text-sm font-medium transition"
                     >
                       + Add Card
                     </button>
@@ -1283,7 +1277,7 @@ const Board = ({ projectId }) => {
             {/* Right side: Done column - single aggregated cell */}
             <div className="w-[300px] flex-shrink-0 border-l border-divider">
               {/* Done column header */}
-              <div className="sticky top-0 z-10 bg-panel border-b border-divider p-4">
+              <div className="sticky top-0 z-10 h-12 px-4 flex items-center bg-panel border-b border-divider">
                 <h3 className="text-sm font-bold text-ink">Done</h3>
               </div>
 

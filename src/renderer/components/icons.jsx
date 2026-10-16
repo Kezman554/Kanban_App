@@ -22,6 +22,15 @@ import {
   Sun as SunBase,
   Moon as MoonBase,
   GripVertical as GripVerticalBase,
+  Layers as LayersBase,
+  Folder as FolderBase,
+  Copy as CopyBase,
+  Maximize2 as Maximize2Base,
+  ChevronDown as ChevronDownBase,
+  ChevronRight as ChevronRightBase,
+  ClipboardCopy as ClipboardCopyBase,
+  Plus as PlusBase,
+  Pencil as PencilBase,
 } from 'lucide-react';
 
 const decorative = (Base, name) => {
@@ -50,6 +59,15 @@ export const Monitor = decorative(MonitorBase, 'Monitor');
 export const Sun = decorative(SunBase, 'Sun');
 export const Moon = decorative(MoonBase, 'Moon');
 export const GripVertical = decorative(GripVerticalBase, 'GripVertical');
+export const Layers = decorative(LayersBase, 'Layers');
+export const Folder = decorative(FolderBase, 'Folder');
+export const Copy = decorative(CopyBase, 'Copy');
+export const Maximize2 = decorative(Maximize2Base, 'Maximize2');
+export const ChevronDown = decorative(ChevronDownBase, 'ChevronDown');
+export const ChevronRight = decorative(ChevronRightBase, 'ChevronRight');
+export const ClipboardCopy = decorative(ClipboardCopyBase, 'ClipboardCopy');
+export const Plus = decorative(PlusBase, 'Plus');
+export const Pencil = decorative(PencilBase, 'Pencil');
 
 // Resource type -> icon, shared by every place that shows a card's resource
 export const RESOURCE_ICONS = {

@@ -1,20 +1,71 @@
 import React, { useState } from 'react';
 import Card from './Card';
 import StackExpandModal from './StackExpandModal';
+import { Maximize2 } from './icons';
+import { paletteFor } from '../utils/palette';
 
-const EDGE_PEEK = 8; // pixels of edge visible for each stacked card
-const MAX_VISIBLE_EDGES = 5; // max stacked card edges to show
+// Cards under the top card fan out behind it, nearest first: x, y (px), rotation (deg)
+export const FAN_OFFSETS = [
+  { x: 7, y: 9, r: 2.6 },
+  { x: -6, y: 17, r: -2.2 },
+  { x: 9, y: 25, r: 3.4 },
+  { x: -4, y: 32, r: -1.6 },
+];
+
+// Full-size blank sheets behind a top card. Coloured in each card's own
+// palette colour, or blank dashed sheets when the top card is blocked.
+export const FanSheets = ({ cards, offsets, blank }) => (
+  <>
+    {cards.map((card, index) => {
+      const o = offsets[index];
+      return (
+        <div
+          key={card.id}
+          aria-hidden="true"
+          className={`absolute inset-0 rounded-[14px] border-[1.5px] ${
+            blank ? 'bg-blocked border-dashed border-dash' : 'border-card-line shadow-card'
+          }`}
+          style={{
+            transform: `translate(${o.x}px, ${o.y}px) rotate(${o.r}deg)`,
+            zIndex: offsets.length - index,
+            ...(blank ? {} : { backgroundColor: paletteFor(card.id).fill }),
+          }}
+        />
+      );
+    })}
+  </>
+);
+
+// Teal expand button (top right) and count pill (bottom right of the fan)
+export const StackControls = ({ count, depth, onExpand, expandTitle, countTitle }) => (
+  <>
+    <button
+      onClick={onExpand}
+      className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-primary text-on-primary border-[1.5px] border-card-line flex items-center justify-center shadow-card hover:brightness-110 transition z-20"
+      title={expandTitle}
+      aria-label={expandTitle}
+    >
+      <Maximize2 className="w-3.5 h-3.5" />
+    </button>
+    <div
+      className="absolute -right-2 px-2 py-0.5 rounded-full bg-primary text-on-primary border-[1.5px] border-card-line text-xs font-bold shadow-card z-20"
+      style={{ bottom: -depth - 6 }}
+      title={countTitle}
+    >
+      {count}
+    </div>
+  </>
+);
 
 const CardStack = ({ cards, onCardClick, onUnlockCard, onUnlockTopCard }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   if (!cards || cards.length === 0) return null;
 
-  // cards[0] is the actionable (top) card
-  // cards[1...n] are blocked cards showing only their edges underneath
+  // cards[0] is the top card; up to four of the rest fan out behind it
   const hasStack = cards.length > 1;
-  const visibleEdges = Math.min(cards.length - 1, MAX_VISIBLE_EDGES);
-  const totalStackHeight = visibleEdges * EDGE_PEEK;
+  const behind = cards.slice(1, FAN_OFFSETS.length + 1);
+  const depth = behind.length ? FAN_OFFSETS[behind.length - 1].y : 0;
 
   const handleExpandClick = (e) => {
     e.stopPropagation();
@@ -23,54 +74,27 @@ const CardStack = ({ cards, onCardClick, onUnlockCard, onUnlockTopCard }) => {
 
   return (
     <>
-      <div className="relative" style={{ marginBottom: hasStack ? totalStackHeight : 0 }}>
-        {/* Stacked card edges (only showing border rims, overlapping bottom of top card) */}
-        {hasStack && cards.slice(1, MAX_VISIBLE_EDGES + 1).map((card, index) => (
-          <div
-            key={card.id}
-            className="absolute left-0 right-0 h-2 bg-panel border border-line rounded-b-lg"
-            style={{
-              bottom: -((index + 1) * EDGE_PEEK),
-              zIndex: MAX_VISIBLE_EDGES - index,
-            }}
-          />
-        ))}
+      <div className="relative" style={{ marginBottom: depth + (hasStack ? 10 : 0) }}>
+        {hasStack && <FanSheets cards={behind} offsets={FAN_OFFSETS} blank={cards[0].isBlocked} />}
 
-        {/* Top card (fully visible) */}
-        <div className="relative" style={{ zIndex: MAX_VISIBLE_EDGES + 1 }}>
+        {/* Top card (fully visible, never tilted) */}
+        <div className="relative" style={{ zIndex: FAN_OFFSETS.length + 1 }}>
           <Card
             card={cards[0]}
             onClick={onCardClick}
             isStacked={false}
             onUnlock={cards[0].isBlocked && (onUnlockTopCard || onUnlockCard) ? (onUnlockTopCard || onUnlockCard) : undefined}
           />
-
-          {/* Expand button - only shown when there's a stack */}
-          {hasStack && (
-            <button
-              onClick={handleExpandClick}
-              className="absolute top-2 right-2 w-6 h-6 rounded bg-primary hover:bg-primary text-cream text-xs font-bold flex items-center justify-center shadow-card transition-colors z-10"
-              title={`View all ${cards.length} cards in stack`}
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                <path d="M3 4a1 1 0 011-1h12a1 1 0 011 1v2a1 1 0 01-1 1H4a1 1 0 01-1-1V4zM3 10a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H4a1 1 0 01-1-1v-6zM14 9a1 1 0 00-1 1v6a1 1 0 001 1h2a1 1 0 001-1v-6a1 1 0 00-1-1h-2z" />
-              </svg>
-            </button>
-          )}
         </div>
 
-        {/* Stack count badge - positioned at bottom of stacked edges */}
         {hasStack && (
-          <div
-            className="absolute right-2 px-2 py-0.5 rounded-full bg-primary text-cream text-xs font-bold shadow-card"
-            style={{
-              bottom: -(totalStackHeight + 4),
-              zIndex: MAX_VISIBLE_EDGES + 2
-            }}
-            title={`${cards.length} cards in this dependency chain`}
-          >
-            {cards.length}
-          </div>
+          <StackControls
+            count={cards.length}
+            depth={depth}
+            onExpand={handleExpandClick}
+            expandTitle={`View all ${cards.length} cards in stack`}
+            countTitle={`${cards.length} cards in this dependency chain`}
+          />
         )}
       </div>
 
