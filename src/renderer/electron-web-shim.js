@@ -17,6 +17,8 @@
  * feature-gap report for the full list.
  */
 
+import { APP_VERSION } from './utils/buildInfo';
+
 // Guard: under Electron, preload already defined window.electron — do nothing.
 if (typeof window !== 'undefined' && !window.electron) {
   // Same-origin by default (the API serves this bundle). Overridable for local
@@ -204,7 +206,7 @@ if (typeof window !== 'undefined' && !window.electron) {
     exportProjectToJson: () => Promise.resolve(null),
     getAppInfo: () =>
       Promise.resolve({
-        version: '1.0.0',
+        version: APP_VERSION,
         electron: null,
         node: null,
         platform: 'web',

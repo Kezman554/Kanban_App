@@ -390,7 +390,7 @@ ipcMain.handle('file:writeJson', async (event, filePath, data) => {
 // Get app info
 ipcMain.handle('app:getInfo', async () => {
   const packageJsonPath = path.join(projectRoot, 'package.json')
-  let version = '1.0.0'
+  let version = 'unknown'
 
   try {
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, 'utf-8'))

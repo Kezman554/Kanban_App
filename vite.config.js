@@ -4,6 +4,7 @@ import electron from 'vite-plugin-electron'
 import renderer from 'vite-plugin-electron-renderer'
 import { resolve, dirname } from 'path'
 import { fileURLToPath } from 'url'
+import { buildDefines } from './src/buildInfo.mjs'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
@@ -11,6 +12,8 @@ export default defineConfig({
   root: 'src/renderer',
   // Favicon files (public/favicon.svg is the single source; npm run icons)
   publicDir: resolve(__dirname, 'public'),
+  // Version from package.json and the short commit, for the sidebar and Settings
+  define: buildDefines(__dirname),
   plugins: [
     react(),
     electron([

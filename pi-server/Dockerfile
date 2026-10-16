@@ -15,6 +15,11 @@ WORKDIR /build
 COPY pi-server/web-build.package.json ./package.json
 COPY pi-server/web-build.package-lock.json ./package-lock.json
 RUN npm ci --no-audit --no-fund
+# The real package.json carries the app version the build injects; the lean
+# one above was only for npm ci
+COPY package.json ./package.json
+# Just HEAD and the refs (see .dockerignore), so the build can name its commit
+COPY .git ./.git
 COPY src ./src
 COPY vite.web.config.js postcss.config.js ./
 COPY public ./public

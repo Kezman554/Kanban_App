@@ -1786,3 +1786,30 @@ copies public/), smoke test OK (359 cards, API == DB). The live page has
 the three icon links. favicon.svg (image/svg+xml), favicon-32.png and
 apple-touch-icon.png are served 200; app-icon.png is not on the web (404),
 as intended.
+
+Stacking fix and build label (2026-10-16)
+33. Layering while scrolling: a stack's expand button and count pill
+   (z-20 inside a non-isolated wrapper) painted over the sticky column
+   bar (z-10) and phase heading bar (z-[9]). CardStack and CompletedStack
+   wrappers now use `isolate`, so the fan, pill and button layer only
+   inside their own stack. Sticky headers are unchanged and sit above all
+   board content. Checked by scrolling the board in 4px steps and
+   hit-testing each pill and button wherever it overlaps a header: 0 of
+   202 points show the control on top (87 of 202 with isolation switched
+   off). Same in light and dark. A real mouse drag of a stack's top card
+   into the header band: dnd-kit's preview (z 999) is the topmost element
+   over the header, and releasing at the start changed nothing. Tilted
+   standalone cards were already beneath the headers (no z-index).
+34. Version 2.0.0 (package.json). The sidebar reads "Kanban Manager
+   v2.0.0 · <commit>"; Settings > About shows Version and a new Build
+   row. Both come from __APP_VERSION__ / __APP_COMMIT__, injected by both
+   Vite configs via src/buildInfo.mjs. The version is read from
+   package.json; the commit comes from `git rev-parse --short=7 HEAD` when
+   git exists, else straight from .git/HEAD and the refs. The Pi image
+   has no git and its context excluded .git, so .dockerignore now lets
+   through only .git/HEAD, .git/refs/heads and .git/packed-refs. The
+   Dockerfile copies those and the real package.json (after npm ci with
+   the lean one). The web shim's hard-coded '1.0.0' is gone too. Tested
+   the file fallback on a 2 KB copy of those files: 2.0.0 / 9599859.
+   The Pi label names the commit the image was built from. The deploy-log
+   commit pulled afterwards (no rebuild) does not change it.

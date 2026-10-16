@@ -7,6 +7,7 @@ import CardTestPage from './pages/CardTestPage';
 import ImportDialog from './components/ImportDialog';
 import { ClipboardList, LayoutGrid, MapIcon, FlaskConical, SettingsIcon, ChevronsLeft, ChevronsRight } from './components/icons';
 import { paletteFor } from './utils/palette';
+import { BUILD_LABEL } from './utils/buildInfo';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('current-project');
@@ -172,7 +173,7 @@ function App() {
         {!sidebarCollapsed && (
           <div className="p-4 border-t border-divider">
             <p className="text-xs text-muted">
-              Kanban Manager v1.0.0
+              Kanban Manager {BUILD_LABEL}
             </p>
           </div>
         )}

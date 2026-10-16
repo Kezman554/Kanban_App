@@ -74,7 +74,8 @@ const CardStack = ({ cards, onCardClick, onUnlockCard, onUnlockTopCard }) => {
 
   return (
     <>
-      <div className="relative" style={{ marginBottom: depth + (hasStack ? 10 : 0) }}>
+      {/* isolate: the fan, pill and button layer only within this stack */}
+      <div className="relative isolate" style={{ marginBottom: depth + (hasStack ? 10 : 0) }}>
         {hasStack && <FanSheets cards={behind} offsets={FAN_OFFSETS} blank={cards[0].isBlocked} />}
 
         {/* Top card (fully visible, never tilted) */}

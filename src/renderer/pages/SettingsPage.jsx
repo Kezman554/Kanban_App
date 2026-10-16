@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { copyText } from '../utils/clipboard.js';
 import { getThemeChoice, setThemeChoice } from '../utils/theme.js';
+import { APP_VERSION, APP_COMMIT } from '../utils/buildInfo.js';
 import { Monitor, Sun, Moon, Trash2, Upload, Check, Copy, Pencil } from '../components/icons.jsx';
 
 // A stored, editable path with a copy button - the app's own repo has no
@@ -470,7 +471,11 @@ function SettingsPage({ onProjectsChange }) {
             </div>
             <div className="flex justify-between py-2 border-b border-divider">
               <span className="text-muted">Version</span>
-              <span className="text-ink">{appInfo?.version || '1.0.0'}</span>
+              <span className="text-ink">{APP_VERSION}</span>
+            </div>
+            <div className="flex justify-between py-2 border-b border-divider">
+              <span className="text-muted">Build</span>
+              <span className="text-ink">{APP_COMMIT}</span>
             </div>
             <div className="flex justify-between py-2 border-b border-divider">
               <span className="text-muted">Electron</span>

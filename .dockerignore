@@ -12,6 +12,10 @@ data
 *.db
 *.sqlite
 .git
+# ...except what the web build needs to name its commit (src/buildInfo.mjs)
+!.git/HEAD
+!.git/refs/heads
+!.git/packed-refs
 .env
 .env.*
 .vscode
