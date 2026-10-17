@@ -2,8 +2,7 @@ import React, { useState } from 'react';
 import { X } from './icons';
 import Card from './Card';
 
-// cardProps are passed to every Card (e.g. colourDone for the Done pile,
-// fillLetter for a dependency stack)
+// cardProps are passed to every Card (e.g. colourDone for the Done pile)
 const StackExpandModal = ({ cards, isOpen, onClose, onCardClick, title, onUnlockCard, cardProps = {} }) => {
   const [confirmUnlock, setConfirmUnlock] = useState(null);
   const [unlockError, setUnlockError] = useState(null);

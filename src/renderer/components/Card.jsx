@@ -1,7 +1,7 @@
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { Lock, Check, GripVertical, LinkIcon, ResourceIcon } from './icons';
-import { paletteFor, tiltFor } from '../utils/palette';
+import { paletteFor, washFor, tiltFor } from '../utils/palette';
 
 const resourceLabels = {
   claude_sub: 'Claude Subscription',
@@ -46,10 +46,8 @@ export const EmptyCardSlot = ({ children, dashed = false }) => (
   </div>
 );
 
-// colourDone: a done card keeps its palette colour (the Done pile's expanded view).
-// fillLetter: a blocked card's letter circle takes its deep shade (the expanded
-// Not Started stack); the card itself stays uncoloured.
-const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, tilt = false, colourDone = false, fillLetter = false }) => {
+// colourDone: a done card keeps its palette colour (the Done pile and its expanded view)
+const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, tilt = false, colourDone = false }) => {
   // Disable drag for stacked cards OR blocked cards (even if at top of stack)
   const isDragDisabled = isStacked || card.isBlocked;
 
@@ -78,19 +76,21 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
   // Drawn on the panel colour: a done card, unless the view asks for its colour
   const onPanel = isDone && !colourDone;
 
-  // Blocked: never coloured. Dashed outline, blocked fill, lock, letter, title, "waits on X"
+  // Blocked (waiting): a pale wash of its own colour, wherever it is drawn, with
+  // the dashed outline, lock, washed letter, title and "waits on X" in ink
   if (isBlocked) {
+    const wash = washFor(card.id);
     return (
       <div
         ref={setNodeRef}
-        style={style}
-        className={`${CARD_MIN_H} bg-blocked border-[1.5px] border-dashed border-dash rounded-[14px] p-3 text-ink
+        style={{ ...style, backgroundColor: wash.fill }}
+        className={`${CARD_MIN_H} border-[1.5px] border-dashed border-dash rounded-[14px] p-3 text-ink
           ${isStacked ? 'cursor-default' : 'cursor-pointer'} ${isDragging ? 'opacity-50' : ''}`}
         onClick={handleClick}
       >
         <div className="flex items-center gap-2">
           <div
-            className={`drag-handle flex-shrink-0 p-1 text-muted ${onUnlock ? 'cursor-pointer hover:text-ink' : ''}`}
+            className={`drag-handle flex-shrink-0 p-1 text-ink ${onUnlock ? 'cursor-pointer hover:opacity-70' : ''}`}
             onClick={onUnlock ? (e) => {
               e.stopPropagation();
               onUnlock(card);
@@ -102,10 +102,8 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
             <Lock className="w-4 h-4" />
           </div>
           <div
-            className={`flex-shrink-0 w-[34px] h-[34px] rounded-full flex items-center justify-center font-bold text-sm ${
-              fillLetter ? 'text-cream' : 'border-[1.5px] border-dashed border-dash'
-            }`}
-            style={fillLetter ? { backgroundColor: paletteFor(card.id).deep } : undefined}
+            className="flex-shrink-0 w-[34px] h-[34px] rounded-full flex items-center justify-center font-bold text-sm text-ink"
+            style={{ backgroundColor: wash.deep }}
           >
             {card.session_letter}
           </div>
@@ -117,7 +115,7 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
         {/* "waits on X" sits in the chip row, so blocked cards match the others' height */}
         <div className="flex items-center gap-1.5 mt-auto pt-2 pl-[74px] min-w-0">
           {card.waitsOn ? (
-            <p className="text-xs text-muted truncate leading-[22px]" title={card.blockedReason || card.waitsOn}>
+            <p className="text-xs text-ink truncate leading-[22px]" title={card.blockedReason || card.waitsOn}>
               {card.waitsOn}
             </p>
           ) : <ChipPlaceholder />}

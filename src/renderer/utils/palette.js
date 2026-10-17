@@ -20,6 +20,18 @@ export function paletteFor(id) {
   return PALETTE[i];
 }
 
+// A waiting (blocked) card's pale wash of its own colour: the fill and the deep
+// shade mixed into the page colour, so it follows the theme. At these amounts
+// ink text passes 4.5:1 on every palette colour in both modes (worst: title on
+// marigold in dark 4.70, letter on lilac in light 4.91).
+export function washFor(id) {
+  const { fill, deep } = paletteFor(id);
+  return {
+    fill: `color-mix(in srgb, ${fill} 38%, var(--color-page))`,
+    deep: `color-mix(in srgb, ${deep} 50%, var(--color-page))`,
+  };
+}
+
 // A small, stable tilt in degrees (under 1) for standalone cards
 export function tiltFor(id) {
   const n = Number.parseInt(id, 10) || 0;

@@ -43,7 +43,7 @@ const CompletedStack = ({ cards, onCardClick, pileStyle }) => {
       <div style={pileStyle}>
         {/* isolate: the fan, pill and button layer only within this pile */}
         <div className="relative isolate" style={{ marginBottom: depth + (hasStack ? 10 : 0) }}>
-          {hasStack && <FanSheets cards={behind} offsets={DONE_FAN} blank={false} />}
+          {hasStack && <FanSheets cards={behind.map(c => ({ ...c, isBlocked: false }))} offsets={DONE_FAN} />}
 
           {/* Top card (latest done, in its palette colour with the green tick) */}
           <div className="relative" style={{ zIndex: DONE_FAN.length + 1 }}>

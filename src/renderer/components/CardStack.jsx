@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Card from './Card';
 import StackExpandModal from './StackExpandModal';
 import { Maximize2 } from './icons';
-import { paletteFor } from '../utils/palette';
+import { paletteFor, washFor } from '../utils/palette';
 
 // Cards under the top card fan out behind it, nearest first: x, y (px), rotation (deg)
 export const FAN_OFFSETS = [
@@ -12,23 +12,25 @@ export const FAN_OFFSETS = [
   { x: -4, y: 32, r: -1.6 },
 ];
 
-// Full-size blank sheets behind a top card. Coloured in each card's own
-// palette colour, or blank dashed sheets when the top card is blocked.
-export const FanSheets = ({ cards, offsets, blank }) => (
+// Full-size blank sheets behind a top card. Each is drawn from its own card's
+// state, never the top card's: full colour when ready, the dashed pale wash
+// when waiting.
+export const FanSheets = ({ cards, offsets }) => (
   <>
     {cards.map((card, index) => {
       const o = offsets[index];
+      const waiting = card.isBlocked === true;
       return (
         <div
           key={card.id}
           aria-hidden="true"
           className={`absolute inset-0 rounded-[14px] border-[1.5px] ${
-            blank ? 'bg-blocked border-dashed border-dash' : 'border-card-line shadow-card'
+            waiting ? 'border-dashed border-dash' : 'border-card-line shadow-card'
           }`}
           style={{
             transform: `translate(${o.x}px, ${o.y}px) rotate(${o.r}deg)`,
             zIndex: offsets.length - index,
-            ...(blank ? {} : { backgroundColor: paletteFor(card.id).fill }),
+            backgroundColor: waiting ? washFor(card.id).fill : paletteFor(card.id).fill,
           }}
         />
       );
@@ -76,7 +78,7 @@ const CardStack = ({ cards, onCardClick, onUnlockCard, onUnlockTopCard }) => {
     <>
       {/* isolate: the fan, pill and button layer only within this stack */}
       <div className="relative isolate" style={{ marginBottom: depth + (hasStack ? 10 : 0) }}>
-        {hasStack && <FanSheets cards={behind} offsets={FAN_OFFSETS} blank={cards[0].isBlocked} />}
+        {hasStack && <FanSheets cards={behind} offsets={FAN_OFFSETS} />}
 
         {/* Top card (fully visible, never tilted) */}
         <div className="relative" style={{ zIndex: FAN_OFFSETS.length + 1 }}>
@@ -107,7 +109,6 @@ const CardStack = ({ cards, onCardClick, onUnlockCard, onUnlockTopCard }) => {
         onCardClick={onCardClick}
         onUnlockCard={onUnlockCard}
         title={`${cards.length} Cards in Stack`}
-        cardProps={{ fillLetter: true }}
       />
     </>
   );

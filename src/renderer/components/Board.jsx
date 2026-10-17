@@ -55,26 +55,25 @@ const DroppableCell = ({ id, children, isOver, canDrop, isEmpty, className = '' 
   );
 };
 
-// Column title fills, keyed by column name. Deep, solid colours with cream
-// text so the titles read as labels, never as (pastel) cards.
+// Column title fills, keyed by column name: pastel, the same in both modes
 const COLUMN_TONES = {
-  'Not Started': 'bg-pal-lilac-deep',
-  'In Progress': 'bg-primary',
-  'Done': 'bg-done',
+  'Not Started': 'bg-pal-marigold',
+  'In Progress': 'bg-pal-sky',
+  'Done': 'bg-pal-mint',
 };
 
-// Column title: a deep-coloured pill (cards are pastel, 14px corners, with an
-// offset shadow) with the card count in a cream badge
+// Column title: a folder tab resting on the header rule. Outlined on the top
+// and sides only, bottom-aligned in the header row and over its 1px rule
+// (relative z-[1], so it paints above the rule's pseudo-element), so the rule runs
+// into the tab. The count follows in a lighter weight.
 const ColumnLabel = ({ name, count }) => (
   <h3
-    className={`inline-flex items-center gap-[10px] pl-[21px] pr-2 py-[5px] rounded-full text-[15.6px] leading-[21px] font-bold uppercase tracking-wider text-cream ${
-      COLUMN_TONES[name] || 'bg-pal-lilac-deep'
+    className={`relative z-[1] inline-flex items-baseline gap-2 px-5 pt-[7px] pb-2 rounded-t-[10px] border-[1.5px] border-b-0 border-card-line text-[15px] leading-[21px] font-semibold text-card-ink ${
+      COLUMN_TONES[name] || 'bg-pal-marigold'
     }`}
   >
     {name}
-    <span className="min-w-[31px] px-2 py-[3px] rounded-full bg-cream text-card-ink text-center tracking-normal">
-      {count}
-    </span>
+    <span className="font-normal">{count}</span>
   </h3>
 );
 
@@ -1058,7 +1057,7 @@ const Board = ({ projectId }) => {
               {/* Column Headers */}
               <div className={`sticky top-0 z-10 h-12 flex bg-page ${INSET_RULE} after:left-6 after:right-0`}>
                 {activeColumns.map((column, idx) => (
-                  <div key={idx} className="flex-1 min-w-[280px] px-4 flex items-center justify-center">
+                  <div key={idx} className="flex-1 min-w-[280px] px-4 flex items-end justify-center">
                     <ColumnLabel name={column} count={boardDisplayData.statusCounts[column] || 0} />
                   </div>
                 ))}
@@ -1315,7 +1314,7 @@ const Board = ({ projectId }) => {
             {/* Right side: Done column - single aggregated cell */}
             <div className="w-[450px] flex-shrink-0 flex flex-col">
               {/* Done column header */}
-              <div className={`sticky top-0 z-10 h-12 px-4 flex items-center justify-center bg-page ${INSET_RULE} after:left-0 after:right-6`}>
+              <div className={`sticky top-0 z-10 h-12 px-4 flex items-end justify-center bg-page ${INSET_RULE} after:left-0 after:right-6`}>
                 <ColumnLabel name="Done" count={boardDisplayData.completedCards.length} />
               </div>
 
