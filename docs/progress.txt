@@ -2053,9 +2053,30 @@ all 13 live projects found 12 washed cards, min text contrast 4.72
 
 Known gaps / followups
 ----------------------
-- In light mode the cool colours wash towards grey on the cream page:
-  periwinkle at 38% is nearly neutral (about #D7D8D9), sky and lilac less
-  so. Mixing into the page was the spec; mixing into a neutral cream
-  instead would keep the hue, if wanted.
-- The card view's blocked header band (CardDetail) stays bg-blocked; it
-  was not listed in or out of scope.
+- RESOLVED (item 7, 0546546): in light mode the cool colours washed
+  towards grey on the yellow page; the wash now mixes into cream there.
+- RESOLVED (item 8, 0546546): the card view's blocked header band is
+  washed like the card on the board.
+
+Wash base and card view band (2026-10-17)
+7. Waiting cards mix into a new per-mode token, --wash-base: cream
+   (#FFFDF0) in light, the page in dark (unchanged). Percentages kept at
+   38% fill / 50% deep: contrast only rose in light (min title 9.07 ->
+   9.92, letter 4.89 -> 5.37 rendered; 5.41 computed across all 12).
+   Before -> after, light, rendered on the board:
+     periwinkle (GymSync I)  #D8D8D9 -> #DEE1F1
+     sky        (DocuSync I) #D3DED8 -> #D9E7F0
+     lilac      (LOTR E)     #E3D8D9 -> #E9E1F1
+     coral      (LOTR O)     #F4D1B0 -> #FBDAC8
+   "Before" was rendered by forcing --wash-base to the page on the same
+   boards, with every blocked row expanded.
+8. Card view (CardDetail): a blocked card's header band is washFor().fill
+   with the dashed lower edge, and its 50px letter circle washFor().deep
+   with ink text, so it matches the card on the board. GymSync I: band
+   #DEE1F1 light / #5A5C70 dark, same as its board card; title and chips
+   10.03 / 5.46, letter 5.50 / 8.82. CLAUDE.md rule updated.
+
+Deployed to the Pi (0546546): pulled, kanban-api rebuilt, smoke test OK
+(386 cards, API == DB). Live CSS has --wash-base cream / page; on the live
+board GymSync I is #DEE1F1 (light) / #5A5C70 (dark) on the board and in
+its card view.
