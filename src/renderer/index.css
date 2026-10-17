@@ -74,6 +74,9 @@
 :root {
   --shadow-card-tint: rgba(58, 47, 34, 0.22);
   --recess-tint: rgba(58, 47, 34, 0.12);
+  /* What a waiting card's colour is washed into: cream in light (the
+     yellow page greys out the cool colours), the page in dark */
+  --wash-base: var(--color-cream);
 }
 
 :root[data-theme="dark"] {
@@ -95,6 +98,7 @@
   --color-active-ring: #8AD0D9;
   --shadow-card-tint: rgba(18, 12, 6, 0.69);
   --recess-tint: rgba(18, 12, 6, 0.45);
+  --wash-base: var(--color-page);
   color-scheme: dark;
 }
 

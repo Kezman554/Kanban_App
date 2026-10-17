@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { copyText } from '../utils/clipboard.js';
 import { Check, Trash2, LinkIcon, TriangleAlert, Pencil, Play, Copy, X, Lock } from './icons';
-import { paletteFor } from '../utils/palette';
+import { paletteFor, washFor } from '../utils/palette';
 import { buildCardStatusByLetter, isCardBlocked, getBlockedReason } from '../utils/cardBlocking';
 
 // A chip in the header band: thin outline on translucent cream, or
@@ -611,12 +611,13 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
           className="w-full max-w-[780px] max-h-[90vh] bg-sidebar border-[1.5px] border-line rounded-[20px] shadow-card flex flex-col overflow-hidden transform transition-all duration-200 ease-out"
           style={{ opacity: isOpen ? 1 : 0, transform: isOpen ? 'scale(1)' : 'scale(0.95)' }}
         >
-        {/* Header band: filled with the card's colour (blocked fill if blocked) */}
+        {/* Header band: filled with the card's colour, or its pale wash when
+            blocked, so the card looks the same open as on the board */}
         <div
           className={`flex items-start justify-between gap-3 p-6 ${bandInk} ${
-            isBlockedCard ? 'bg-blocked border-b-[1.5px] border-dashed border-dash' : 'border-b-[1.5px] border-card-line'
+            isBlockedCard ? 'border-b-[1.5px] border-dashed border-dash' : 'border-b-[1.5px] border-card-line'
           }`}
-          style={isBlockedCard ? undefined : { backgroundColor: colour.fill }}
+          style={{ backgroundColor: isBlockedCard ? washFor(card.id).fill : colour.fill }}
         >
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3 mb-3">
@@ -625,9 +626,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                 className={`flex-shrink-0 w-[50px] h-[50px] rounded-full flex items-center justify-center font-bold text-xl ${
                   card.status === 'Done'
                     ? 'bg-done text-on-done'
-                    : isBlockedCard ? 'border-[1.5px] border-dashed border-dash' : 'text-cream'
+                    : isBlockedCard ? 'text-ink' : 'text-cream'
                 }`}
-                style={card.status === 'Done' || isBlockedCard ? undefined : { backgroundColor: colour.deep }}
+                style={card.status === 'Done' ? undefined : { backgroundColor: isBlockedCard ? washFor(card.id).deep : colour.deep }}
                 title={card.status === 'Done' ? `Done: ${card.session_letter}` : undefined}
               >
                 {card.status === 'Done' ? (
