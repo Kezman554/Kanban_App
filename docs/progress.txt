@@ -1966,3 +1966,54 @@ Workable Cards tab.
 Deployed to the Pi (9d1ba6b): pulled, kanban-api rebuilt, smoke test OK
 (359 cards, API == DB). The live bundle names 9d1ba6b and carries the To
 Be Confirmed option and the blocked-card footer line.
+
+Session Progress - 2026-10-17 (Board and sidebar layout after the restyle)
+==========================================================================
+
+Visual only: no schema, export or vault-summary change.
+
+1. Selected project in the sidebar: page fill, soft-ink outline
+   (border-line) and shadow-card, so the row looks lifted like a card
+   instead of a white block. font-semibold and aria-current kept. The
+   list has 4px right/bottom padding so its scroll box doesn't clip the
+   3px shadow (measured on the live board: the shadow is applied).
+2. Project list grows: the expanded sidebar's top section takes the free
+   height, the list scrolls inside it when it overflows, Import Project
+   sits directly under the list, and the navigation and footer are pinned
+   to the bottom. With few projects the list keeps its natural height and
+   the gap falls above the navigation. Collapsed sidebar unchanged (nav
+   at the top).
+3. Columns: Done 360 -> 450px (the pile fills it); Not Started and In
+   Progress flex-1 with min 300 -> 280px. 260px was tried first: once the
+   columns reached it (window <= ~1226px) titles beside a resource icon
+   had 108px, three titles clipped and chip rows wrapped (143px cards).
+   At 280 (128px titles) chips never wrap. At 1366 the columns come to
+   327px and at 1920 to 603px, so the minimum isn't reached at either.
+4. Cards: one shared minimum height, 120px (a one-line card was 91.6px),
+   on Card (normal, blocked, done) and EmptyCardSlot. Cards are flex
+   columns with the chip row / "waits on X" pushed to the bottom. Titles
+   clamp at three lines (line-clamp-3); a three-line title over one chip
+   row is 117px, so it fits. The fan sheets are inset-0 behind the top
+   card, so CardStack needed no change.
+
+Checked in Electron on a copy of the scratch DB (plus 22 filler projects
+to make the list scroll), light and dark, at 1366x768 and 1920x1080, on
+all nine real projects: every card 120px (offsetHeight), no title clipped,
+no horizontal scroll. Screenshots of stacks, blocked cards, the full Done
+pile (36), both expanded views, mid-drag (the overlay keeps the height)
+and after the drop, few-projects and collapsed sidebars. At 1100px
+(columns at 280, board scrolls sideways) four long Requiem titles and one
+Alfred title clip with an ellipsis; nothing else breaks.
+
+Deployed to the Pi (e958c55): pulled, kanban-api rebuilt, smoke test OK
+(386 cards, API == DB). The live bundle names e958c55 and its CSS has
+min-height 120px, min-width 280px, width 450px and line-clamp 3; a
+1366px headless view of the live board measured cards at 120px and
+columns at 330 / 330 / 450.
+
+Known gaps / followups
+----------------------
+- A card whose chips need two rows (only seen below 1366 wide) grows past
+  120px; the minimum is a floor, not a fixed height.
+- Dragging the top card of a fanned stack wasn't tried, only a standalone
+  In Progress card.
