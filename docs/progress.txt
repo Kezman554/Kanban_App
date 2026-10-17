@@ -2017,3 +2017,45 @@ Known gaps / followups
   120px; the minimum is a floor, not a fixed height.
 - Dragging the top card of a fanned stack wasn't tried, only a standalone
   In Progress card.
+
+Column tabs and own-state card colour (2026-10-17)
+5. Column titles are pastel folder tabs (ColumnLabel / COLUMN_TONES):
+   centred in each column, bottom-aligned on the header rule and painted
+   over it (relative z-[1]; the rule is the row's ::after), 1.5px
+   card-line outline on top and sides, no bottom edge, 10px top corners.
+   Sentence case, 15px semibold card-ink, count after it in normal weight,
+   no badge. Not Started marigold, In Progress sky, Done mint, same in
+   both modes. Measured contrast: 8.54 / 7.13 / 8.44.
+6. A card's look depends only on its own state. FanSheets no longer
+   takes blank from the top card: each sheet is full colour (card-line,
+   shadow) when its card is ready, or the dashed wash when it is waiting.
+   A waiting card, on the board, as a sheet and in the expanded stack
+   view, is washFor(card.id) (utils/palette.js): fill 38% and deep shade
+   50% mixed into var(--color-page), so it follows the theme. Title,
+   "waits on X", lock and letter are in ink. 55% for the letter failed in
+   light (lilac 4.46), so 50%. Worst cases: title on marigold in dark
+   4.70 (computed) / 4.72 (rendered), letter on lilac in light 4.89-4.91.
+   The dashed edge is 3.57 (light) / 3.80 (dark) against the page; against
+   the wash inside it is only 1.43 in dark. fillLetter removed. CLAUDE.md's
+   rule rewritten ("Full colour means can be picked up").
+   Chain test on a copy of the scratch DB, Alfred 1.3 H -> I -> J:
+   start, H In Progress, H Done, I In Progress: J's fill and dashed edge
+   were identical (rendered colour compared) at every step, as a sheet
+   under H, a sheet under I, and surfaced on the board. I Done -> J full
+   pink with the solid outline. I was washed until H was Done.
+   Rendered audit on all nine projects, light and dark, 1366 and 1920, and
+   the expanded stack view: every washed card's text >= 4.5:1.
+
+Deployed to the Pi (87603e4): pulled, kanban-api rebuilt, smoke test OK
+(386 cards, API == DB). The live bundle names 87603e4; a headless check of
+all 13 live projects found 12 washed cards, min text contrast 4.72
+(dark) / 4.89 (light), tabs 8.54 / 7.13 / 8.44.
+
+Known gaps / followups
+----------------------
+- In light mode the cool colours wash towards grey on the cream page:
+  periwinkle at 38% is nearly neutral (about #D7D8D9), sky and lilac less
+  so. Mixing into the page was the spec; mixing into a neutral cream
+  instead would keep the hue, if wanted.
+- The card view's blocked header band (CardDetail) stays bg-blocked; it
+  was not listed in or out of scope.
