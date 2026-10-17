@@ -75,8 +75,10 @@ function App() {
       {/* Sidebar */}
       <aside className={`${sidebarCollapsed ? 'w-14' : 'w-64'} bg-sidebar border-r border-divider flex flex-col transition-all duration-200`}>
         {/* Sidebar Header */}
-        <div className="p-4 border-b border-divider">
-          <div className="flex items-center justify-between mb-3">
+        {/* Expanded: this section takes the free height so the project list can
+            grow, and the navigation and footer sit at the bottom */}
+        <div className={`p-4 border-b border-divider ${sidebarCollapsed ? '' : 'flex-1 min-h-0 flex flex-col'}`}>
+          <div className="flex-shrink-0 flex items-center justify-between mb-3">
             {!sidebarCollapsed && <h1 className="text-xl font-bold">Kanban Manager</h1>}
             <button
               onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -91,7 +93,7 @@ function App() {
           {!sidebarCollapsed && (
             <>
               {/* Project list: each project's dot is palette[project.id mod 12] */}
-              <div className="relative">
+              <div className="relative min-h-0 flex flex-col">
                 <h2 id="project-list-label" className="block text-xs text-muted mb-1">
                   Current Project
                 </h2>
@@ -104,7 +106,7 @@ function App() {
                 ) : (
                   <ul
                     aria-labelledby="project-list-label"
-                    className="max-h-64 overflow-y-auto scrollbar-themed -mx-1 space-y-0.5"
+                    className="min-h-0 overflow-y-auto scrollbar-themed -mx-1 px-1 pb-1 space-y-0.5"
                   >
                     {projects.map((project) => {
                       const isSelected = project.id === selectedProject;
@@ -116,7 +118,7 @@ function App() {
                             aria-current={isSelected ? 'true' : undefined}
                             className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left text-sm transition-colors ${
                               isSelected
-                                ? 'bg-panel border-[1.5px] border-line font-semibold text-ink'
+                                ? 'bg-page border-[1.5px] border-line shadow-card font-semibold text-ink'
                                 : 'border-[1.5px] border-transparent text-ink hover:bg-hover'
                             }`}
                           >
@@ -137,7 +139,7 @@ function App() {
               {/* Import Project Button */}
               <button
                 onClick={() => setIsImportDialogOpen(true)}
-                className="w-full mt-3 px-3 py-2 bg-pal-apricot border-[1.5px] border-card-line shadow-card rounded-lg text-sm font-semibold text-card-ink hover:brightness-95 transition flex items-center justify-center gap-2"
+                className="flex-shrink-0 w-full mt-3 px-3 py-2 bg-pal-apricot border-[1.5px] border-card-line shadow-card rounded-lg text-sm font-semibold text-card-ink hover:brightness-95 transition flex items-center justify-center gap-2"
               >
                 <Plus className="w-4 h-4" />
                 <span>Import Project</span>
@@ -147,7 +149,7 @@ function App() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-4 space-y-1">
+        <nav className={`${sidebarCollapsed ? 'flex-1' : 'flex-shrink-0'} p-4 space-y-1`}>
           {navItems.map((item) => (
             <button
               key={item.id}

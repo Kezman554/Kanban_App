@@ -30,12 +30,16 @@ const Chip = ({ children, title, onPanel }) => (
   </span>
 );
 
+// Every card (and empty slot) shares one minimum height so stacks line up; it
+// fits a three-line title over one chip row. The chip row sits at the bottom.
+const CARD_MIN_H = 'min-h-[120px] flex flex-col';
+
 // An empty slot the exact size of a one-line card (same border, padding, letter
 // row and chip row), for "No cards" placeholders
 export const EmptyCardSlot = ({ children, dashed = false }) => (
-  <div className={`relative p-3 rounded-[14px] border-[1.5px] ${dashed ? 'border-dashed border-dash' : 'border-divider'}`}>
+  <div className={`relative ${CARD_MIN_H} p-3 rounded-[14px] border-[1.5px] ${dashed ? 'border-dashed border-dash' : 'border-divider'}`}>
     <div className="h-[34px]" aria-hidden="true" />
-    <div className="flex mt-2">
+    <div className="flex mt-auto pt-2">
       <ChipPlaceholder />
     </div>
     <span className="absolute inset-0 flex items-center justify-center text-xs text-muted">{children}</span>
@@ -80,7 +84,7 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
       <div
         ref={setNodeRef}
         style={style}
-        className={`bg-blocked border-[1.5px] border-dashed border-dash rounded-[14px] p-3 text-ink
+        className={`${CARD_MIN_H} bg-blocked border-[1.5px] border-dashed border-dash rounded-[14px] p-3 text-ink
           ${isStacked ? 'cursor-default' : 'cursor-pointer'} ${isDragging ? 'opacity-50' : ''}`}
         onClick={handleClick}
       >
@@ -106,12 +110,12 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
             {card.session_letter}
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold line-clamp-2">{card.title}</h3>
+            <h3 className="text-sm font-semibold line-clamp-3">{card.title}</h3>
           </div>
         </div>
 
         {/* "waits on X" sits in the chip row, so blocked cards match the others' height */}
-        <div className="flex items-center gap-1.5 mt-2 pl-[74px] min-w-0">
+        <div className="flex items-center gap-1.5 mt-auto pt-2 pl-[74px] min-w-0">
           {card.waitsOn ? (
             <p className="text-xs text-muted truncate leading-[22px]" title={card.blockedReason || card.waitsOn}>
               {card.waitsOn}
@@ -139,7 +143,7 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
       style={onPanel ? style : { ...style, backgroundColor: colour.fill }}
       className={`
         ${onPanel ? 'bg-panel text-ink border-line' : 'text-card-ink border-card-line'}
-        border-[1.5px] rounded-[14px] p-3 shadow-card
+        ${CARD_MIN_H} border-[1.5px] rounded-[14px] p-3 shadow-card
         ${isStacked ? 'cursor-default' : 'cursor-pointer hover:brightness-[0.97]'}
         ${isDragging ? 'opacity-50' : ''}
       `}
@@ -177,7 +181,7 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
           </div>
 
           {/* Card Title */}
-          <h3 className="text-sm font-semibold flex-1 line-clamp-2">
+          <h3 className="text-sm font-semibold flex-1 line-clamp-3">
             {card.title}
           </h3>
         </div>
@@ -193,7 +197,7 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
 
       {/* Chips: complexity (when not medium), Manual, TBC, Placeholder, May Expand.
           Always drawn, with an invisible chip when empty, so every card is the same size */}
-      <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+      <div className="flex items-center gap-1.5 mt-auto pt-2 flex-wrap">
         {!hasChips && <ChipPlaceholder />}
         {unresolvedExternalDeps.length > 0 && (
           <Chip
