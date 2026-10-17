@@ -48,7 +48,7 @@ const DroppableCell = ({ id, children, isOver, canDrop, isEmpty, className = '' 
   return (
     <div
       ref={setNodeRef}
-      className={`flex-1 min-w-[260px] p-3 transition-colors ${className} ${dropIndicatorClass}`}
+      className={`flex-1 min-w-[280px] p-3 transition-colors ${className} ${dropIndicatorClass}`}
     >
       {children}
     </div>
@@ -1058,7 +1058,7 @@ const Board = ({ projectId }) => {
               {/* Column Headers */}
               <div className={`sticky top-0 z-10 h-12 flex bg-page ${INSET_RULE} after:left-6 after:right-0`}>
                 {activeColumns.map((column, idx) => (
-                  <div key={idx} className="flex-1 min-w-[260px] px-4 flex items-center justify-center">
+                  <div key={idx} className="flex-1 min-w-[280px] px-4 flex items-center justify-center">
                     <ColumnLabel name={column} count={boardDisplayData.statusCounts[column] || 0} />
                   </div>
                 ))}
