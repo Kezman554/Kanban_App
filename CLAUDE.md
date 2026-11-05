@@ -5,6 +5,12 @@ A desktop Kanban project management app for managing projects and tasks. Can be 
 
 *Differentiator:* It pulls the task cards and their pre-written prompts from the project JSON, hands each prompt to a Claude Code session (Start Session copies it and moves the card to In Progress), and tracks progress across development projects. Cards are authored outside the app; there is no in-app AI generation.
 
+## Rules from the vault
+
+Each has already cost this repo a defect; the reason is in the vault, cited in brackets. (Landed 5 Nov 2026 from the Hub AK sweep.)
+
+- Validate a whole import batch before mutating anything, never inside the insert loop: a check that runs during the write reports against a board that's already half-changed. [4-dev-hub/lessons-learned, append importer]
+
 ## Tech Stack
 
 •	Framework: Electron 28+
