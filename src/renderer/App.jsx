@@ -8,6 +8,9 @@ import ImportDialog from './components/ImportDialog';
 import { ClipboardList, LayoutGrid, MapIcon, FlaskConical, SettingsIcon, ChevronsLeft, ChevronsRight, Plus } from './components/icons';
 import { paletteFor } from './utils/palette';
 import { BUILD_LABEL } from './utils/buildInfo';
+import {
+  SORT_OPTIONS, getProjectSort, setProjectSort, getRecentProjects, markProjectOpened, sortProjects,
+} from './utils/projectSort';
 
 function App() {
   const [currentPage, setCurrentPage] = useState('current-project');
@@ -16,6 +19,20 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [isImportDialogOpen, setIsImportDialogOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  // Project list order and the "recently opened" record: this browser only
+  const [projectSort, setProjectSortState] = useState(getProjectSort);
+  const [recentProjects, setRecentProjects] = useState(getRecentProjects);
+  const sortedProjects = sortProjects(projects, projectSort, recentProjects);
+
+  const handleSortChange = (choice) => {
+    setProjectSort(choice);
+    setProjectSortState(choice);
+  };
+
+  const openProject = (projectId) => {
+    setSelectedProject(projectId);
+    setRecentProjects(markProjectOpened(projectId));
+  };
 
   useEffect(() => {
     loadProjects();
@@ -30,8 +47,9 @@ function App() {
       const selectedStillExists = allProjects.some(p => p.id === selectedProject);
 
       if (allProjects.length > 0 && (!selectedProject || !selectedStillExists)) {
-        // Auto-select first project if none selected or selected was deleted
-        setSelectedProject(allProjects[0].id);
+        // Auto-select the top of the list, in the order it is shown, if none
+        // is selected or the selected one was deleted
+        setSelectedProject(sortProjects(allProjects, getProjectSort(), getRecentProjects())[0].id);
       } else if (allProjects.length === 0) {
         // No projects left, clear selection
         setSelectedProject(null);
@@ -97,6 +115,30 @@ function App() {
                 <h2 id="project-list-label" className="block text-xs text-muted mb-1">
                   Current Project
                 </h2>
+                {/* Sort: the Settings theme switch, at sidebar size */}
+                {projects.length > 1 && (
+                  <div
+                    role="radiogroup"
+                    aria-label="Sort projects"
+                    className="flex-shrink-0 flex mb-2 rounded-lg border border-line overflow-hidden"
+                  >
+                    {SORT_OPTIONS.map(({ id, label, title }) => (
+                      <button
+                        key={id}
+                        type="button"
+                        role="radio"
+                        aria-checked={projectSort === id}
+                        title={title}
+                        onClick={() => handleSortChange(id)}
+                        className={`flex-1 px-2 py-1 text-xs font-medium border-r border-line last:border-r-0 transition-colors ${
+                          projectSort === id ? 'bg-primary text-on-primary' : 'text-ink hover:bg-hover'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                )}
                 {loading ? (
                   <div className="w-full px-3 py-2 text-sm text-muted">
                     Loading...
@@ -108,13 +150,13 @@ function App() {
                     aria-labelledby="project-list-label"
                     className="min-h-0 overflow-y-auto scrollbar-themed -mx-1 px-1 pb-1 space-y-0.5"
                   >
-                    {projects.map((project) => {
+                    {sortedProjects.map((project) => {
                       const isSelected = project.id === selectedProject;
                       return (
                         <li key={project.id}>
                           <button
                             type="button"
-                            onClick={() => setSelectedProject(project.id)}
+                            onClick={() => openProject(project.id)}
                             aria-current={isSelected ? 'true' : undefined}
                             className={`w-full flex items-center gap-2.5 px-2 py-1.5 rounded-lg text-left text-sm transition-colors ${
                               isSelected

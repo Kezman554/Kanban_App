@@ -2150,3 +2150,49 @@ Known gaps / followups
   behaviour, unchanged); only cross-project links are kept as overrides.
 - Once the target card is Done, the override flag stays stored but is moot
   (the link reads as plain Done-resolved; the UI shows "Resolved").
+
+Session Progress - 2026-11-17 (Stack-drag distortion check; project list sort)
+==============================================================================
+
+1. Stack-drag distortion (reported 16 Oct): does NOT reproduce. No code
+   change. Tried, against copies of the laptop's scratch DB, the top card
+   (E) of DocuSync 1.3's three-card stack, dragged by its handle in five
+   steps out to +450px / +80px over the In Progress cell, then Escape:
+   - browser: current web build served by pi-server locally, headless
+     Chrome 1600x1000, light and dark;
+   - Electron: current build, 1200x800 window, driven over CDP, light and
+     dark;
+   - the 16 Oct code (7c16be0, before the 17 Oct colour and layout
+     passes), web build, light.
+   At every step the fanned sheets' bounding boxes and transforms were
+   identical to rest (e.g. Electron 261x131 @272,303 and 260x130 @260,312
+   throughout), and the same after the drop. Screenshots mid-drag show
+   the sheets in place. Likely reading of the report: lifting A reveals the
+   whole tilted sheet behind it, which at rest only shows as slivers;
+   before 17 Oct that sheet was full colour, so it looked like a big
+   skewed card. Seen in passing, not changed: the dragged card is drawn
+   twice (the original follows the pointer and the DragOverlay copy at
+   50%).
+2. Project list sort. A segmented control under "Current Project" in the
+   sidebar: Newest | A–Z | Recent, the Settings theme switch at sidebar
+   size (rounded border-line group, selected bg-primary/on-primary,
+   others hover:bg-hover, role=radiogroup "Sort projects", titles spell
+   each option out). Shown when there are 2+ projects.
+   - Newest: created_at desc, id desc on a tie (the API order). Default.
+   - A–Z: case-insensitive (Intl.Collator, base sensitivity, numeric).
+   - Recent: projects opened by a click in this browser, latest first;
+     never-opened ones below, newest first.
+   utils/projectSort.js; localStorage keys kanban-project-sort (absent =
+   newest) and kanban-recent-projects ({id: epoch ms}); every access in
+   try/catch. On load the top of the sorted list is auto-selected, so
+   Recent reopens the last project. No database, API or export change.
+   CLAUDE.md design rules updated.
+   Verified: src/renderer/utils/projectSort.test.mjs (14 checks, node);
+   headless Chrome on the web build: each order, persistence over reload,
+   Recent after clicking KitchenSync then GymSync, Newest clears the key;
+   Electron: A–Z survives a reload. Screenshots light and dark.
+
+Known gaps / followups
+----------------------
+- Opening a project is recorded on a click only; the auto-selected
+  project at load is not counted as "opened".
