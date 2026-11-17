@@ -46,15 +46,45 @@ export const EmptyCardSlot = ({ children, dashed = false }) => (
   </div>
 );
 
+// A board card that can be picked up. Only the DragOverlay copy follows the
+// pointer: this one stays where it is (keeping its rest tilt) and dims to a
+// ghost while it is the card being dragged, so the card is never drawn twice
+// on the move.
 // colourDone: a done card keeps its palette colour (the Done pile and its expanded view)
-const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, tilt = false, colourDone = false }) => {
+const Card = ({ card, isDragging = false, isStacked = false, ...rest }) => {
   // Disable drag for stacked cards OR blocked cards (even if at top of stack)
   const isDragDisabled = isStacked || card.isBlocked;
 
-  const { attributes, listeners, setNodeRef, transform } = useDraggable({
+  const { attributes, listeners, setNodeRef, isDragging: isActive } = useDraggable({
     id: card.id,
     disabled: isDragDisabled,
   });
+
+  return (
+    <CardFace
+      card={card}
+      isStacked={isStacked}
+      isDragDisabled={isDragDisabled}
+      isDragging={isDragging || isActive}
+      nodeRef={setNodeRef}
+      handleProps={{ ...listeners, ...attributes }}
+      {...rest}
+    />
+  );
+};
+
+// The card as drawn under the pointer during a drag (Board's DragOverlay).
+// Presentational only: it must not register a second draggable with the
+// same id as the card being dragged.
+export const CardDragPreview = ({ card, colourDone = false }) => (
+  <CardFace card={card} isDragDisabled={false} colourDone={colourDone} handleProps={{}} />
+);
+
+const CardFace = ({
+  card, onClick, isDragging = false, isStacked = false, isDragDisabled, nodeRef, handleProps,
+  onUnlock, tilt = false, colourDone = false,
+}) => {
+  const setNodeRef = nodeRef;
 
   const handleClick = (e) => {
     // Don't trigger if clicking the drag handle or lock icon
@@ -65,10 +95,8 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
     if (onClick) onClick(card);
   };
 
-  // While dragging, dnd-kit owns the transform; at rest a standalone card may tilt
-  const style = transform
-    ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
-    : tilt ? { transform: `rotate(${tiltFor(card.id)}deg)` } : {};
+  // A standalone card may tilt; the drag itself moves only the overlay copy
+  const style = tilt ? { transform: `rotate(${tiltFor(card.id)}deg)` } : {};
 
   // Determine if card is blocked - trust the passed isBlocked value if set
   const isBlocked = card.isBlocked === true;
@@ -154,8 +182,7 @@ const Card = ({ card, onClick, isDragging = false, isStacked = false, onUnlock, 
           {!isDragDisabled && (
             <div
               className="drag-handle flex-shrink-0 p-1 cursor-grab"
-              {...listeners}
-              {...attributes}
+              {...handleProps}
               title="Drag to move card"
             >
               <GripVertical className="w-4 h-4" />

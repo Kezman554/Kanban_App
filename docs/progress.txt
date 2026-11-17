@@ -2202,3 +2202,40 @@ Known gaps / followups
 ----------------------
 - Opening a project is recorded on a click only; the auto-selected
   project at load is not counted as "opened".
+
+Session Progress - 2026-11-17 (Dragged card drawn twice)
+========================================================
+
+1. Cause. Two copies of a dragged card followed the pointer, offset from
+   each other: Card applied dnd-kit's drag transform to itself
+   (translate3d), and Board's DragOverlay drew a second copy at 50%. The
+   overlay copy was a full <Card>, so it also called useDraggable with the
+   dragged card's id, registering a second node under the same id.
+2. Fix (Card.jsx, Board.jsx).
+   - Card is now a thin draggable wrapper over a presentational CardFace.
+     It no longer applies the drag transform: the original stays where it
+     is, keeping its rest tilt, and dims to a 50% ghost while it is the
+     card being dragged (dnd-kit's own isDragging, so stack tops and the
+     Done pile get it too, not only cards Board passes the prop to).
+   - The DragOverlay draws CardDragPreview (CardFace with no
+     useDraggable), solid, cursor-grabbing; a done card keeps its
+     colour, as in the Done pile.
+   - DragOverlay dropAnimation={null}. Found while checking: after a real
+     drop the card showed in its new column within ~60ms while the
+     overlay flew back to the old slot for ~250ms (two copies again).
+   - onDragCancel added. Escape cancels without a drag end, so activeCard
+     and the lit drop target were never cleared; with the ghost that left
+     the card at 50% until the next drag. Pre-existing, now visible.
+3. Verified (headless Chrome on the web build against a fresh copy of the
+   scratch DB, light and dark; Electron on the laptop DB, cancel-only),
+   counting every on-screen copy of the dragged card's title with its
+   effective opacity: mid-drag exactly one moving copy (opacity 1) plus the
+   ghost in place (0.5); the fanned sheets behind a stack top stay put.
+   Cases: DocuSync 1.3 stack top E, a standalone In Progress card, the
+   Done pile top card. Cancel: one copy, back at full opacity, from the
+   first sample (60ms). Real drop of E onto In Progress (scratch copy
+   only): one copy, in the new column, from 60ms on.
+   Housekeeping: this session's earlier cleanup of a temporary git
+   worktree deleted node_modules/.bin through its junction; restored
+   with npm rebuild --ignore-scripts (better-sqlite3 left Electron-built;
+   unblock-override test 20/20 under Electron afterwards).

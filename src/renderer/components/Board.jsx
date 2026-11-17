@@ -9,7 +9,7 @@ import {
   useDroppable,
 } from '@dnd-kit/core';
 import { copyText } from '../utils/clipboard.js';
-import Card, { EmptyCardSlot } from './Card';
+import Card, { EmptyCardSlot, CardDragPreview } from './Card';
 import CardStack from './CardStack';
 import CompletedStack from './CompletedStack';
 import CardDetail from './CardDetail';
@@ -689,6 +689,13 @@ const Board = ({ projectId }) => {
     }
   };
 
+  // Escape (or a lost pointer) cancels without a drag end: clear the same
+  // state, or the source card stays a ghost and the target cell stays lit
+  const handleDragCancel = () => {
+    setActiveCard(null);
+    setDropTarget(null);
+  };
+
   const handleDragEnd = async (event) => {
     const { active, over } = event;
 
@@ -925,6 +932,7 @@ const Board = ({ projectId }) => {
       onDragStart={handleDragStart}
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
     >
       <div className="h-full flex flex-col bg-page">
         {/* Board Header */}
@@ -1342,10 +1350,15 @@ const Board = ({ projectId }) => {
       </div>
 
       {/* Drag Overlay */}
-      <DragOverlay>
+      {/* No drop animation: dnd-kit's default flies the overlay back to the
+          card's old slot, so after a real drop the card was briefly drawn in
+          both columns. On drop or cancel the overlay just goes. */}
+      <DragOverlay dropAnimation={null}>
+        {/* The only copy that follows the pointer; the original stays put as a
+            ghost. A done card keeps its colour, as it does in the Done pile. */}
         {activeCard ? (
-          <div className="opacity-50">
-            <Card card={activeCard} />
+          <div className="cursor-grabbing">
+            <CardDragPreview card={activeCard} colourDone={activeCard.status === 'Done'} />
           </div>
         ) : null}
       </DragOverlay>
