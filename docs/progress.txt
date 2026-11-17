@@ -2261,3 +2261,8 @@ Session Progress - 2026-11-17 (No green drop box)
    scratch DB: dragging DocuSync E over an empty In Progress cell, light
    and dark, the cell has box-shadow none and a transparent background;
    over the Done column no element carries a ring.
+
+Deployed to the Pi (eeafd30): pulled, kanban-api rebuilt, smoke test OK
+(558 cards, API == DB). Live bundle index-B-EpZbcB.js has no
+ring-success-text or bg-progress/25; ring-danger-text (refused drop) is
+still there.
