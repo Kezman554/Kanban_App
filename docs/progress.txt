@@ -2192,6 +2192,12 @@ Session Progress - 2026-11-17 (Stack-drag distortion check; project list sort)
    Recent after clicking KitchenSync then GymSync, Newest clears the key;
    Electron: A–Z survives a reload. Screenshots light and dark.
 
+Deployed to the Pi (16450ad): pulled, kanban-api rebuilt, smoke test OK
+(558 cards, API == DB). Live, headless Chrome (read-only; the sort only
+touches that browser's storage): bundle index-BMbixYNy.js shows Newest |
+A–Z | Recent, Newest matches the API order of all 16 projects, A–Z runs
+Alfred Dashboard ... Requiem NFT Launcher.
+
 Known gaps / followups
 ----------------------
 - Opening a project is recorded on a click only; the auto-selected
