@@ -2249,3 +2249,15 @@ would drop a card and write to the authoritative DB).
 Known gaps / followups
 ----------------------
 - Nick to try a drag on the live board (stack top, Done pile, a drop).
+
+Session Progress - 2026-11-17 (No green drop box)
+=================================================
+
+1. Removed the green drop-target box (Nick's request): DroppableCell drew
+   ring-2 ring-success-text + bg-progress/25 on a cell that would take the
+   dragged card. A cell that will take it now shows nothing. The red box
+   on a refused drop (ring-danger-text + bg-danger/10) is kept.
+2. Verified, headless Chrome on the web build against a fresh copy of the
+   scratch DB: dragging DocuSync E over an empty In Progress cell, light
+   and dark, the cell has box-shadow none and a transparent background;
+   over the Done column no element carries a ring.

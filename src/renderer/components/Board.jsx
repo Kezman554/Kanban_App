@@ -36,14 +36,9 @@ const headerButton = 'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibol
 const DroppableCell = ({ id, children, isOver, canDrop, isEmpty, className = '' }) => {
   const { setNodeRef } = useDroppable({ id });
 
-  let dropIndicatorClass = '';
-  if (isOver) {
-    if (canDrop) {
-      dropIndicatorClass = 'ring-2 ring-success-text bg-progress/25';
-    } else {
-      dropIndicatorClass = 'ring-2 ring-danger-text bg-danger/10';
-    }
-  }
+  // A cell that will take the card shows nothing (the green box was removed
+  // at Nick's request); only a refused drop is marked
+  const dropIndicatorClass = isOver && !canDrop ? 'ring-2 ring-danger-text bg-danger/10' : '';
 
   return (
     <div
