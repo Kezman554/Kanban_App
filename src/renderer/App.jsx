@@ -200,7 +200,7 @@ function App() {
                 sidebarCollapsed ? 'justify-center px-0 py-2' : 'gap-3 px-3 py-2'
               } ${
                 currentPage === item.id
-                  ? 'bg-nav-active text-card-ink border-[1.5px] border-card-line font-semibold'
+                  ? 'bg-page border-[1.5px] border-line shadow-card font-semibold text-ink'
                   : 'border-[1.5px] border-transparent text-ink hover:bg-hover'
               }`}
               title={sidebarCollapsed ? item.label : undefined}

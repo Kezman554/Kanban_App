@@ -2266,3 +2266,18 @@ Deployed to the Pi (eeafd30): pulled, kanban-api rebuilt, smoke test OK
 (558 cards, API == DB). Live bundle index-B-EpZbcB.js has no
 ring-success-text or bg-progress/25; ring-danger-text (refused drop) is
 still there.
+
+Session Progress - 2026-11-17 (Sidebar nav selection matches the project list)
+==============================================================================
+
+1. The selected item in the sidebar's bottom menu (Current Project, All
+   Projects, Roadmap, Card Test, Settings) was a coloured fill
+   (bg-nav-active aqua, card-ink, card-line). It now uses the project
+   list's selected style: bg-page, 1.5px border-line, shadow-card,
+   semibold ink. Unselected items were already the same as the project
+   list's. The --color-nav-active token (#8AD0D9) had no other use and is
+   removed from index.css.
+2. Verified, headless Chrome on the web build (scratch DB copy): the
+   selected project and selected nav item have identical computed
+   background, border, shadow, text colour and weight in light and dark,
+   and in the collapsed sidebar. Screenshots light, dark and collapsed.
