@@ -2134,8 +2134,18 @@ the lock button's Unlock. R's only open blocker is external
    before the fix and passes after; the other nine test files all pass.
    vite build clean.
 
+Deployed to the Pi (de4b877, rebased onto 78cf04c): pulled, kanban-api
+rebuilt, smoke test OK (558 cards, API == DB). Read-only live checks: POST
+/cards/0/restore-external-dependency answers with the new validation error;
+the live bundle index-BcN9brxY.js carries the new unlock wording and
+"Wait on" button. Live Dash R (id 560) still reads blocked, "Waiting on
+external: alfred-home-hub/Q", ready for Nick's end-to-end unlock. Its
+depends_on_cards is already [] - the earlier clicks under the old code
+removed P (Done, so no effect on blocking).
+
 Known gaps / followups
 ----------------------
+- Nick to unlock Dash R on the live board as the end-to-end check.
 - The unlock still deletes internal depends_on_cards outright (existing
   behaviour, unchanged); only cross-project links are kept as overrides.
 - Once the target card is Done, the override flag stays stored but is moot
