@@ -309,7 +309,7 @@ const Board = ({ projectId }) => {
       const parts = deps.map(d => {
         const label = `${d.project_slug}/${d.card_letter}`;
         const desc = d.description ? `: ${d.description}` : '';
-        const mark = d.resolved ? ' (done)' : '';
+        const mark = d.overridden && d.status !== 'Done' ? ' (overridden)' : d.resolved ? ' (done)' : '';
         return `${label}${desc}${mark}`;
       });
       return `, external deps: [${parts.join(', ')}]`;
@@ -1405,7 +1405,7 @@ const Board = ({ projectId }) => {
               Are you sure you want to unlock <span className="font-semibold text-ink">"{confirmUnlockCard.title}"</span>?
             </p>
             <p className="text-muted mb-6 text-sm">
-              This will remove all dependencies for this card. It will become immediately actionable.
+              This removes its dependencies on cards on this board. Links to other projects' cards are kept but marked as overridden, and you can restore them from the card. The card can be picked up straight away.
             </p>
             {unlockError && (
               <div className="mb-4 p-3 rounded bg-panel border border-danger-text text-danger-text text-sm">

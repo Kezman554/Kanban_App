@@ -216,6 +216,14 @@ app.post('/cards/:id/clear-dependencies', h((req, res) => {
   res.json({ updated: db.clearCardDependencies(intParam(req.params.id, 'card id')) });
 }));
 
+app.post('/cards/:id/restore-external-dependency', h((req, res) => {
+  const { project_slug: slug, card_letter: letter } = req.body || {};
+  if (typeof slug !== 'string' || typeof letter !== 'string') {
+    throw new Error('body.project_slug and body.card_letter (strings) are required');
+  }
+  res.json({ updated: db.restoreExternalDependency(intParam(req.params.id, 'card id'), slug, letter) });
+}));
+
 app.delete('/cards/:id', h((req, res) => {
   res.json(db.deleteCard(intParam(req.params.id, 'card id')));
 }));

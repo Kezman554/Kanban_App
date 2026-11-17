@@ -169,6 +169,15 @@ ipcMain.handle('db:clearCardDependencies', async (event, cardId) => {
   }
 })
 
+ipcMain.handle('db:restoreExternalDependency', async (event, cardId, projectSlug, cardLetter) => {
+  try {
+    return db.restoreExternalDependency(cardId, projectSlug, cardLetter)
+  } catch (error) {
+    console.error('Error restoring external dependency:', error)
+    throw error
+  }
+})
+
 ipcMain.handle('db:updateCardPrompt', async (event, cardId, promptData) => {
   try {
     return db.updateCardPrompt(cardId, promptData)

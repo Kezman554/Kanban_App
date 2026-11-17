@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('electron', {
   updateCardDependsOnCards: (cardId, letters) =>
     ipcRenderer.invoke('db:updateCardDependsOnCards', cardId, letters),
   clearCardDependencies: (cardId) => ipcRenderer.invoke('db:clearCardDependencies', cardId),
+  restoreExternalDependency: (cardId, projectSlug, cardLetter) =>
+    ipcRenderer.invoke('db:restoreExternalDependency', cardId, projectSlug, cardLetter),
   deleteCard: (cardId) => ipcRenderer.invoke('db:deleteCard', cardId),
 
   // Phase operations

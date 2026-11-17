@@ -96,13 +96,18 @@ class KanbanDatabase {
         }
       }
 
-      return {
+      const normalized = {
         project_slug: typeof slug === 'string' ? slug.trim() : slug,
         // Uppercased to match how session_letter is stored, so the "=" lookup
         // in resolveExternalDependencies actually finds the referenced card
         card_letter: this.normalizeSessionLetter(letter),
         description: (entry && entry.description) || '',
       };
+      // A deliberate hand override (the board's unlock button) is the one
+      // stored flag. Only a literal true counts, and the key is omitted
+      // otherwise so un-overridden entries keep their canonical shape.
+      if (entry && entry.overridden === true) normalized.overridden = true;
+      return normalized;
     });
   }
 
@@ -127,6 +132,13 @@ class KanbanDatabase {
         status: null,
         project_name: null,
       };
+      // Overridden by hand: the link still stands (and still reports the
+      // referenced card's real status) but no longer blocks.
+      const overridden = entry.overridden === true;
+      if (overridden) {
+        resolved.overridden = true;
+        resolved.resolved = true;
+      }
 
       if (!entry.project_slug || !entry.card_letter) return resolved;
 
@@ -147,7 +159,7 @@ class KanbanDatabase {
 
       if (!refCard) return resolved; // referenced card doesn't exist yet -> unresolved
       resolved.status = refCard.status;
-      resolved.resolved = refCard.status === 'Done';
+      resolved.resolved = overridden || refCard.status === 'Done';
       return resolved;
     });
   }
@@ -1363,17 +1375,83 @@ class KanbanDatabase {
   }
 
   /**
-   * Clear all dependencies for a card (unlock it)
+   * Unlock a card: clear its same-board dependencies and override every
+   * cross-project dependency that is still unresolved.
+   *
+   * External links are NOT deleted - each unresolved entry is marked
+   * overridden: true, which resolveExternalDependencies treats as resolved.
+   * The record that this card relates to the other project's card survives,
+   * shows in the vault export, and can be restored with
+   * restoreExternalDependency. Links already satisfied by a Done card are
+   * left as they are.
+   *
    * @param {number} id - Card ID
    * @returns {boolean} - Success status
    */
   clearCardDependencies(id) {
     try {
-      const sql = `UPDATE cards SET depends_on_cards = '[]', updated_at = CURRENT_TIMESTAMP WHERE id = ?`;
-      const result = this.db.prepare(sql).run(id);
-      return result.changes > 0;
+      const run = this.db.transaction((cardId) => {
+        const row = this.db.prepare('SELECT external_dependencies FROM cards WHERE id = ?').get(cardId);
+        if (!row) return false;
+
+        const stored = this.normalizeExternalDependencies(
+          JSON.parse(row.external_dependencies || '[]'), false
+        );
+        const resolvedNow = this.resolveExternalDependencies(stored);
+        const updated = stored.map((entry, i) => (
+          resolvedNow[i].resolved ? entry : { ...entry, overridden: true }
+        ));
+
+        const result = this.db.prepare(`
+          UPDATE cards
+          SET depends_on_cards = '[]', external_dependencies = ?, updated_at = CURRENT_TIMESTAMP
+          WHERE id = ?
+        `).run(JSON.stringify(updated), cardId);
+        return result.changes > 0;
+      });
+      return run(id);
     } catch (error) {
       throw new Error(`Failed to clear card dependencies: ${error.message}`);
+    }
+  }
+
+  /**
+   * Undo an unlock override on one cross-project dependency, so the card
+   * waits on that card again until it is Done.
+   *
+   * @param {number} id - Card ID
+   * @param {string} projectSlug - The dependency's project_slug
+   * @param {string} cardLetter - The dependency's card_letter
+   * @returns {boolean} - True when an override was removed
+   */
+  restoreExternalDependency(id, projectSlug, cardLetter) {
+    try {
+      const run = this.db.transaction(() => {
+        const row = this.db.prepare('SELECT external_dependencies FROM cards WHERE id = ?').get(id);
+        if (!row) throw new Error(`Card ${id} not found`);
+
+        const letter = this.normalizeSessionLetter(cardLetter);
+        let changed = false;
+        const updated = this.normalizeExternalDependencies(
+          JSON.parse(row.external_dependencies || '[]'), false
+        ).map(entry => {
+          if (entry.overridden && entry.project_slug === projectSlug && entry.card_letter === letter) {
+            changed = true;
+            const { overridden, ...rest } = entry;
+            return rest;
+          }
+          return entry;
+        });
+        if (!changed) return false;
+
+        this.db.prepare(`
+          UPDATE cards SET external_dependencies = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?
+        `).run(JSON.stringify(updated), id);
+        return true;
+      });
+      return run();
+    } catch (error) {
+      throw new Error(`Failed to restore external dependency: ${error.message}`);
     }
   }
 
@@ -2074,11 +2152,13 @@ class KanbanDatabase {
                   delete cleanCard.parent_card_id;
                   // Strip computed resolution fields from external_dependencies,
                   // keeping only the canonical { project_slug, card_letter, description }
+                  // plus a stored hand override, so a re-import keeps it
                   if (Array.isArray(cleanCard.external_dependencies)) {
                     cleanCard.external_dependencies = cleanCard.external_dependencies.map(dep => ({
                       project_slug: dep.project_slug,
                       card_letter: dep.card_letter,
                       description: dep.description || '',
+                      ...(dep.overridden === true ? { overridden: true } : {}),
                     }));
                   }
                   return cleanCard;

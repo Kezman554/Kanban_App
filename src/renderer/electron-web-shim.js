@@ -147,6 +147,9 @@ if (typeof window !== 'undefined' && !window.electron) {
         .then((r) => r.updated),
     clearCardDependencies: (id) =>
       req('POST', `/cards/${enc(id)}/clear-dependencies`).then((r) => r.updated),
+    restoreExternalDependency: (id, projectSlug, cardLetter) =>
+      req('POST', `/cards/${enc(id)}/restore-external-dependency`,
+        { project_slug: projectSlug, card_letter: cardLetter }).then((r) => r.updated),
     deleteCard: (id) => req('DELETE', `/cards/${enc(id)}`), // { deletedLetter }
     getDoneCards: (projectId) => req('GET', `/projects/${enc(projectId)}/done`),
 

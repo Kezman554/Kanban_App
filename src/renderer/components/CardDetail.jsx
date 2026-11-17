@@ -365,6 +365,9 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
       project_slug: dep.project_slug || '',
       card_letter: dep.card_letter || '',
       description: dep.description || '',
+      // A hand override (board unlock) rides along so saving the editor
+      // doesn't silently re-block; changing the row's target drops it
+      overridden: dep.overridden === true,
       manual: false,
     }));
     setEditedExtDeps(rows);
@@ -390,14 +393,16 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
   const handleExtDepChange = (index, field, value) => {
     setEditedExtDeps(prev => prev.map((dep, i) => (
-      i === index ? { ...dep, [field]: value } : dep
+      i === index
+        ? { ...dep, [field]: value, ...(field === 'card_letter' && value !== dep.card_letter ? { overridden: false } : {}) }
+        : dep
     )));
   };
 
   const handleExtDepProjectChange = (index, slug) => {
     // The old letter belongs to the old project, so clear it
     setEditedExtDeps(prev => prev.map((dep, i) => (
-      i === index ? { ...dep, project_slug: slug, card_letter: '', manual: false } : dep
+      i === index ? { ...dep, project_slug: slug, card_letter: '', manual: false, overridden: false } : dep
     )));
     loadCardsForProject(slug);
   };
@@ -414,6 +419,20 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
 
   const handleRemoveExtDep = (index) => {
     setEditedExtDeps(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Undo a board-unlock override on one link: the card waits on it again
+  const handleRestoreExtDep = async (dep) => {
+    try {
+      setExtDepsSaveError(null);
+      await window.electron.restoreExternalDependency(card.id, dep.project_slug, dep.card_letter);
+      if (onCardUpdated) {
+        await onCardUpdated(card.id);
+      }
+    } catch (error) {
+      console.error('Failed to restore external dependency:', error);
+      setExtDepsSaveError(error.message || 'Failed to restore the dependency');
+    }
   };
 
   const handleSaveExtDeps = async () => {
@@ -441,6 +460,7 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
         project_slug: dep.project_slug,
         card_letter: dep.card_letter,
         description: dep.description,
+        ...(dep.overridden ? { overridden: true } : {}),
       }));
       await window.electron.updateCardExternalDependencies(card.id, toSave);
       setIsEditingExtDeps(false);
@@ -1146,8 +1166,17 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                   // project that IS imported is almost always a mistyped letter.
                   const projectMissing = !dep.project_name;
                   const cardMissing = !projectMissing && !dep.status;
+                  // Unlocked by hand while the other card is unfinished: the
+                  // link stays on record but no longer blocks
+                  const isOverride = dep.overridden === true && dep.status !== 'Done';
 
-                  const tone = dep.resolved
+                  const tone = isOverride
+                    ? {
+                        box: 'bg-page border-line',
+                        badge: 'border border-line text-ink font-semibold',
+                        label: 'Overridden',
+                      }
+                    : dep.resolved
                     ? {
                         box: 'bg-progress/30 border-transparent',
                         badge: 'bg-done text-on-done font-semibold',
@@ -1182,7 +1211,20 @@ const CardDetail = ({ card, isOpen, onClose, onMarkDone, onExpandPlan, onStatusC
                           {tone.label}
                         </span>
                       </div>
-                      {cardMissing && (
+                      {isOverride && (
+                        <div className="mt-1 flex items-center justify-between gap-2">
+                          <p className="text-muted text-xs">
+                            Unlocked by hand. {dep.project_name || dep.project_slug} {dep.card_letter} is {dep.status || 'not found'}.
+                          </p>
+                          <button
+                            onClick={() => handleRestoreExtDep(dep)}
+                            className="text-xs px-2 py-1 rounded font-medium flex-shrink-0 bg-page border border-line hover:bg-hover text-muted hover:text-ink"
+                          >
+                            Wait on {dep.card_letter} again
+                          </button>
+                        </div>
+                      )}
+                      {cardMissing && !isOverride && (
                         <p className="text-danger-text mt-1 text-xs">
                           {dep.project_name} has no card {dep.card_letter} - check the letter.
                         </p>

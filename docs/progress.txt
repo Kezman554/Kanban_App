@@ -2080,3 +2080,63 @@ Deployed to the Pi (0546546): pulled, kanban-api rebuilt, smoke test OK
 (386 cards, API == DB). Live CSS has --wash-base cream / page; on the live
 board GymSync I is #DEE1F1 (light) / #5A5C70 (dark) on the board and in
 its card view.
+
+Session Progress - 2026-11-17 (Unlock button on a card blocked by another project)
+==================================================================================
+
+Report: on the live board, Dash R (Kitchen kiosk mode) stayed blocked after
+the lock button's Unlock. R's only open blocker is external
+(alfred-home-hub/Q, Not Started); its internal P is Done.
+
+1. Root cause (data layer, operations.js). The lock button -> Board
+   handleConfirmUnlock -> clearCardDependencies (IPC / POST
+   /cards/:id/clear-dependencies). That only ran
+   UPDATE cards SET depends_on_cards = '[]'. external_dependencies was
+   never touched, and resolveExternalDependencies derived `resolved`
+   purely from the target card being Done, with no stored flag it could
+   honour (normalizeExternalDependencies stripped everything but slug,
+   letter, description). So a card blocked only by another project could
+   never be unlocked by hand; the call still returned updated:true, so the
+   dialog closed as if it had worked. Frontend handler and route were fine.
+   Reproduced on a scratch DB, both in a new test and through the real
+   HTTP route (pi-server run locally against a throwaway DB).
+2. Fix. An external entry can now carry a stored `overridden: true`.
+   - clearCardDependencies (one transaction) still empties
+     depends_on_cards, and marks every still-unresolved external entry
+     overridden. Links are never deleted; Done-satisfied links untouched.
+   - resolveExternalDependencies returns resolved: true plus
+     overridden: true for those, with the target's real status, so the
+     backend (getBlockedReason / getWorkableCards / vault export) and the
+     renderer (isCardBlocked etc., which read `resolved`) all agree.
+   - normalizeExternalDependencies keeps the flag only when it is a
+     literal true; entries without it keep their exact old shape.
+   - exportProjectToJson keeps overridden so a re-import round-trips it.
+   - New restoreExternalDependency(cardId, slug, letter) undoes one
+     override (IPC db:restoreExternalDependency, POST
+     /cards/:id/restore-external-dependency, web shim).
+3. UI. Card view: an overridden link shows an "Overridden" badge, "Unlocked
+   by hand. <project> <letter> is <status>." and a "Wait on <letter> again"
+   button. The dependency editor carries the flag through a save, and
+   drops it when the row's project or letter changes. Unlock dialog text
+   (board and expanded stack) now says board dependencies are removed and
+   cross-project links are kept as overridden. "Export for Claude" marks
+   such links "(overridden)" rather than "(done)".
+4. How it reads in the vault export (R after unlock, from the local run):
+   unblocked_cards: R, external_dependencies:
+   [{"project_slug":"alfred-home-hub","card_letter":"Q","description":"",
+     "resolved":true,"status":"Not Started",
+     "project_name":"Alfred Home Hub","overridden":true}]
+   resolved true + status not Done + overridden true = a hand override;
+   resolved true + status Done = genuinely complete.
+5. Tests: new src/database/unblock-override.test.js (20 checks: external
+   only, persistence across reopen, vault export, project JSON export,
+   re-block, internal only, both kinds, editor save). It failed 7 checks
+   before the fix and passes after; the other nine test files all pass.
+   vite build clean.
+
+Known gaps / followups
+----------------------
+- The unlock still deletes internal depends_on_cards outright (existing
+  behaviour, unchanged); only cross-project links are kept as overrides.
+- Once the target card is Done, the override flag stays stored but is moot
+  (the link reads as plain Done-resolved; the UI shows "Resolved").
