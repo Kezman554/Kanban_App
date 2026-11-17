@@ -2281,3 +2281,6 @@ Session Progress - 2026-11-17 (Sidebar nav selection matches the project list)
    selected project and selected nav item have identical computed
    background, border, shadow, text colour and weight in light and dark,
    and in the collapsed sidebar. Screenshots light, dark and collapsed.
+
+Deployed to the Pi (83f7367): pulled, kanban-api rebuilt, smoke test OK
+(558 cards, API == DB). Live CSS index-BhC8FxRc.css has no nav-active.
