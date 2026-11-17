@@ -2239,3 +2239,13 @@ Session Progress - 2026-11-17 (Dragged card drawn twice)
    worktree deleted node_modules/.bin through its junction; restored
    with npm rebuild --ignore-scripts (better-sqlite3 left Electron-built;
    unblock-override test 20/20 under Electron afterwards).
+
+Deployed to the Pi (5019e28): pulled, kanban-api rebuilt, smoke test OK
+(558 cards, API == DB). Live bundle index-BuAhmBkC.js carries the build
+stamp 5019e28, onDragCancel, dropAnimation:null and the overlay's
+cursor-grabbing. No drag was driven on the live board (a missed cancel
+would drop a card and write to the authoritative DB).
+
+Known gaps / followups
+----------------------
+- Nick to try a drag on the live board (stack top, Done pile, a drop).
